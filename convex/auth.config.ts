@@ -1,8 +1,9 @@
-const issuer = process.env.CLERK_JWT_ISSUER_DOMAIN;
+const issuer =
+  process.env.CLERK_FRONTEND_API_URL ||
+  process.env.CLERK_JWT_ISSUER_DOMAIN;
 
 export default {
   providers: issuer
     ? [{ domain: issuer, applicationID: "convex" }]
     : [],
 };
-
