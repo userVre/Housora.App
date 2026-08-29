@@ -6654,6 +6654,16 @@ section[id] {
 .canvas-tool-dock button { width: 38px; height: 38px; display: grid; place-items: center; border: 0; border-radius: 10px; background: transparent; color: #e1ded7; }
 .canvas-tool-dock button:hover,.canvas-tool-dock button.active { color: #fff; background: #33466d; }
 .canvas-tool-dock span { width: 1px; height: 30px; margin: 0 3px; background: #3b3b37; }
+.album-preview.tool-area,.album-preview.tool-draw { cursor: crosshair; }
+.canvas-area-mark,.canvas-draw-mark { position: absolute; z-index: 3; transform: translate(-50%,-50%); pointer-events: none; }
+.canvas-area-mark { width: 120px; height: 90px; border: 2px solid #d9e3ff; border-radius: 8px; background: #5278d21f; box-shadow: 0 0 0 9999px #08080821; }
+.canvas-draw-mark { width: 74px; height: 74px; border: 3px solid #d9e3ff; border-radius: 42% 58% 53% 47%; background: #5278d226; }
+.canvas-annotation { position: absolute; z-index: 3; left: 18px; bottom: 18px; display: inline-flex; align-items: center; gap: 6px; max-width: 300px; padding: 8px 10px; border-radius: 9px; background: #111d; color: #f3f1ed; font-style: normal; font-size: 11px; backdrop-filter: blur(8px); }
+.canvas-annotation:nth-of-type(2){bottom:56px}.canvas-annotation:nth-of-type(3){bottom:94px}.canvas-annotation:nth-of-type(n+4){display:none}
+.canvas-annotation svg { width: 14px; height: 14px; }
+.canvas-note-composer { position: absolute; z-index: 5; left: 50%; bottom: 76px; transform: translateX(-50%); width: min(430px,calc(100% - 28px)); display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 8px; border: 1px solid #45453f; border-radius: 13px; background: #20201ef5; box-shadow: 0 15px 45px #0009; }
+.canvas-note-composer input { min-width: 0; height: 40px; border: 0; outline: 0; padding: 0 10px; background: transparent; color: #f3f1ed; }
+.canvas-note-composer button { min-width: 60px; border: 0; border-radius: 9px; background: #efede6; color: #161613; font-weight: 800; }
 .album-workspace-body { grid-template-columns: minmax(0, 1fr) 420px; }
 .album-control-panel { width: 420px; }
 .album-panel-content { min-height: 0; padding: 16px 14px 14px; gap: 10px; }

@@ -1982,6 +1982,9 @@ function AlbumWorkspace({
   const [generationError, setGenerationError] = useState("");
   const [activeTool, setActiveTool] = useState("select");
   const [compareOriginal, setCompareOriginal] = useState(false);
+  const [selectionPoint, setSelectionPoint] = useState<{ x: number; y: number } | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [canvasNotes, setCanvasNotes] = useState<Array<{ kind: string; text: string }>>([]);
   const originalPreview = useRef<string | null>(initialDraft?.image ?? null);
   const canvasRef = useRef<HTMLElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -2094,7 +2097,11 @@ function AlbumWorkspace({
           onDragOver={(event) => event.preventDefault()}
         >
           {preview ? (
-            <div className="album-preview">
+            <div className={`album-preview tool-${activeTool}`} onClick={(event) => {
+              if (activeTool !== "area" && activeTool !== "draw") return;
+              const bounds = event.currentTarget.getBoundingClientRect();
+              setSelectionPoint({ x: ((event.clientX - bounds.left) / bounds.width) * 100, y: ((event.clientY - bounds.top) / bounds.height) * 100 });
+            }}>
               <Image
                 src={compareOriginal && originalPreview.current ? originalPreview.current : preview}
                 alt="Current project space"
@@ -2106,6 +2113,8 @@ function AlbumWorkspace({
               <span>
                 {compareOriginal ? "Original space" : `${mode} · ${space}`}
               </span>
+              {selectionPoint ? <i className={activeTool === "draw" ? "canvas-draw-mark" : "canvas-area-mark"} style={{ left: `${selectionPoint.x}%`, top: `${selectionPoint.y}%` }} aria-label="Selected edit area" /> : null}
+              {canvasNotes.map((note, index) => <em key={`${note.kind}-${index}`} className={`canvas-annotation ${note.kind}`}>{note.kind === "comment" ? <ChatCircle /> : <TextT />}{note.text}</em>)}
             </div>
           ) : (
             <div className="album-empty">
@@ -2143,6 +2152,10 @@ function AlbumWorkspace({
             <span />
             <button onClick={() => void canvasRef.current?.requestFullscreen()} title="View fullscreen"><CornersOut /></button>
           </div> : null}
+          {preview && tab === "edit" && (activeTool === "text" || activeTool === "comment") ? <form className="canvas-note-composer" onSubmit={(event) => { event.preventDefault(); if (!noteDraft.trim()) return; setCanvasNotes(items => [...items, { kind: activeTool, text: noteDraft.trim() }]); setNoteDraft(""); setActiveTool("select"); }}>
+            <input autoFocus value={noteDraft} onChange={event => setNoteDraft(event.target.value)} placeholder={activeTool === "comment" ? "Add feedback for this design" : "Add a label to the canvas"} />
+            <button type="submit">Add</button>
+          </form> : null}
         </main>
         <aside className="album-control-panel">
           <div
