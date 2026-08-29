@@ -2,7 +2,7 @@ import { unwrapWebhook } from "@whop/sdk/helpers";
 import { ConvexHttpClient } from "convex/browser";
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "../../../../convex/_generated/api";
-import { WHOP_OFFERS, type WhopOfferKey } from "../../../../lib/whop";
+import { getWhopPlanId, WHOP_OFFERS, type WhopOfferKey } from "../../../../lib/whop";
 
 export const runtime = "nodejs";
 
@@ -19,7 +19,9 @@ function text(value: unknown) {
 function offerFromPlan(planId?: string) {
   if (!planId) return undefined;
   return (Object.keys(WHOP_OFFERS) as WhopOfferKey[]).find(
-    (key) => process.env[WHOP_OFFERS[key].env] === planId,
+    (key) => {
+      try { return getWhopPlanId(key) === planId; } catch { return false; }
+    },
   );
 }
 
