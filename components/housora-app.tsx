@@ -17,6 +17,16 @@ import {
   Cube,
   ClockCounterClockwise,
   CopySimple,
+  CreditCard,
+  CursorClick,
+  Selection,
+  ScribbleLoop,
+  TextT,
+  ChatCircle,
+  ImagesSquare,
+  CornersOut,
+  DotsThree,
+  ArrowCounterClockwise,
   DownloadSimple,
   Eye,
   FilePdf,
@@ -649,6 +659,12 @@ export function HousoraApp({
             label="Saved"
             onClick={() => navigate("library")}
           />
+          <NavButton
+            active={activePage === "pricing"}
+            icon={<CreditCard />}
+            label="Pricing"
+            onClick={() => navigate("pricing")}
+          />
         </nav>
         <div className="rail-account">
           {profileOpen ? (
@@ -747,6 +763,7 @@ export function HousoraApp({
           <AlbumWorkspace
             onBack={() => navigate("projects")}
             onSaveDesign={saveDesign}
+            onOpenStudio={openStudio}
           />
         ) : null}
         {activePage === "projects" ? (
@@ -788,6 +805,7 @@ export function HousoraApp({
             onBack={() => navigate("projects")}
             onSaveDesign={saveDesign}
             initialDraft={projectDraft}
+            onOpenStudio={openStudio}
           />
         ) : null}
         {activePage === "pricing" ? <PricingPage /> : null}
@@ -814,6 +832,12 @@ export function HousoraApp({
           icon={<Heart />}
           label="Saved"
           onClick={() => navigate("library")}
+        />
+        <NavButton
+          active={activePage === "pricing"}
+          icon={<CreditCard />}
+          label="Pricing"
+          onClick={() => navigate("pricing")}
         />
       </nav>
       {notice ? (
@@ -1933,10 +1957,12 @@ function ProjectsPage({
 function AlbumWorkspace({
   onBack,
   onSaveDesign,
+  onOpenStudio,
   initialDraft,
 }: {
   onBack: () => void;
   onSaveDesign: (design: Omit<SavedDesign, "savedAt">) => void;
+  onOpenStudio: () => void;
   initialDraft?: ProjectDraft | null;
 }) {
   const [mode, setMode] = useState<DesignMode>(
@@ -1954,12 +1980,17 @@ function AlbumWorkspace({
   const [saved, setSaved] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generationError, setGenerationError] = useState("");
+  const [activeTool, setActiveTool] = useState("select");
+  const [compareOriginal, setCompareOriginal] = useState(false);
+  const originalPreview = useRef<string | null>(initialDraft?.image ?? null);
+  const canvasRef = useRef<HTMLElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const upload = (file?: File) => {
     if (!file || !file.type.startsWith("image/")) return;
     const reader = new FileReader();
     reader.onload = () => {
       setPreview(String(reader.result));
+      originalPreview.current = String(reader.result);
       setTab("edit");
       setSaved(false);
     };
@@ -1967,6 +1998,7 @@ function AlbumWorkspace({
   };
   const startTemplate = () => {
     setPreview(modeData[mode].image);
+    originalPreview.current = modeData[mode].image;
     setTab("create");
     setSaved(false);
   };
@@ -2026,7 +2058,12 @@ function AlbumWorkspace({
           <ArrowLeft /> Projects
         </button>
         <span>{initialDraft?.title ?? "New project"}</span>
-        <ol className="creation-progress" aria-label="Creation progress">
+        {preview && tab === "edit" ? <div className="album-bar-actions">
+          <button aria-label="More project actions" title="More project actions"><DotsThree /></button>
+          <button aria-label="Undo last generated result" title="Show original" onClick={() => setCompareOriginal(value => !value)}><ArrowCounterClockwise /></button>
+          <button aria-label="Download image" title="Download image" onClick={() => { const link = document.createElement("a"); link.href = preview; link.download = "housora-design.png"; link.click(); }}><DownloadSimple /></button>
+          <button className="share-design" onClick={() => void (navigator.share ? navigator.share({ title: initialDraft?.title ?? "Housora design", url: preview }) : navigator.clipboard.writeText(preview))}>Share</button>
+        </div> : <ol className="creation-progress" aria-label="Creation progress">
           <li className={preview ? "complete" : "active"}>Space</li>
           <li
             className={
@@ -2036,7 +2073,7 @@ function AlbumWorkspace({
             Direction
           </li>
           <li className={tab === "edit" ? "active" : ""}>Result</li>
-        </ol>
+        </ol>}
       </header>
       <input
         ref={fileRef}
@@ -2048,6 +2085,7 @@ function AlbumWorkspace({
       />
       <div className="album-workspace-body">
         <main
+          ref={canvasRef}
           className="album-canvas"
           onDrop={(event) => {
             event.preventDefault();
@@ -2058,7 +2096,7 @@ function AlbumWorkspace({
           {preview ? (
             <div className="album-preview">
               <Image
-                src={preview}
+                src={compareOriginal && originalPreview.current ? originalPreview.current : preview}
                 alt="Current project space"
                 width={1536}
                 height={1024}
@@ -2066,7 +2104,7 @@ function AlbumWorkspace({
                 unoptimized={preview.startsWith("data:") || preview.startsWith("http")}
               />
               <span>
-                {mode} · {space}
+                {compareOriginal ? "Original space" : `${mode} · ${space}`}
               </span>
             </div>
           ) : (
@@ -2093,6 +2131,18 @@ function AlbumWorkspace({
               </div>
             </div>
           )}
+          {preview && tab === "edit" ? <div className="canvas-tool-dock" role="toolbar" aria-label="Canvas tools">
+            <button className={activeTool === "select" ? "active" : ""} onClick={() => setActiveTool("select")} title="Select an object"><CursorClick /></button>
+            <button className={activeTool === "area" ? "active" : ""} onClick={() => setActiveTool("area")} title="Select an area"><Selection /></button>
+            <button className={activeTool === "draw" ? "active" : ""} onClick={() => setActiveTool("draw")} title="Draw an edit area"><ScribbleLoop /></button>
+            <span />
+            <button onClick={onOpenStudio} title="Create and view a 3D model"><Cube /></button>
+            <button className={activeTool === "text" ? "active" : ""} onClick={() => setActiveTool("text")} title="Add a text note"><TextT /></button>
+            <button className={activeTool === "comment" ? "active" : ""} onClick={() => setActiveTool("comment")} title="Add a comment"><ChatCircle /></button>
+            <button className={compareOriginal ? "active" : ""} onClick={() => setCompareOriginal(value => !value)} title="Compare with original"><ImagesSquare /></button>
+            <span />
+            <button onClick={() => void canvasRef.current?.requestFullscreen()} title="View fullscreen"><CornersOut /></button>
+          </div> : null}
         </main>
         <aside className="album-control-panel">
           <div

@@ -17,6 +17,8 @@ export async function POST(request: NextRequest) {
     const accountId = process.env.WHOP_COMPANY_ID;
     if (!accountId?.startsWith("biz_")) throw new Error("WHOP_COMPANY_ID is missing or invalid.");
 
+    const configuredUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+    const returnBase = configuredUrl?.startsWith("https://") ? configuredUrl : request.nextUrl.origin;
     const checkout = await getWhopClient().checkoutConfigurations.create({
       account_id: accountId,
       plan_id: getWhopPlanId(offer),
@@ -25,12 +27,19 @@ export async function POST(request: NextRequest) {
         offer_key: offer,
         source: "housora_web",
       },
-      redirect_url: `${request.nextUrl.origin}/workspace?view=pricing&checkout=success`,
+      redirect_url: `${returnBase}/workspace?view=pricing&checkout=success`,
     });
     if (!checkout.purchase_url) throw new Error("Whop did not return a checkout URL.");
     return NextResponse.json({ url: checkout.purchase_url });
   } catch (error) {
     console.error("Unable to create Whop checkout", error);
-    return NextResponse.json({ error: "Checkout is temporarily unavailable. Please try again." }, { status: 500 });
+    const message = error instanceof Error ? error.message : "";
+    const configurationError = /not configured|missing or invalid/i.test(message);
+    return NextResponse.json({
+      error: configurationError
+        ? "Checkout needs one final billing configuration update. Please contact support."
+        : "Whop could not open checkout. Please wait a moment and try again.",
+      code: configurationError ? "CHECKOUT_CONFIGURATION" : "CHECKOUT_PROVIDER",
+    }, { status: configurationError ? 503 : 502 });
   }
 }

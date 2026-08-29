@@ -19,7 +19,17 @@ export const WHOP_OFFERS = {
 export type WhopOfferKey = keyof typeof WHOP_OFFERS;
 
 export function getWhopPlanId(offer: WhopOfferKey) {
-  const planId = process.env[WHOP_OFFERS[offer].env];
+  const aliases: Partial<Record<WhopOfferKey, string[]>> = {
+    creator_monthly: ["WHOP_CREATOR_MONTHLY_PLAN_ID", "WHOP_PRO_MONTHLY_PLAN_ID"],
+    creator_yearly: ["WHOP_CREATOR_YEARLY_PLAN_ID", "WHOP_PRO_YEARLY_PLAN_ID"],
+    studio_monthly: ["WHOP_STUDIO_MONTHLY_PLAN_ID", "WHOP_ENTERPRISE_PRO_MONTHLY_PLAN_ID"],
+    studio_yearly: ["WHOP_STUDIO_YEARLY_PLAN_ID", "WHOP_ENTERPRISE_PRO_YEARLY_PLAN_ID"],
+    credits_50: ["WHOP_CREDITS_50_PLAN_ID"],
+    credits_150: ["WHOP_CREDITS_150_PLAN_ID"],
+    credits_400: ["WHOP_CREDITS_400_PLAN_ID"],
+  };
+  const planId = process.env[WHOP_OFFERS[offer].env]
+    || aliases[offer]?.map((name) => process.env[name]).find(Boolean);
   if (!planId?.startsWith("plan_")) throw new Error(`${WHOP_OFFERS[offer].env} is missing or invalid.`);
   return planId;
 }
