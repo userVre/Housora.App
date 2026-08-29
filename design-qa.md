@@ -1,50 +1,50 @@
 **Design QA**
 
-- Source visual truth: `C:\Users\LENOVO\AppData\Local\Temp\codex-clipboard-03e8b069-8916-417d-8e1b-0870fc2fa528.png` and `C:\Users\LENOVO\AppData\Local\Temp\codex-clipboard-2c33759c-afbf-4c11-858c-e7f5c1a05b1d.png`
-- Implementation: `http://localhost:3002/workspace`
-- Intended viewport: desktop, 1269 × 714 CSS px, device scale 1
-- State: Interior design photo uploaded; Edit tab selected; Walls selected; profile menu open
+- Source visual truth: `C:\Users\LENOVO\AppData\Local\Temp\codex-clipboard-5e50a25d-0327-416e-bd8f-b7e37dfdbcec.png`, `C:\Users\LENOVO\AppData\Local\Temp\codex-clipboard-ae3c44de-0f75-41be-b5b3-1e9a51bd0f87.png`, and `C:\Users\LENOVO\AppData\Local\Temp\codex-clipboard-00f47d34-b623-4e63-beb5-fb1a9f9e2b3a.png`
+- Implementation target: `https://housora.vercel.app/workspace?view=album`
+- Intended viewport: desktop, 1920 × 1020 CSS px, device scale 1
+- State: generated room open; Edit tab selected; detected object list visible
 - Source pixels: 1920 × 1020
-- Implementation pixels: unavailable during the final capture attempt
-- Density normalization: not completed because implementation capture was unavailable
+- Implementation pixels: unavailable in the signed-out in-app browser
+- Density normalization: not applicable until authenticated capture
 
 **Full-view comparison evidence**
 
-- The source was opened at original resolution and used to define the right-side hierarchy: source image row, vertically scrolling thumbnail layers, selected layer, and bottom edit composer.
-- The implementation was built to that hierarchy, but the in-app browser connection failed during the post-change screenshot capture, so a valid same-state visual comparison is unavailable.
+- The source establishes a large stable image canvas, 420px right editor rail, compact top actions, and centered bottom tool dock.
+- The implementation now uses those same major proportions and keeps Details scrolling inside the rail so it cannot move the canvas image.
+- A same-state production screenshot could not be captured because the available in-app browser is signed out and the connected Chrome surface was unavailable.
 
 **Focused region comparison evidence**
 
-- Source region inspected: the complete right editor rail containing Uploaded image, object thumbnails, row chevrons, and Ask Reve composer.
-- Implementation region capture: blocked by the browser connection failure.
+- Source regions inspected: editor rail layer rhythm, top project bar, image containment, and bottom canvas tool dock.
+- Implementation evidence: production build passed; strict static UI audit returned zero findings. Authenticated visual comparison remains blocked.
 
 **Findings**
 
-- [P1] Final visual comparison is unavailable.
-  - Location: Create → Detected objects.
-  - Evidence: the build and static UI audit passed, but the refreshed browser state could not be captured after the redesign.
-  - Impact: exact spacing and crop fidelity cannot be certified from rendered evidence.
-  - Fix: reconnect the in-app browser, upload the test room image, capture the same state, and compare it with the source.
+- [P1] Authenticated final visual comparison is unavailable.
+  - Location: production workspace editor and pricing page.
+  - Evidence: the public auth screen renders without console errors, but the browser session cannot enter the signed-in workspace.
+  - Impact: exact post-deployment spacing and interactive-state fidelity cannot be certified from rendered evidence.
+  - Fix: open the deployed workspace in a signed-in controllable browser and capture pricing plus editor states.
 
 **Comparison history**
 
-- Iteration 1: Replaced the former two-column object chips and separate command card with a Reve-inspired source layer, one-column thumbnail list, selected state, contextual actions, and anchored composer.
-- Iteration 2: Replaced Design brief / Detected objects with the clearer Reve-style Create / Edit model. Added Reference image mode, Ask Housora controls, and a Codex-style profile menu containing Usage remaining, Settings, and Log out.
-- Post-fix evidence: production build passed and strict static audit returned zero findings; browser-rendered visual evidence remains unavailable.
+- Iteration 1: stabilized the canvas, expanded the editor rail to 420px, tightened object rows, and prevented Details from changing image position.
+- Iteration 2: added top project actions and a reference-style bottom tool dock with selection, marking, notes, 3D navigation, comparison, and fullscreen interactions.
+- Iteration 3: clarified credit costs, added explicit pack selection, and added Pricing to desktop/mobile navigation.
 
 **Implementation checklist**
 
-- [x] Persistent visual layer list
-- [x] Source photo row
-- [x] Object thumbnails and metadata
-- [x] Selected, hover, focus, and pressed states
-- [x] Contextual Edit / Protect / Remove actions
-- [x] Context-specific prompt and apply feedback
-- [x] Mobile layout rules and reduced-motion support
-- [ ] Capture and compare the refreshed rendered state
+- [x] Stable image canvas and contained details scrolling
+- [x] Reve-inspired object layer list and edit composer
+- [x] Interactive canvas tool dock
+- [x] Pricing navigation and selectable credit packs
+- [x] Production build and TypeScript validation
+- [x] Strict static UI audit
+- [ ] Authenticated production screenshot comparison
 
 **Follow-up polish**
 
-- Confirm object thumbnail crops against real segmentation masks once the detection API is connected.
+- Confirm exact thumbnail crop and toolbar vertical position against a real generated image after deployment.
 
 final result: blocked
