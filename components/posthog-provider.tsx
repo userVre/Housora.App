@@ -2,15 +2,19 @@
 
 import posthog from "posthog-js";
 import { useAuth, useUser } from "@clerk/nextjs";
-import { useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { api } from "../convex/_generated/api";
 
 export function PostHogProvider({ children, apiKey, host }: { children: React.ReactNode; apiKey?: string; host?: string }) {
   const { isSignedIn } = useAuth();
+  const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
   const { user } = useUser();
-  const preferences = useQuery(api.preferences.getMine, isSignedIn ? {} : "skip");
+  const preferences = useQuery(
+    api.preferences.getMine,
+    isSignedIn && isConvexAuthenticated ? {} : "skip",
+  );
   const pathname = usePathname();
   const initialized = useRef(false);
 
