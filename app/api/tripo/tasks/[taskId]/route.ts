@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { refundUsageEvent } from "../../../../../lib/credits";
+import { verifyTripoTrackingToken } from "../../../../../lib/tripo-tracking";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,16 @@ export async function GET(
   if (!/^[a-zA-Z0-9_-]{8,100}$/.test(taskId)) {
     return NextResponse.json({ error: "Invalid Tripo task." }, { status: 400 });
   }
+  const trackingToken = new URL(request.url).searchParams.get("trackingToken");
+  if (!trackingToken) {
+    return NextResponse.json({ error: "This 3D task is missing its secure tracking token." }, { status: 400 });
+  }
+  let tracking: ReturnType<typeof verifyTripoTrackingToken>;
+  try {
+    tracking = verifyTripoTrackingToken(trackingToken, taskId, userId);
+  } catch {
+    return NextResponse.json({ error: "This 3D task link is invalid or has expired." }, { status: 403 });
+  }
   try {
     const response = await fetch(`https://api.tripo3d.ai/v2/openapi/task/${encodeURIComponent(taskId)}`, {
       headers: { Authorization: `Bearer ${key}` },
@@ -29,9 +40,8 @@ export async function GET(
       );
     }
     const task = result.data;
-    const billingEventId = new URL(request.url).searchParams.get("billingEventId");
-    if ((task.status === "failed" || task.status === "cancelled") && billingEventId?.startsWith(`usage:${userId}:`)) {
-      await refundUsageEvent(userId, billingEventId, "3D generation failed").catch(() => undefined);
+    if (task.status === "failed" || task.status === "cancelled") {
+      await refundUsageEvent(userId, tracking.usageEventId, "3D generation failed").catch(() => undefined);
     }
     return NextResponse.json({
       status: task.status,

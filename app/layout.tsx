@@ -10,6 +10,7 @@ export const metadata: Metadata = {
   title: "Housora — From space to approved design",
   description:
     "AI interior design workspace for concepts, client approvals, products, specifications and budgets.",
+  robots: { index: false, follow: false },
 };
 
 export const viewport: Viewport = {

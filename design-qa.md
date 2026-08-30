@@ -5,27 +5,37 @@
 - Intended viewport: desktop, 1920 × 1020 CSS px, device scale 1
 - State: generated room open; Edit tab selected; detected object list visible
 - Source pixels: 1920 × 1020
-- Implementation pixels: unavailable in the signed-out in-app browser
+- Implementation pixels: the authenticated Projects screen was inspected in the user's live browser; the generated-image editor state is still unavailable until a real image is created
 - Density normalization: not applicable until authenticated capture
 
 **Full-view comparison evidence**
 
 - The source establishes a large stable image canvas, 420px right editor rail, compact top actions, and centered bottom tool dock.
 - The implementation now uses those same major proportions and keeps Details scrolling inside the rail so it cannot move the canvas image.
-- A same-state production screenshot could not be captured because the available in-app browser is signed out and the connected Chrome surface was unavailable.
+- The authenticated production Projects screen exposes a semantic skip link, navigation, current-page state, profile balance, project heading, empty-state copy, and New album action. A same-state generated-image comparison still requires a real generated result.
 
 **Focused region comparison evidence**
 
 - Source regions inspected: editor rail layer rhythm, top project bar, image containment, and bottom canvas tool dock.
-- Implementation evidence: production build passed; strict static UI audit returned zero findings. Authenticated visual comparison remains blocked.
+- Implementation evidence: production build passed; authenticated Projects semantics were inspected; strict static UI audit returned zero findings. The generated-image comparison remains blocked until a production result exists.
 
 **Findings**
 
-- [P1] Authenticated final visual comparison is unavailable.
-  - Location: production workspace editor and pricing page.
-  - Evidence: the public auth screen renders without console errors, but the browser session cannot enter the signed-in workspace.
-  - Impact: exact post-deployment spacing and interactive-state fidelity cannot be certified from rendered evidence.
-  - Fix: open the deployed workspace in a signed-in controllable browser and capture pricing plus editor states.
+- [P1] A real paid checkout and webhook credit grant have not been completed.
+  - Location: pricing checkout and Whop webhook.
+  - Evidence: the code validates product identifiers, signs checkout requests, and grants credits idempotently, but no real transaction was authorized during this audit.
+  - Impact: live payment success cannot be certified from static or build evidence alone.
+  - Fix: complete one low-value production checkout and confirm the matching plan or credit balance appears once.
+- [P1] The generated-image editor still needs same-state production capture.
+  - Location: workspace editor.
+  - Evidence: authenticated Projects was inspected, but no production-generated room was available for exact screenshot comparison.
+  - Impact: final crop, toolbar position, segmentation overlay, and mobile behavior need one live result test.
+  - Fix: generate one room, inspect edit/segment/3D/AR, and capture desktop plus mobile states.
+- [P1] Legal operator details are intentionally not invented.
+  - Location: Privacy Policy and Terms of Service.
+  - Evidence: the policies disclose their required completion fields.
+  - Impact: public paid launch should wait for the operator name, postal address, legal/privacy email, governing law, and counsel review.
+  - Fix: publish the operator's confirmed legal details and obtain jurisdiction-specific review.
 
 **Comparison history**
 
@@ -41,10 +51,15 @@
 - [x] Pricing navigation and selectable credit packs
 - [x] Production build and TypeScript validation
 - [x] Strict static UI audit
-- [ ] Authenticated production screenshot comparison
+- [x] Authenticated Projects screen inspection
+- [x] Recoverable upload, save, settings, checkout, and crash error states
+- [x] Signed, user-bound 3D task tracking and failure refunds
+- [ ] Generated-result desktop/mobile comparison
+- [ ] Real Whop checkout and webhook credit-grant test
+- [ ] Production Clerk and legal-identity sign-off
 
 **Follow-up polish**
 
 - Confirm exact thumbnail crop and toolbar vertical position against a real generated image after deployment.
 
-final result: blocked
+final result: code-verified; production certification pending the three external checks above

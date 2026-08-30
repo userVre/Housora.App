@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { consumeCredits, refundCredits } from "../../../../lib/credits";
+import { createTripoTrackingToken } from "../../../../lib/tripo-tracking";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -73,7 +74,14 @@ export async function POST(request: Request) {
         { status: taskResponse.status || 502 },
       );
     }
-    return NextResponse.json({ taskId, billingEventId: usage.eventId });
+    return NextResponse.json({
+      taskId,
+      trackingToken: createTripoTrackingToken({
+        taskId,
+        ownerId: userId,
+        usageEventId: usage.eventId,
+      }),
+    });
   } catch (error) {
     if (usage) await refundCredits(userId, usage, "3D generation failed").catch(() => undefined);
     return NextResponse.json(

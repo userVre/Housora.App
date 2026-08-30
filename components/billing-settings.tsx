@@ -25,16 +25,20 @@ export function PricingPage() {
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [selectedPack, setSelectedPack] = useState<(typeof packs)[number]["key"]>("credits_150");
+  const [checkoutReturned, setCheckoutReturned] = useState(false);
   const balance = useQuery(api.credits.getMyBalance, {});
   const initialize = useMutation(api.credits.initialize);
   useEffect(() => { void initialize(); }, [initialize]);
+  useEffect(() => {
+    setCheckoutReturned(new URLSearchParams(window.location.search).get("checkout") === "success");
+  }, []);
 
   async function checkout(offer: WhopOfferKey) {
     setPending(offer); setError("");
     try {
       const response = await fetch("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ offer }) });
-      const result = await response.json() as { url?: string; error?: string };
-      if (!response.ok || !result.url) throw new Error(result.error || "Checkout could not start.");
+      const result = await response.json().catch(() => null) as { url?: string; error?: string } | null;
+      if (!response.ok || !result?.url) throw new Error(result?.error || "Checkout could not start. Please try again.");
       window.location.assign(result.url);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Checkout could not start.");
@@ -46,14 +50,14 @@ export function PricingPage() {
     <header className="commerce-hero">
       <span className="eyebrow">Simple, flexible pricing</span>
       <h1>Pay for the design work you need.</h1>
-      <p>Start free, choose a monthly credit allowance, and add non-expiring top-ups whenever a project needs more.</p>
+      <p>Start free, choose a monthly credit allowance, and add top-ups whenever a project needs more.</p>
       <div className="balance-pill"><Sparkle /> <b>{balance?.total ?? "—"}</b> credits available</div>
       <div className="billing-toggle" role="group" aria-label="Billing period">
         <button className={!annual ? "active" : ""} onClick={() => setAnnual(false)}>Monthly</button>
         <button className={annual ? "active" : ""} onClick={() => setAnnual(true)}>Yearly <small>Save 2 months</small></button>
       </div>
     </header>
-    {new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("checkout") === "success" ? <p className="checkout-success" role="status"><Check /> Payment received. Your credits will appear as soon as Whop confirms the payment.</p> : null}
+    {checkoutReturned ? <p className="checkout-success" role="status"><Check /> Checkout complete. We’re confirming your purchase with Whop; your balance updates automatically.</p> : null}
     <section className="plan-grid" aria-label="Plans">
       {plans.map((plan, index) => <article key={plan.name} className={plan.popular ? "plan-card popular" : "plan-card"}>
         {plan.popular ? <span className="popular-label">Best for most people</span> : null}
@@ -62,7 +66,7 @@ export function PricingPage() {
         {index === 0 ? <button disabled>{balance?.plan === "free" ? "Current starter plan" : "Starter plan"}</button> : (() => { const offer = `${plan.name.toLowerCase()}_${annual ? "yearly" : "monthly"}` as WhopOfferKey; const current = balance?.plan === offer; return <button className={plan.popular ? "primary-action" : ""} disabled={Boolean(pending) || current} onClick={() => checkout(offer)}>{current ? "Current plan" : pending?.startsWith(plan.name.toLowerCase()) ? "Opening secure checkout…" : `Choose ${plan.name}`}</button>; })()}
       </article>)}
     </section>
-    <section className="credit-guide"><div><span className="eyebrow">Credit costs</span><h2>Know the cost before you create.</h2><p>AR viewing is free. Credits are only used when Housora runs an AI task for you.</p></div><div className="credit-costs"><span><b>1</b><i>Detect objects<small>Find editable furniture and surfaces</small></i></span><span><b>4</b><i>Generate or edit<small>Create a room or revise an image</small></i></span><span><b>5</b><i>Detect + edit<small>Select and change one object</small></i></span><span><b>12</b><i>Create a 3D model<small>Generate a textured model for AR</small></i></span><span><b>Free</b><i>View in your room<small>Open an existing model in AR</small></i></span></div></section>
+    <section className="credit-guide"><div><span className="eyebrow">Credit costs</span><h2>Know the cost before you create.</h2><p>AR viewing is free. Credits are only used when Housora runs an AI task for you.</p></div><div className="credit-costs"><span><b>1</b><i>Select an object<small>Create a precise editable mask</small></i></span><span><b>4</b><i>Generate or edit<small>Create a room or revise an image</small></i></span><span><b>5</b><i>Select + edit<small>Mask and change one object</small></i></span><span><b>12</b><i>Create a 3D model<small>Generate a textured model for AR</small></i></span><span><b>Free</b><i>View in your room<small>Open an existing model in AR</small></i></span></div></section>
     <section className="topup-section"><div><span className="eyebrow">Extra credits</span><h2>Add credits, keep your plan.</h2><p>Choose a pack, then continue to Whop’s secure checkout. Purchased credits remain available for 12 months.</p></div><div className="pack-purchase"><div className="pack-grid" role="radiogroup" aria-label="Extra credit pack">{packs.map(pack => <button key={pack.key} role="radio" aria-checked={selectedPack === pack.key} className={`${pack.best ? "best " : ""}${selectedPack === pack.key ? "selected" : ""}`} disabled={Boolean(pending)} onClick={() => { setSelectedPack(pack.key); setError(""); }}><span><b>{pack.credits} credits</b>{pack.best ? <small>Best value</small> : null}</span><strong>{pack.price}</strong></button>)}</div><button className="primary-action pack-checkout" disabled={Boolean(pending)} onClick={() => checkout(selectedPack)}>{pending?.startsWith("credits_") ? "Opening secure checkout…" : `Buy ${packs.find(pack => pack.key === selectedPack)?.credits} credits`}</button></div></section>
     {error ? <p className="checkout-error" role="alert">{error}</p> : null}
     <footer className="legal-links"><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><span>Payments are securely processed by Whop.</span></footer>
@@ -80,10 +84,26 @@ export function SettingsPage({ onPricing }: { onPricing: () => void }) {
   const [tab, setTab] = useState("Profile");
   const [form, setForm] = useState(defaults);
   const [notice, setNotice] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [saving, setSaving] = useState(false);
   useEffect(() => { if (saved) setForm({ ...defaults, ...saved }); }, [saved]);
   const sections = useMemo(() => ["Profile", "Workspace", "AI defaults", "Notifications", "Billing", "Privacy & data"], []);
   const set = (key: keyof typeof defaults, value: string | boolean) => setForm(current => ({ ...current, [key]: value }));
-  const persist = async () => { await save(form); setNotice("Settings saved"); window.setTimeout(() => setNotice(""), 2500); };
+  const persist = async () => {
+    if (saving) return;
+    setSaving(true);
+    setSaveError("");
+    setNotice("");
+    try {
+      await save(form);
+      setNotice("Settings saved");
+      window.setTimeout(() => setNotice(""), 2500);
+    } catch (reason) {
+      setSaveError(reason instanceof Error ? reason.message : "Settings could not be saved. Try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
   return <div className="settings-page">
     <header><span className="eyebrow">Workspace</span><h1>Settings</h1><p>Manage your account, design defaults, billing and privacy choices.</p></header>
     <div className="settings-layout"><nav aria-label="Settings sections">{sections.map(section => <button className={tab === section ? "active" : ""} onClick={() => setTab(section)} key={section}>{section}</button>)}</nav><section className="settings-panel">
@@ -93,7 +113,7 @@ export function SettingsPage({ onPricing }: { onPricing: () => void }) {
       {tab === "Notifications" ? <SettingsSection icon={<Sparkle />} title="Notifications" description="Choose which useful updates Housora may send."><Toggle label="Generation updates" hint="Tell me when a longer render finishes." checked={form.generationNotifications} onChange={v => set("generationNotifications", v)}/><Toggle label="Low-credit alerts" hint="Warn me before my balance interrupts a project." checked={form.creditNotifications} onChange={v => set("creditNotifications", v)}/><Toggle label="Collaboration updates" hint="Invites, comments and approvals." checked={form.collaborationNotifications} onChange={v => set("collaborationNotifications", v)}/><Toggle label="Product news and offers" hint="Optional marketing email." checked={form.marketingEmails} onChange={v => set("marketingEmails", v)}/></SettingsSection> : null}
       {tab === "Billing" ? <SettingsSection icon={<CreditCard />} title="Billing and credits" description="Your plan balance and purchased credits are kept separate."><div className="billing-summary"><span><small>Current plan</small><b>{balance?.plan.replaceAll("_", " ") || "Free"}</b></span><span><small>Plan credits</small><b>{balance?.subscription ?? "—"}</b></span><span><small>Purchased credits</small><b>{balance?.purchased ?? "—"}</b></span></div><button className="primary-action" onClick={onPricing}>View plans and add credits</button><p className="settings-note">Subscription cancellation and payment-method changes are managed in your Whop customer portal.</p></SettingsSection> : null}
       {tab === "Privacy & data" ? <SettingsSection icon={<ShieldCheck />} title="Privacy and data" description="Optional analytics remain off unless you choose to enable them."><Toggle label="Product analytics" hint="Share interaction events that help improve Housora. Prompts and uploaded images are excluded." checked={form.analyticsConsent} onChange={v => setForm(current => ({ ...current, analyticsConsent: v, replayConsent: v ? current.replayConsent : false }))}/><Toggle label="Session replay" hint="Share a masked replay for UX troubleshooting. Requires product analytics." checked={form.replayConsent} onChange={v => set("replayConsent", v)} disabled={!form.analyticsConsent}/><div className="settings-legal"><Link href="/privacy">Read Privacy Policy</Link><Link href="/terms">Read Terms of Service</Link></div><button onClick={() => openUserProfile()}>Manage security or delete account</button></SettingsSection> : null}
-      {tab !== "Profile" && tab !== "Billing" ? <div className="settings-save"><span role="status">{notice}</span><button className="primary-action" onClick={persist}>Save changes</button></div> : null}
+      {tab !== "Profile" && tab !== "Billing" ? <div className="settings-save"><span className={saveError ? "settings-error" : ""} role={saveError ? "alert" : "status"}>{saveError || notice}</span><button className="primary-action" onClick={persist} disabled={saving}>{saving ? "Saving…" : "Save changes"}</button></div> : null}
     </section></div>
   </div>;
 }
