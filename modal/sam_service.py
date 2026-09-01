@@ -42,7 +42,7 @@ sam_image = (
     .uv_pip_install(
         "fastapi[standard]>=0.115,<1",
         "huggingface-hub>=0.30,<2",
-        "numpy>=2,<3",
+        "numpy>=1.26,<2",
         "pillow>=11,<12",
         "pydantic>=2,<3",
         "git+https://github.com/facebookresearch/sam3.git",
