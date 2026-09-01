@@ -16,9 +16,9 @@ function errorMessage(value: unknown) {
 export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Sign in to generate designs." }, { status: 401 });
-  const key = process.env.FAL_KEY;
+  const key = process.env.OPENROUTER_API_KEY;
   if (!key) {
-    return NextResponse.json({ error: "FAL_KEY is not configured." }, { status: 503 });
+    return NextResponse.json({ error: "Image editing is not configured." }, { status: 503 });
   }
 
   let usage: Awaited<ReturnType<typeof consumeCredits>> | null = null;
@@ -45,18 +45,25 @@ export async function POST(request: Request) {
 
     usage = await consumeCredits(userId, 4, "AI image generation or edit");
 
-    const response = await fetch("https://fal.run/microsoft/mai-image-2.5-pro/edit", {
+    const aspectRatio = ["1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3", "auto"]
+      .includes(body.aspectRatio || "") ? body.aspectRatio : "auto";
+    const response = await fetch("https://openrouter.ai/api/v1/images", {
       method: "POST",
       headers: {
-        Authorization: `Key ${key}`,
+        Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://housora.vercel.app",
+        "X-Title": "Housora",
       },
       body: JSON.stringify({
-        image_url: image,
+        model: "microsoft/mai-image-2.5-pro",
         prompt: prompt.slice(0, 4000),
-        num_images: 1,
-        aspect_ratio: body.aspectRatio || "auto",
-        output_format: "png",
+        n: 1,
+        aspect_ratio: aspectRatio,
+        input_references: [{
+          type: "image_url",
+          image_url: { url: image },
+        }],
       }),
       signal: AbortSignal.timeout(285_000),
     });
@@ -66,9 +73,12 @@ export async function POST(request: Request) {
       usage = null;
       return NextResponse.json({ error: errorMessage(result) }, { status: response.status });
     }
-    const url = result?.images?.[0]?.url;
+    const generated = result?.data?.[0];
+    const url = generated?.url || (generated?.b64_json
+      ? `data:${generated.media_type || "image/png"};base64,${generated.b64_json}`
+      : null);
     if (!url) throw new Error("MAI returned no image.");
-    return NextResponse.json({ image: url, description: result.description || "" });
+    return NextResponse.json({ image: url, description: "", usage: result?.usage || null });
   } catch (error) {
     if (usage) await refundCredits(userId, usage, "Image generation failed").catch(() => undefined);
     const message = error instanceof Error && error.name === "TimeoutError"
