@@ -1795,6 +1795,49 @@ function AlbumWorkspace({
   const [activeTool, setActiveTool] = useState("select");
   const [selectedObject, setSelectedObject] = useState<DetectedObject | null>(null);
   const [previewRatio, setPreviewRatio] = useState(1.5);
+  // 2. Version history + undo/redo per image/project
+  const [history, setHistory] = useState<string[]>(() => (initialDraft?.image ? [initialDraft.image] : []));
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const pushHistory = (img: string) => {
+    setHistory((h) => {
+      const next = h.slice(0, historyIndex + 1);
+      if (next[next.length - 1] === img) return h;
+      const updated = [...next, img].slice(-20);
+      setHistoryIndex(updated.length - 1);
+      return updated;
+    });
+  };
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < history.length - 1;
+  const undo = () => {
+    if (!canUndo) return;
+    const idx = historyIndex - 1;
+    setHistoryIndex(idx);
+    setPreview(history[idx]);
+    setSaved(false);
+  };
+  const redo = () => {
+    if (!canRedo) return;
+    const idx = historyIndex + 1;
+    setHistoryIndex(idx);
+    setPreview(history[idx]);
+    setSaved(false);
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        if (e.shiftKey) redo();
+        else undo();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "y") {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [historyIndex, history]);
   const [threeDSource, setThreeDSource] = useState<string | null>(null);
   const [threeDOpen, setThreeDOpen] = useState(false);
   const [threeDBusy, setThreeDBusy] = useState(false);
@@ -1847,7 +1890,9 @@ function AlbumWorkspace({
     }
     const reader = new FileReader();
     reader.onload = () => {
-      setPreview(String(reader.result));
+      const img = String(reader.result);
+      setPreview(img);
+      pushHistory(img);
       originalPreview.current = String(reader.result);
       setSelectedObject(null);
       setTab("create");
@@ -1859,11 +1904,37 @@ function AlbumWorkspace({
     reader.readAsDataURL(file);
   };
   const startTemplate = () => {
-    setPreview(modeData[mode].image);
-    originalPreview.current = modeData[mode].image;
+    const img = modeData[mode].image;
+    setPreview(img);
+    pushHistory(img);
+    originalPreview.current = img;
     setTab("create");
     setSaved(false);
   };
+  const buildGenerationPrompt = () => {
+    const isAutoSpace = !space || space === "Auto-detect";
+    const isAutoStyle = !style || style === "Auto style";
+    const spaceFragment = isAutoSpace ? "" : ` of a ${space.toLowerCase()}`;
+    const styleFragment = isAutoStyle ? "" : ` in ${style} style`;
+    const modeLabel = mode === "Interior" ? "interior photograph" : mode === "Exterior" ? "exterior/architecture photograph" : "garden/outdoor photograph";
+    const isAutoValue = (v: string) => v === "Auto" || v === "Auto style" || v === "Auto-detect" || v === "Keep existing" || v.startsWith("Auto");
+    const selectedDetails = detailOptions[mode]
+      .map((detail) => [detail.label, detailChoices[detail.label] || detail.values[0]] as const)
+      .filter(([, value]) => !isAutoValue(value))
+      .map(([label, value]) => `${label}: ${value}`)
+      .join("; ");
+
+    const userDirection = prompt.trim() || modeData[mode].prompt;
+    const baseTask = `Redesign this ${modeLabel}${spaceFragment}${styleFragment}.`;
+    const preservation = mode === "Interior"
+      ? "Preserve the original architecture, camera position, perspective, windows, doors, walls and structural layout exactly. Only update finishes, furniture, decor, palette and lighting."
+      : mode === "Exterior"
+        ? "Preserve the original architecture, camera position, perspective, openings and structural massing exactly. Only update materials, palette, landscaping and lighting."
+        : "Preserve the original camera position, perspective, boundaries and structural layout exactly. Only update planting, surfaces, furniture and lighting.";
+
+    return [baseTask, userDirection, selectedDetails ? `Design details — ${selectedDetails}.` : "", preservation, "Photorealistic, high-detail, professional design visualization, natural light, 8k."].filter(Boolean).join(" ");
+  };
+
   const generateDesign = async () => {
     if (!preview || generationLock.current) return;
     generationLock.current = true;
@@ -1871,33 +1942,35 @@ function AlbumWorkspace({
     setGenerating(true);
     setGenerationError("");
     try {
-      const chosen = style === "Auto style" ? modeData[mode].styles[1] : style;
-      const selectedDetails = detailOptions[mode]
-        .map((detail) => [detail.label, detailChoices[detail.label] || detail.values[0]] as const)
-        .filter(([, value]) => value !== "Auto" && value !== "Keep existing")
-        .map(([label, value]) => `${label}: ${value}`)
-        .join("; ");
-      const image = await asDataUrl(preview);
+      const finalPrompt = buildGenerationPrompt();
+      // Use prepareImage for consistent compression and size limit compliance
+      const rawImage = preview.startsWith("data:") ? preview : await asDataUrl(preview);
+      const image = rawImage.startsWith("data:") ? await prepareImage(rawImage).catch(() => rawImage) : rawImage;
       const response = await fetch("/api/ai/edit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           image,
-          prompt: [
-            `Redesign this ${mode.toLowerCase()} as a ${chosen} ${space.toLowerCase()}.`,
-            prompt.trim() || modeData[mode].prompt,
-            selectedDetails ? `Apply these design details: ${selectedDetails}.` : "",
-            "Keep the original architecture, camera position, perspective, windows, doors, and structural layout unchanged. Produce a photorealistic professional interior design visualization.",
-          ].filter(Boolean).join(" "),
+          prompt: finalPrompt,
+          mode,
+          space: space === "Auto-detect" ? null : space,
+          style: style === "Auto style" ? null : style,
+          details: detailChoices,
         }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Generation failed.");
+      if (!result.image) throw new Error("Model returned no image.");
       setPreview(result.image);
+      pushHistory(result.image);
+      originalPreview.current = result.image;
       setSelectedObject(null);
       setTab("create");
       setCompareOriginal(false);
       setSaved(false);
+      if (result.cached) setExportStatus("Loaded from cache — no credits used. Same image + prompt as before.");
+      else setExportStatus("");
+      if (result.cached) setTimeout(() => setExportStatus(""), 4000);
     } catch (reason) {
       setGenerationError(reason instanceof Error ? reason.message : "Generation failed.");
     } finally {
@@ -2017,6 +2090,9 @@ function AlbumWorkspace({
             </div>
           )}
           {preview && tab === "edit" ? <div className="canvas-tool-dock" role="toolbar" aria-label="Canvas tools">
+            <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo"><ArrowCounterClockwise /></button>
+            <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><ArrowRight /></button>
+            <span />
             <button className={activeTool === "select" ? "active" : ""} onClick={() => setActiveTool("select")} title="Select an object" aria-label="Select an object"><CursorClick /></button>
             <button className={compareOriginal ? "active" : ""} onClick={() => setCompareOriginal(value => !value)} title="Compare with original" aria-label="Compare with original"><ImagesSquare /></button>
             <span />
@@ -2154,7 +2230,7 @@ function AlbumWorkspace({
               <DetectedObjects key={`${mode}:${preview}`} hasImage active={tab === "edit" && !threeDOpen}
                 mode={mode} image={preview} onUpload={() => fileRef.current?.click()}
                 onSelect={setSelectedObject} onCreate3d={open3d}
-                onImageChange={(image) => { setPreview(image); setSelectedObject(null); setSaved(false); }} />
+                onImageChange={(image) => { setPreview(image); pushHistory(image); setSelectedObject(null); setSaved(false); }} />
             </div> : null}
             {preview ? (
               <button
@@ -2196,6 +2272,15 @@ function AlbumWorkspace({
                   </>
                 )}
               </button>
+            ) : null}
+            {preview && history.length > 1 ? (
+              <div className="version-history-inline" role="status" aria-live="polite">
+                <ClockCounterClockwise size={14} /> {history.length} versions • {canUndo ? "Undo available" : "At oldest"} • Ctrl+Z / Shift+Ctrl+Z
+                <span style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+                  <button onClick={undo} disabled={!canUndo} style={{ opacity: canUndo ? 1 : 0.4 }}>Undo</button>
+                  <button onClick={redo} disabled={!canRedo} style={{ opacity: canRedo ? 1 : 0.4 }}>Redo</button>
+                </span>
+              </div>
             ) : null}
             {preview && tab === "edit" ? (
               <p className="integration-error" role="alert">
@@ -3788,12 +3873,23 @@ function ThreeDWorkspace({ initialImage = null, onBusyChange }: { initialImage?:
                 {busy ? <><span className="spinner" /> Generating…</> : <><Cube /> Generate 3D · {AI_COSTS.model3d} credits</>}
               </button>
             ) : (
-              <a className="primary-action" href={modelUrl} download target="_blank" rel="noreferrer">
-                <DownloadSimple /> Download GLB
-              </a>
+              <>
+                <a className="primary-action" href={modelUrl} download target="_blank" rel="noreferrer">
+                  <DownloadSimple /> Download GLB
+                </a>
+                <button
+                  onClick={async () => {
+                    const arUrl = `${window.location.origin}/ar?src=${encodeURIComponent(modelUrl)}${modelPoster ? `&poster=${encodeURIComponent(modelPoster)}` : ""}`;
+                    await navigator.clipboard.writeText(arUrl);
+                    alert("AR browser link copied — open on phone for View in your room (no app needed).");
+                  }}
+                >
+                  <ShareNetwork /> Copy AR browser link
+                </button>
+              </>
             )}
           </div>
-          <small className="tripo-expiry-note">Generated Tripo links are temporary. Download the GLB or save it to permanent project storage before sharing.</small>
+          <small className="tripo-expiry-note">Generated Tripo links are temporary. Download the GLB or save it to permanent project storage before sharing. AR link is a shareable browser URL (Google model-viewer) — no app install.</small>
         </aside>
       </div>
       <CreditConfirmation open={confirmOpen} cost={AI_COSTS.model3d} title="Create this 3D model?"

@@ -8,8 +8,14 @@
  * @module
  */
 
+import type * as collab from "../collab.js";
 import type * as credits from "../credits.js";
+import type * as floorPlans from "../floorPlans.js";
+import type * as furniture from "../furniture.js";
+import type * as jobs from "../jobs.js";
 import type * as preferences from "../preferences.js";
+import type * as projects from "../projects.js";
+import type * as roomVersions from "../roomVersions.js";
 import type * as savedDesigns from "../savedDesigns.js";
 import type * as savedReferences from "../savedReferences.js";
 
@@ -20,8 +26,14 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  collab: typeof collab;
   credits: typeof credits;
+  floorPlans: typeof floorPlans;
+  furniture: typeof furniture;
+  jobs: typeof jobs;
   preferences: typeof preferences;
+  projects: typeof projects;
+  roomVersions: typeof roomVersions;
   savedDesigns: typeof savedDesigns;
   savedReferences: typeof savedReferences;
 }>;

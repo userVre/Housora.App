@@ -12,7 +12,14 @@ export async function GET(
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Sign in to view this 3D task." }, { status: 401 });
   const key = process.env.TRIPO_API_KEY;
-  if (!key) return NextResponse.json({ error: "TRIPO_API_KEY is not configured." }, { status: 503 });
+  if (!key)
+    return NextResponse.json(
+      {
+        error: "3D status check is not configured. Add TRIPO_API_KEY in Vercel and Redeploy.",
+        hint: "visit /api/health",
+      },
+      { status: 503 },
+    );
   const { taskId } = await context.params;
   if (!/^[a-zA-Z0-9_-]{8,100}$/.test(taskId)) {
     return NextResponse.json({ error: "Invalid Tripo task." }, { status: 400 });

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Cube, MagnifyingGlass, ArrowRight, UploadSimple } from "@phosphor-icons/react";
 import { AI_COSTS, type DetectedObject } from "../lib/ai-costs";
 import { prepareImage } from "../lib/prepare-image";
+import { smoothMask } from "../lib/mask-postprocess";
 import { CreditConfirmation } from "./credit-confirmation";
 
 export function DetectedObjects({ hasImage, mode, image, onUpload, onImageChange, active = true, onSelect, onCreate3d }: {
@@ -47,7 +48,22 @@ export function DetectedObjects({ hasImage, mode, image, onUpload, onImageChange
       if (!response.ok) throw new Error(result.error || "Detection failed. Please try again.");
       if (!Array.isArray(result.objects)) throw new Error("Detection returned an invalid result. Contact support.");
       if (!alive.current) return;
-      setObjects(result.objects);
+      // Post-process SAM masks: smooth edges + feather for clean edits on messy photos
+      let processed = result.objects as DetectedObject[];
+      try {
+        processed = await Promise.all(
+          processed.map(async (o) => {
+            try {
+              const smoothed = await smoothMask(o.mask, { feather: 1.6, closeRadius: 2 });
+              return { ...o, mask: smoothed };
+            } catch {
+              return o;
+            }
+          }),
+        );
+      } catch {}
+      if (!alive.current) return;
+      setObjects(processed);
       setSelected(null);
       onSelect?.(null);
       setStatus("ready");

@@ -14,7 +14,15 @@ export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Sign in to generate 3D models." }, { status: 401 });
   const key = process.env.TRIPO_API_KEY;
-  if (!key) return NextResponse.json({ error: "TRIPO_API_KEY is not configured." }, { status: 503 });
+  if (!key)
+    return NextResponse.json(
+      {
+        error:
+          "3D generation is not configured in this deployment. In Vercel: add TRIPO_API_KEY (Project Environment Variables) for Production and Preview, then Redeploy without cache. You have 600 free Tripo credits – check api.tripo3d.ai.",
+        hint: "visit /api/health to verify runtime env",
+      },
+      { status: 503 },
+    );
 
   let usage: Awaited<ReturnType<typeof consumeCredits>> | null = null;
   try {
