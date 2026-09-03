@@ -1712,7 +1712,6 @@ function ProjectsPage({
       aria-labelledby="projects-title"
     >
       <header className="visual-projects-header">
-        <div className="project-mark">IS</div>
         <div>
           <span className="eyebrow">Your design space</span>
           <div className="project-title-row">
@@ -1720,14 +1719,14 @@ function ProjectsPage({
           </div>
           <p>
             {designs.length
-              ? "Open an album to continue refining a saved design."
-              : "Your albums will appear here as you create them."}
+              ? "Choose a project to continue designing."
+              : "Start with your photo or try an example."}
           </p>
         </div>
       </header>
       <div className="project-library-toolbar clean-project-toolbar">
         <div className="project-tabs">
-          <span>Albums</span>
+          <span>Saved projects</span>
         </div>
       </div>
       <div className={`album-grid ${designs.length ? "" : "album-grid-empty"}`}>
@@ -1735,8 +1734,8 @@ function ProjectsPage({
           <span>
             <Plus />
           </span>
-          <b>New album</b>
-          <small>Upload a space or start from a direction</small>
+          <b>New project</b>
+          <small>Upload a photo or try an example</small>
         </button>
         {designs.map((design) => (
           <button
@@ -1787,8 +1786,11 @@ function AlbumWorkspace({
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [exportStatus, setExportStatus] = useState("");
   const [uploadError, setUploadError] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [generationConfirmOpen, setGenerationConfirmOpen] = useState(false);
+  const generationLock = useRef(false);
   const [generationError, setGenerationError] = useState("");
   const [activeTool, setActiveTool] = useState("select");
   const [selectedObject, setSelectedObject] = useState<DetectedObject | null>(null);
@@ -1807,6 +1809,31 @@ function AlbumWorkspace({
   const originalPreview = useRef<string | null>(initialDraft?.image ?? null);
   const canvasRef = useRef<HTMLElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const exportImage = async (share: boolean) => {
+    if (!preview) return;
+    setExportStatus("");
+    try {
+      const response = await fetch(preview);
+      if (!response.ok) throw new Error("Image unavailable");
+      const blob = await response.blob();
+      const extension = blob.type === "image/jpeg" ? "jpg" : blob.type === "image/webp" ? "webp" : "png";
+      const file = new File([blob], `housora-design.${extension}`, { type: blob.type });
+      if (share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: initialDraft?.title ?? "Housora design", files: [file] });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = file.name;
+        link.click();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        setExportStatus(share ? "Sharing isn't supported here. Image downloaded so you can send it." : "Image downloaded.");
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
+      setExportStatus("Couldn't export this image. Please try again.");
+    }
+  };
   const upload = (file?: File) => {
     setUploadError("");
     if (!file) return;
@@ -1823,10 +1850,12 @@ function AlbumWorkspace({
       setPreview(String(reader.result));
       originalPreview.current = String(reader.result);
       setSelectedObject(null);
-      setTab("edit");
+      setTab("create");
+      setCompareOriginal(false);
       setSaved(false);
       setSaveError("");
     };
+    reader.onerror = () => setUploadError("This image could not be opened. Try another photo.");
     reader.readAsDataURL(file);
   };
   const startTemplate = () => {
@@ -1836,7 +1865,9 @@ function AlbumWorkspace({
     setSaved(false);
   };
   const generateDesign = async () => {
-    if (!preview || generating) return;
+    if (!preview || generationLock.current) return;
+    generationLock.current = true;
+    setGenerationConfirmOpen(false);
     setGenerating(true);
     setGenerationError("");
     try {
@@ -1864,11 +1895,13 @@ function AlbumWorkspace({
       if (!response.ok) throw new Error(result.error || "Generation failed.");
       setPreview(result.image);
       setSelectedObject(null);
-      setTab("edit");
+      setTab("create");
+      setCompareOriginal(false);
       setSaved(false);
     } catch (reason) {
       setGenerationError(reason instanceof Error ? reason.message : "Generation failed.");
     } finally {
+      generationLock.current = false;
       setGenerating(false);
     }
   };
@@ -1894,9 +1927,9 @@ function AlbumWorkspace({
         <span>{initialDraft?.title ?? "New project"}</span>
         {preview && tab === "edit" ? <div className="album-bar-actions">
           <button className="album-3d-button" onClick={() => open3d(selectedObject?.thumbnail || preview)}><Cube /> 3D studio</button>
-          <button aria-label="Undo last generated result" title="Show original" onClick={() => setCompareOriginal(value => !value)}><ArrowCounterClockwise /></button>
-          <button aria-label="Download image" title="Download image" onClick={() => { const link = document.createElement("a"); link.href = preview; link.download = "housora-design.png"; link.click(); }}><DownloadSimple /></button>
-          <button className="share-design" onClick={() => void (navigator.share ? navigator.share({ title: initialDraft?.title ?? "Housora design", url: preview }) : navigator.clipboard.writeText(preview))}>Share</button>
+          <button aria-label="Compare with original" aria-pressed={compareOriginal} title="Compare with original" onClick={() => setCompareOriginal(value => !value)}><ImagesSquare /></button>
+          <button aria-label="Download image" title="Download image" onClick={() => void exportImage(false)}><DownloadSimple /></button>
+          <button className="share-design" onClick={() => void exportImage(true)}>Share</button>
         </div> : <ol className="creation-progress" aria-label="Creation progress">
           <li className={preview ? "complete" : "active"}>Space</li>
           <li
@@ -1959,10 +1992,9 @@ function AlbumWorkspace({
             <div className="album-empty">
               <div>
                 <span className="eyebrow">Your space, reimagined</span>
-                <h1>What are we designing?</h1>
+                <h1>Start with your space</h1>
                 <p>
-                  Bring a photo of the space, or start with an example to
-                  explore Housora first.
+                  Upload a photo or try an example. Choose your style next.
                 </p>
               </div>
               <div className="album-start-actions">
@@ -1986,12 +2018,6 @@ function AlbumWorkspace({
           )}
           {preview && tab === "edit" ? <div className="canvas-tool-dock" role="toolbar" aria-label="Canvas tools">
             <button className={activeTool === "select" ? "active" : ""} onClick={() => setActiveTool("select")} title="Select an object" aria-label="Select an object"><CursorClick /></button>
-            <button className={activeTool === "area" ? "active" : ""} onClick={() => setActiveTool("area")} title="Select an area" aria-label="Select an area"><Selection /></button>
-            <button className={activeTool === "draw" ? "active" : ""} onClick={() => setActiveTool("draw")} title="Draw an edit area" aria-label="Draw an edit area"><ScribbleLoop /></button>
-            <span />
-            <button onClick={() => open3d(selectedObject?.thumbnail || preview)} title="Create and view a 3D model" aria-label="Create and view a 3D model"><Cube /></button>
-            <button className={activeTool === "text" ? "active" : ""} onClick={() => setActiveTool("text")} title="Add a text note" aria-label="Add a text note"><TextT /></button>
-            <button className={activeTool === "comment" ? "active" : ""} onClick={() => setActiveTool("comment")} title="Add a comment" aria-label="Add a comment"><ChatCircle /></button>
             <button className={compareOriginal ? "active" : ""} onClick={() => setCompareOriginal(value => !value)} title="Compare with original" aria-label="Compare with original"><ImagesSquare /></button>
             <span />
             <button onClick={() => void canvasRef.current?.requestFullscreen()} title="View fullscreen" aria-label="View fullscreen"><CornersOut /></button>
@@ -2024,6 +2050,7 @@ function AlbumWorkspace({
             </button>
           </div>
           <div className="album-panel-content">
+            {exportStatus ? <p role="status">{exportStatus}</p> : null}
             {tab === "create" ? (
               <>
                 <p className="album-help">
@@ -2078,7 +2105,7 @@ function AlbumWorkspace({
                 >
                   <Sparkle />
                   <span>
-                    <b>Details</b>
+                    <b>More options</b>
                     <small>
                       {mode === "Interior"
                         ? "Finishes, doors & windows"
@@ -2102,10 +2129,10 @@ function AlbumWorkspace({
                 {preview ? (
                   <button
                     className="album-generate primary-action"
-                    onClick={generateDesign}
+                    onClick={() => setGenerationConfirmOpen(true)}
                     disabled={generating}
                   >
-                    {generating ? <><span className="spinner" /> Creating your design…</> : <><Sparkle /> Generate this direction</>}
+                    {generating ? <><span className="spinner" /> Creating your design…</> : <><Sparkle /> Generate · {AI_COSTS.imageEdit} credits</>}
                   </button>
                 ) : null}
                 <p className="integration-error" role="alert">{generationError}</p>
@@ -2129,7 +2156,7 @@ function AlbumWorkspace({
                 onSelect={setSelectedObject} onCreate3d={open3d}
                 onImageChange={(image) => { setPreview(image); setSelectedObject(null); setSaved(false); }} />
             </div> : null}
-            {preview && tab === "edit" ? (
+            {preview ? (
               <button
                 className="album-save"
                 disabled={saved || saving}
@@ -2178,6 +2205,7 @@ function AlbumWorkspace({
           </div>
         </aside>
       </div>
+      <CreditConfirmation open={generationConfirmOpen} cost={AI_COSTS.imageEdit} title="Generate your design?" description="Create a new version of this photo. Your original stays available for comparison." action="Generate" onCancel={() => setGenerationConfirmOpen(false)} onConfirm={() => void generateDesign()} />
       {threeDSource ? <WorkspaceDialog open={threeDOpen} onClose={() => { if (!threeDBusy) setThreeDOpen(false); }} title="3D studio" wide>
         <ThreeDWorkspace key={threeDSource} initialImage={threeDSource} onBusyChange={setThreeDBusy} />
         {threeDBusy ? <p className="three-d-stay" role="status">Keep this studio open until the model finishes. Your request is already running.</p> : null}
@@ -3699,7 +3727,7 @@ function ThreeDWorkspace({ initialImage = null, onBusyChange }: { initialImage?:
         <div>
           <span className="eyebrow"><Cube /> 3D & augmented reality</span>
           <h2>See the furniture in your room.</h2>
-          <p>Upload one clear furniture photo. Tripo builds the 3D model, then you can inspect it here or place it at real scale with your phone.</p>
+          <p>Start with a clear furniture photo. Create a 3D model, then preview it in your room with a compatible phone. Check dimensions before buying: generated models may not be true to scale.</p>
         </div>
         {modelUrl ? <span className="integration-ready"><CheckCircle /> AR ready</span> : null}
       </header>

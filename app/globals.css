@@ -7368,3 +7368,21 @@ html {
 .three-d-launch-page .three-d-workspace{max-width:1180px;margin:0 auto}
 @media(max-width:620px){.three-d-launch-page{padding:14px}.three-d-launch-bar{align-items:flex-start}.three-d-launch-bar>div{justify-items:start;text-align:left}.three-d-launch-bar .eyebrow{display:none}}
 .cost-confirm-dialog{max-width:560px}
+
+/* Project controls own their scroll; expanding options never moves the canvas. */
+.clean-projects .visual-projects-header { margin-bottom: 24px; }
+.album-empty h1 { font-size: clamp(32px, 4vw, 52px); line-height: 1.08; }
+.album-control-panel .direction-details { max-height: none; overflow: visible; }
+.album-control-panel .album-panel-content { gap: 16px; padding: 20px; }
+.canvas-tool-dock button { min-width: 44px; min-height: 44px; }
+@media (min-width: 901px) {
+  .album-workspace-body { grid-template-columns: minmax(0, 1fr) 360px; }
+  .album-control-panel { width: auto; min-width: 0; }
+}
+@media (max-width: 900px) {
+  .album-workspace-body { grid-template-columns: minmax(0, 1fr); }
+  .album-control-panel { width: 100%; min-width: 0; }
+  .album-workspace-bar { gap: 12px; flex-wrap: wrap; }
+  .album-bar-actions { flex-wrap: wrap; }
+  .album-control-panel .album-panel-content { padding: 16px; }
+}
