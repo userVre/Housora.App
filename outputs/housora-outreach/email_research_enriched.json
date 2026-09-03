@@ -1,0 +1,1842 @@
+[
+  {
+    "brand": "Plaid Crafts",
+    "website": "https://plaidonline.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://plaidonline.com/influencer-program",
+      "https://plaidonline.com/",
+      "https://plaidonline.com/contact-plaid",
+      "https://plaidonline.com/arteza",
+      "https://plaidonline.com/influencer-program"
+    ]
+  },
+  {
+    "brand": "Wayfair",
+    "website": "https://www.wayfair.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.wayfair.com/m/creators",
+      "https://www.wayfair.com/",
+      "https://www.wayfair.com/m/creators",
+      "https://www.wayfair.com/kitchen-tabletop/cat/coffee-espresso-tea-c419256.html"
+    ]
+  },
+  {
+    "brand": "Benjamin Moore",
+    "website": "https://www.benjaminmoore.com",
+    "existing": "pressrequests@benjaminmoore.com",
+    "found": [
+      {
+        "email": "pressrequests@benjaminmoore.com",
+        "source": "https://www.benjaminmoore.com/en-ca/press/benjamin-moore-fifth-annual-contractor-appreciation-month",
+        "quality": "PR/Marketing",
+        "rank": 2,
+        "context": "targeted page"
+      },
+      {
+        "email": "info@benjaminmoore.com",
+        "source": "https://www.benjaminmoore.com/en-us/contact-us",
+        "quality": "General",
+        "rank": 4,
+        "context": "official website"
+      },
+      {
+        "email": "u003einfo@benjaminmoore.com",
+        "source": "https://www.benjaminmoore.com/en-us",
+        "quality": "General",
+        "rank": 4,
+        "context": "official website"
+      },
+      {
+        "email": "onlinestoresupport@benjaminmoore.com",
+        "source": "https://www.benjaminmoore.com/en-us",
+        "quality": "Customer Support",
+        "rank": 5,
+        "context": "official website"
+      },
+      {
+        "email": "u003eonlinestoresupport@benjaminmoore.com",
+        "source": "https://www.benjaminmoore.com/en-us",
+        "quality": "Customer Support",
+        "rank": 5,
+        "context": "official website"
+      }
+    ],
+    "pages": [
+      "https://www.benjaminmoore.com/en-us/press/benjamin-moore-fifth-annual-contractor-appreciation-month",
+      "https://www.benjaminmoore.com/en-us",
+      "https://www.benjaminmoore.com/en-us/contact-us",
+      "https://www.benjaminmoore.com/en-us/press/benjamin-moore-fifth-annual-contractor-appreciation-month",
+      "https://www.benjaminmoore.com/en-ca/press/benjamin-moore-fifth-annual-contractor-appreciation-month"
+    ]
+  },
+  {
+    "brand": "Decor On Decor",
+    "website": "https://decorondecor.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Fredesigner",
+    "website": "https://www.fredesigner.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "IKEA",
+    "website": "https://www.ikea.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.ikea.com/us/en/customer-service/knowledge/articles/61b90c27-99e1-4104-g950-832f428e7dgb.html",
+      "https://www.ikea.com/es/en/campaigns/home-fanatic-recommend-ikea-pub9a336260/",
+      "https://www.ikea.com/",
+      "https://www.ikea.com/es/en/customer-service/contact-us/",
+      "https://www.ikea.com/global/en/support/contact-ikea-submit-complaint/"
+    ]
+  },
+  {
+    "brand": "Lumira Furniture",
+    "website": "https://lumirafurn.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Ruggable",
+    "website": "https://ruggable.co.uk",
+    "existing": "",
+    "found": [
+      {
+        "email": "support@ruggable.co.uk",
+        "source": "https://ruggable.co.uk/",
+        "quality": "Customer Support",
+        "rank": 5,
+        "context": "official website"
+      }
+    ],
+    "pages": [
+      "https://ruggable.co.uk/pages/creators",
+      "https://ruggable.co.uk/",
+      "https://ruggable.co.uk/pages/creators"
+    ]
+  },
+  {
+    "brand": "Wallpaperdirect",
+    "website": "https://www.wallpaperdirect.com",
+    "existing": "help@wallpaperdirect.com",
+    "found": [
+      {
+        "email": "help@wallpaperdirect.com",
+        "source": "https://blog.wallpaperdirect.com/fruit-wallpaper-design-the-new-still-life/",
+        "quality": "Customer Support",
+        "rank": 5,
+        "context": "official website"
+      },
+      {
+        "email": "webtest@brewers.co.uk",
+        "source": "https://www.wallpaperdirect.com/contact-us",
+        "quality": "Customer Support",
+        "rank": 99,
+        "context": "official website"
+      }
+    ],
+    "pages": [
+      "https://blog.wallpaperdirect.com/fruit-wallpaper-design-the-new-still-life/",
+      "https://www.wallpaperdirect.com/",
+      "https://www.wallpaperdirect.com/contact",
+      "https://www.wallpaperdirect.com/contact-us"
+    ]
+  },
+  {
+    "brand": "Albany Park",
+    "website": "https://www.albanypark.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Arhaus",
+    "website": "https://www.arhaus.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Arteverk",
+    "website": "https://www.arteverk.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Article",
+    "website": "https://www.article.com",
+    "existing": "",
+    "found": [
+      {
+        "email": "collaborations@article.com",
+        "source": "https://www.article.com/c/contact-us",
+        "quality": "Creator/Partnership",
+        "rank": 0,
+        "context": "official website"
+      },
+      {
+        "email": "press@article.com",
+        "source": "https://www.article.com/c/contact-us",
+        "quality": "PR/Marketing",
+        "rank": 2,
+        "context": "official website"
+      },
+      {
+        "email": "info@article.com",
+        "source": "https://www.article.com/c/contact-us",
+        "quality": "General",
+        "rank": 4,
+        "context": "official website"
+      },
+      {
+        "email": "service@article.com",
+        "source": "https://www.article.com/c/contact-us",
+        "quality": "Customer Support",
+        "rank": 5,
+        "context": "official website"
+      },
+      {
+        "email": "design@article.com",
+        "source": "https://www.article.com/c/contact-us",
+        "quality": "Customer Support",
+        "rank": 99,
+        "context": "official website"
+      },
+      {
+        "email": "trade@article.com",
+        "source": "https://www.article.com/c/contact-us",
+        "quality": "Customer Support",
+        "rank": 99,
+        "context": "official website"
+      }
+    ],
+    "pages": [
+      "https://www.article.com/help-center",
+      "https://www.article.com/",
+      "https://www.article.com/contact",
+      "https://www.article.com/contact",
+      "https://www.article.com/c/contact-us"
+    ]
+  },
+  {
+    "brand": "Burrow",
+    "website": "https://burrow.com",
+    "existing": "",
+    "found": [
+      {
+        "email": "support@burrow.com",
+        "source": "https://burrow.com/collections/credenzas-media-storage",
+        "quality": "Customer Support",
+        "rank": 5,
+        "context": "targeted page"
+      }
+    ],
+    "pages": [
+      "https://burrow.com/",
+      "https://burrow.com/pages/contact",
+      "https://burrow.com/products/opera-media-console",
+      "https://burrow.com/collections/credenzas-media-storage"
+    ]
+  },
+  {
+    "brand": "Castlery",
+    "website": "https://www.castlery.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.castlery.com/",
+      "https://www.castlery.com/",
+      "https://www.castlery.com/",
+      "https://www.castlery.com/",
+      "https://www.castlery.com/"
+    ]
+  },
+  {
+    "brand": "CB2",
+    "website": "https://www.cb2.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.cb2.com/",
+      "https://www.cb2.com/furniture/storage-media-furniture/",
+      "https://www.cb2.com/about-us/"
+    ]
+  },
+  {
+    "brand": "Crate & Barrel",
+    "website": "https://www.crateandbarrel.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.crateandbarrel.com/"
+    ]
+  },
+  {
+    "brand": "Design Within Reach",
+    "website": "https://www.dwr.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.dwr.com/",
+      "https://www.dwr.com/contactus?lang=en_US"
+    ]
+  },
+  {
+    "brand": "Ferm Living",
+    "website": "https://fermliving.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Floyd",
+    "website": "https://floydhome.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "HAY",
+    "website": "https://www.hay.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.hay.com/",
+      "https://www.hay.com/footer/about-hay/about-hay",
+      "https://www.hay.com/footer/contact_1"
+    ]
+  },
+  {
+    "brand": "Hem",
+    "website": "https://hem.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://hem.com/"
+    ]
+  },
+  {
+    "brand": "Herman Miller",
+    "website": "https://www.hermanmiller.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.hermanmiller.com/",
+      "https://www.hermanmiller.com/contact/",
+      "https://www.hermanmiller.com/products/workspaces/collaborative-furniture/"
+    ]
+  },
+  {
+    "brand": "Inside Weather",
+    "website": "https://insideweather.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Joybird",
+    "website": "https://joybird.com",
+    "existing": "",
+    "found": [
+      {
+        "email": "press@joybird.com",
+        "source": "https://joybird.com/press/",
+        "quality": "PR/Marketing",
+        "rank": 2,
+        "context": "targeted page"
+      }
+    ],
+    "pages": [
+      "https://joybird.com/",
+      "https://joybird.com/pages/contact/",
+      "https://joybird.com/contact/",
+      "https://joybird.com/contact-us/",
+      "https://joybird.com/about/contact/",
+      "https://joybird.com/about-us/",
+      "https://joybird.com/press/"
+    ]
+  },
+  {
+    "brand": "Kartell",
+    "website": "https://www.kartell.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.kartell.com/it/it/ktit/",
+      "https://www.kartell.com/it/it/ktit",
+      "https://www.kartell.com/it/it/ktit",
+      "https://www.kartell.com/it/it/ktit",
+      "https://www.kartell.com/it/it/ktit",
+      "https://www.kartell.com/it/it/ktit/contact/newsletter",
+      "https://www.kartell.com/it/it/ktit/help/form/contactus"
+    ]
+  },
+  {
+    "brand": "Knoll",
+    "website": "https://www.knoll.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.knoll.com/",
+      "https://www.knoll.com/contact-us",
+      "https://www.knoll.com/contact-us",
+      "https://www.knoll.com/design-plan/resources/media-bank"
+    ]
+  },
+  {
+    "brand": "Lulu and Georgia",
+    "website": "https://www.luluandgeorgia.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Maiden Home",
+    "website": "https://www.maidenhome.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "McGee & Co.",
+    "website": "https://www.mcgeeandco.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Menu / Audo Copenhagen",
+    "website": "https://audocph.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Muuto",
+    "website": "https://www.muuto.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.muuto.com/",
+      "https://www.muuto.com/content/about/our-story-a-space-that-just-feels-right/",
+      "https://www.muuto.com/content/about/materials-and-care/"
+    ]
+  },
+  {
+    "brand": "Pottery Barn",
+    "website": "https://www.potterybarn.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "RH",
+    "website": "https://rh.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Sabai",
+    "website": "https://sabai.design",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Sixpenny",
+    "website": "https://sixpenny.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Sundays",
+    "website": "https://www.sundays-company.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "USM",
+    "website": "https://www.usm.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.usm.com/en",
+      "https://www.usm.com/en/solutions/living/media",
+      "https://www.usm.com/en/solutions/working/collaborate"
+    ]
+  },
+  {
+    "brand": "Vitra",
+    "website": "https://www.vitra.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "West Elm",
+    "website": "https://www.westelm.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.westelm.com/",
+      "https://www.westelm.com/",
+      "https://www.westelm.com/",
+      "https://www.westelm.com/"
+    ]
+  },
+  {
+    "brand": "2Modern",
+    "website": "https://www.2modern.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Anglepoise",
+    "website": "https://www.anglepoise.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Artemide",
+    "website": "https://www.artemide.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.artemide.com/en/home",
+      "https://www.artemide.com/contact-us",
+      "https://www.artemide.com/en/company/identity",
+      "https://www.artemide.com/en/company/designers"
+    ]
+  },
+  {
+    "brand": "Beni Rugs",
+    "website": "https://www.benirugs.com",
+    "existing": "",
+    "found": [
+      {
+        "email": "bonjour@benirugs.com",
+        "source": "https://www.benirugs.com/contact",
+        "quality": "Customer Support",
+        "rank": 99,
+        "context": "official website"
+      }
+    ],
+    "pages": [
+      "https://www.benirugs.com/",
+      "https://www.benirugs.com/contact",
+      "https://www.benirugs.com/contact",
+      "https://www.benirugs.com/contact",
+      "https://www.benirugs.com/Collaborations"
+    ]
+  },
+  {
+    "brand": "Benisouk",
+    "website": "https://benisouk.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Borastapeter",
+    "website": "https://www.borastapeter.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Chasing Paper",
+    "website": "https://chasingpaper.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Chilewich",
+    "website": "https://www.chilewich.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Cold Picnic",
+    "website": "https://coldpicnic.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Cole & Son",
+    "website": "https://cole-and-son.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Flor",
+    "website": "https://www.flor.com",
+    "existing": "",
+    "found": [
+      {
+        "email": "support@flor.com",
+        "source": "https://www.flor.com/contact-us.html",
+        "quality": "Customer Support",
+        "rank": 5,
+        "context": "official website"
+      },
+      {
+        "email": "publicrelations@flor.com",
+        "source": "https://www.flor.com/contact-us.html",
+        "quality": "Customer Support",
+        "rank": 99,
+        "context": "official website"
+      }
+    ],
+    "pages": [
+      "https://www.flor.com/",
+      "https://www.flor.com/contact-us.html",
+      "https://www.flor.com/about-us.html",
+      "https://www.flor.com/contact-us.html"
+    ]
+  },
+  {
+    "brand": "Flos",
+    "website": "https://flos.com",
+    "existing": "",
+    "found": [
+      {
+        "email": "customer.service@flos.com",
+        "source": "https://flos.com/en/wo/",
+        "quality": "Customer Support",
+        "rank": 5,
+        "context": "official website"
+      }
+    ],
+    "pages": [
+      "https://flos.com/en/wo/",
+      "https://flos.com/en/wo/",
+      "https://flos.com/en/wo/",
+      "https://flos.com/en/wo/",
+      "https://flos.com/en/wo/"
+    ]
+  },
+  {
+    "brand": "Gantri",
+    "website": "https://www.gantri.com",
+    "existing": "",
+    "found": [
+      {
+        "email": "support@gantri.com",
+        "source": "https://www.gantri.com/about/contact",
+        "quality": "Customer Support",
+        "rank": 5,
+        "context": "official website"
+      }
+    ],
+    "pages": [
+      "https://www.gantri.com/",
+      "https://www.gantri.com/contact",
+      "https://www.gantri.com/contact-us",
+      "https://www.gantri.com/about/contact"
+    ]
+  },
+  {
+    "brand": "Graham & Brown",
+    "website": "https://www.grahambrown.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.grahambrown.com/"
+    ]
+  },
+  {
+    "brand": "GUBI",
+    "website": "https://gubi.com",
+    "existing": "",
+    "found": [
+      {
+        "email": "webshop@gubi.com",
+        "source": "https://gubi.com/en/int/company/contact/contact",
+        "quality": "Customer Support",
+        "rank": 99,
+        "context": "official website"
+      },
+      {
+        "email": "rma@gubi.dk",
+        "source": "https://gubi.com/en/int/company/contact/contact",
+        "quality": "Customer Support",
+        "rank": 99,
+        "context": "official website"
+      },
+      {
+        "email": "rma@gubi.com",
+        "source": "https://gubi.com/en/int/company/contact/contact",
+        "quality": "Customer Support",
+        "rank": 99,
+        "context": "official website"
+      },
+      {
+        "email": "trade@gubi.com",
+        "source": "https://gubi.com/en/int/company/contact/contact",
+        "quality": "Customer Support",
+        "rank": 99,
+        "context": "official website"
+      },
+      {
+        "email": "u003ewebshop@gubi.com",
+        "source": "https://gubi.com/en/int/company/contact/contact",
+        "quality": "Customer Support",
+        "rank": 99,
+        "context": "official website"
+      },
+      {
+        "email": "u003eorder@gubi.com",
+        "source": "https://gubi.com/en/int/company/contact/contact",
+        "quality": "Customer Support",
+        "rank": 99,
+        "context": "official website"
+      },
+      {
+        "email": "u003erma@gubi.com",
+        "source": "https://gubi.com/en/int/company/contact/contact",
+        "quality": "Customer Support",
+        "rank": 99,
+        "context": "official website"
+      },
+      {
+        "email": "u003etrade@gubi.com",
+        "source": "https://gubi.com/en/int/company/contact/contact",
+        "quality": "Customer Support",
+        "rank": 99,
+        "context": "official website"
+      }
+    ],
+    "pages": [
+      "https://gubi.com/en/int",
+      "https://gubi.com/en/int/company/about-gubi",
+      "https://gubi.com/en/int/company/contact/contact"
+    ]
+  },
+  {
+    "brand": "Lights.com",
+    "website": "https://www.lights.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Loloi Rugs",
+    "website": "https://www.loloirugs.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Louis Poulsen",
+    "website": "https://www.louispoulsen.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Lumens",
+    "website": "https://www.lumens.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Milton & King",
+    "website": "https://www.miltonandking.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Mitzi",
+    "website": "https://mitzi.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Morris & Co.",
+    "website": "https://morrisandco.sandersondesigngroup.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Photowall",
+    "website": "https://www.photowall.com",
+    "existing": "",
+    "found": [
+      {
+        "email": "customerservice@photowall.com",
+        "source": "https://www.photowall.com/us/customer-service/contact-us",
+        "quality": "Customer Support",
+        "rank": 5,
+        "context": "official website"
+      },
+      {
+        "email": "customerservice.au@photowall.com",
+        "source": "https://www.photowall.com/au/customer-service/contact-us",
+        "quality": "Customer Support",
+        "rank": 5,
+        "context": "official website"
+      }
+    ],
+    "pages": [
+      "https://www.photowall.com/us",
+      "https://www.photowall.com/us/customer-service/contact-us",
+      "https://www.photowall.com/us/customer-service/contact-us",
+      "https://www.photowall.com/au/customer-service/contact-us"
+    ]
+  },
+  {
+    "brand": "Pooky",
+    "website": "https://www.pooky.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Rebel Walls",
+    "website": "https://rebelwalls.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Rejuvenation",
+    "website": "https://www.rejuvenation.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Revival Rugs",
+    "website": "https://www.revivalrugs.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Rifle Paper Co.",
+    "website": "https://riflepaperco.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "RugPadUSA",
+    "website": "https://www.rugpadusa.com",
+    "existing": "",
+    "found": [
+      {
+        "email": "customerservice@rugpadusa.com",
+        "source": "https://www.rugpadusa.com/",
+        "quality": "Customer Support",
+        "rank": 5,
+        "context": "official website"
+      }
+    ],
+    "pages": [
+      "https://www.rugpadusa.com/",
+      "https://www.rugpadusa.com/contact",
+      "https://www.rugpadusa.com/contact"
+    ]
+  },
+  {
+    "brand": "Rugs USA",
+    "website": "https://www.rugsusa.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "RugVista",
+    "website": "https://www.rugvista.com",
+    "existing": "",
+    "found": [
+      {
+        "email": "info@rugvista.com",
+        "source": "https://www.rugvista.com/",
+        "quality": "General",
+        "rank": 4,
+        "context": "official website"
+      }
+    ],
+    "pages": [
+      "https://www.rugvista.com/",
+      "https://www.rugvista.com/about/contact",
+      "https://www.rugvista.com/about/newsletter",
+      "https://www.rugvista.com/about/contact"
+    ]
+  },
+  {
+    "brand": "Salam Hello",
+    "website": "https://salamhello.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Sanderson Design Group",
+    "website": "https://sandersondesigngroup.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Schoolhouse",
+    "website": "https://www.schoolhouse.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Spoonflower",
+    "website": "https://www.spoonflower.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Tala",
+    "website": "https://tala.co.uk",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Tempaper",
+    "website": "https://tempaper.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "The Rug Company",
+    "website": "https://www.therugcompany.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.therugcompany.com/",
+      "https://www.therugcompany.com/rugs/collaborations/",
+      "https://www.therugcompany.com/designers/the-rug-company/colour-in-residence/mohair/"
+    ]
+  },
+  {
+    "brand": "Tom Dixon",
+    "website": "https://www.tomdixon.net",
+    "existing": "",
+    "found": [
+      {
+        "email": "marketing@tomdixon.net",
+        "source": "https://www.tomdixon.net/customer-services/contact-us",
+        "quality": "PR/Marketing",
+        "rank": 2,
+        "context": "official website"
+      },
+      {
+        "email": "press@tomdixon.net",
+        "source": "https://www.tomdixon.net/customer-services/contact-us",
+        "quality": "PR/Marketing",
+        "rank": 2,
+        "context": "official website"
+      },
+      {
+        "email": "hello@tomdixon.net",
+        "source": "https://www.tomdixon.net/customer-services/contact-us",
+        "quality": "General",
+        "rank": 4,
+        "context": "official website"
+      },
+      {
+        "email": "owen.dryden@tomdixon.net",
+        "source": "https://www.tomdixon.net/customer-services/partners",
+        "quality": "Customer Support",
+        "rank": 99,
+        "context": "targeted page"
+      },
+      {
+        "email": "kxshop@tomdixon.net",
+        "source": "https://www.tomdixon.net/customer-services/contact-us",
+        "quality": "Customer Support",
+        "rank": 99,
+        "context": "official website"
+      },
+      {
+        "email": "nyshop@tomdixon.net",
+        "source": "https://www.tomdixon.net/customer-services/contact-us",
+        "quality": "Customer Support",
+        "rank": 99,
+        "context": "official website"
+      },
+      {
+        "email": "example@email.com",
+        "source": "https://www.tomdixon.net/customer-services/contact-us",
+        "quality": "Customer Support",
+        "rank": 99,
+        "context": "official website"
+      }
+    ],
+    "pages": [
+      "https://www.tomdixon.net/",
+      "https://www.tomdixon.net/customer-services/contact-us",
+      "https://www.tomdixon.net/customer-services/partners"
+    ]
+  },
+  {
+    "brand": "Tumble",
+    "website": "https://www.tumbleliving.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "WallPops",
+    "website": "https://www.wallpops.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Wallsauce",
+    "website": "https://www.wallsauce.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Wallshoppe",
+    "website": "https://www.wallshoppe.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "YLighting",
+    "website": "https://www.ylighting.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "York Wallcoverings",
+    "website": "https://www.yorkwallcoverings.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.yorkwallcoverings.com/"
+    ]
+  },
+  {
+    "brand": "Backdrop",
+    "website": "https://www.backdrophome.com",
+    "existing": "",
+    "found": [
+      {
+        "email": "hello@backdrophome.com",
+        "source": "https://www.backdrophome.com/",
+        "quality": "General",
+        "rank": 4,
+        "context": "official website"
+      }
+    ],
+    "pages": [
+      "https://www.backdrophome.com/"
+    ]
+  },
+  {
+    "brand": "Bedrosians",
+    "website": "https://www.bedrosians.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Behr",
+    "website": "https://www.behr.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Brizo",
+    "website": "https://www.brizo.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.brizo.com/",
+      "https://www.brizo.com/shower/shower-system/pressure-balance",
+      "https://www.brizo.com/world-of-brizo/collaborations"
+    ]
+  },
+  {
+    "brand": "Buster + Punch",
+    "website": "https://www.busterandpunch.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Caesarstone",
+    "website": "https://www.caesarstoneus.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "California Closets",
+    "website": "https://www.californiaclosets.com",
+    "existing": "",
+    "found": [
+      {
+        "email": "customer-service@calclosets.com",
+        "source": "https://www.californiaclosets.com/",
+        "quality": "Customer Support",
+        "rank": 5,
+        "context": "official website"
+      }
+    ],
+    "pages": [
+      "https://www.californiaclosets.com/"
+    ]
+  },
+  {
+    "brand": "Cambria",
+    "website": "https://www.cambriausa.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.cambriausa.com/",
+      "https://www.cambriausa.com/contact",
+      "https://www.cambriausa.com/partner-spotlights",
+      "https://www.cambriausa.com/about-us"
+    ]
+  },
+  {
+    "brand": "Clare",
+    "website": "https://www.clare.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Clé Tile",
+    "website": "https://www.cletile.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "COAT Paints",
+    "website": "https://coatpaints.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Corston",
+    "website": "https://www.corston.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Cosentino",
+    "website": "https://www.cosentino.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Delta Faucet",
+    "website": "https://www.deltafaucet.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.deltafaucet.com/",
+      "https://www.deltafaucet.com/pages/contact",
+      "https://www.deltafaucet.com/contact",
+      "https://www.deltafaucet.com/contact-us",
+      "https://www.deltafaucet.com/about/contact",
+      "https://www.deltafaucet.com/service-parts/contact-us",
+      "https://www.deltafaucet.com/about-us/no-lead-compliant"
+    ]
+  },
+  {
+    "brand": "Dulux",
+    "website": "https://www.dulux.co.uk",
+    "existing": "",
+    "found": [
+      {
+        "email": "duluxcustomerservices@akzonobel.com",
+        "source": "https://www.dulux.co.uk/en/contact-us",
+        "quality": "Customer Support",
+        "rank": 5,
+        "context": "official website"
+      },
+      {
+        "email": "duluxcare@akzonobel.com",
+        "source": "https://www.dulux.co.uk/en/contact-us",
+        "quality": "Customer Support",
+        "rank": 5,
+        "context": "official website"
+      }
+    ],
+    "pages": [
+      "https://www.dulux.co.uk/",
+      "https://www.dulux.co.uk/en/contact-us",
+      "https://www.dulux.co.uk/en/colour-details/pressed-petal"
+    ]
+  },
+  {
+    "brand": "Duravit",
+    "website": "https://www.duravit.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Edward Bulmer Natural Paint",
+    "website": "https://www.edwardbulmerpaint.co.uk",
+    "existing": "",
+    "found": [
+      {
+        "email": "info@edwardbulmerpaint.co.uk",
+        "source": "https://www.edwardbulmerpaint.co.uk/contact-us/",
+        "quality": "General",
+        "rank": 4,
+        "context": "official website"
+      },
+      {
+        "email": "hello@edwardbulmerpaint.co.uk",
+        "source": "https://www.edwardbulmerpaint.co.uk/about/careers/",
+        "quality": "General",
+        "rank": 4,
+        "context": "official website"
+      },
+      {
+        "email": "deliveries@edwardbulmerpaint.co.uk",
+        "source": "https://www.edwardbulmerpaint.co.uk/about/careers/",
+        "quality": "Customer Support",
+        "rank": 99,
+        "context": "official website"
+      }
+    ],
+    "pages": [
+      "https://www.edwardbulmerpaint.co.uk/",
+      "https://www.edwardbulmerpaint.co.uk/contact-us/",
+      "https://www.edwardbulmerpaint.co.uk/about/our-team/",
+      "https://www.edwardbulmerpaint.co.uk/about/careers/"
+    ]
+  },
+  {
+    "brand": "Elfa",
+    "website": "https://elfa.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://elfa.com/",
+      "https://elfa.com/sv-se/about-us"
+    ]
+  },
+  {
+    "brand": "Emtek",
+    "website": "https://www.emtek.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Farrow & Ball",
+    "website": "https://www.farrow-ball.com",
+    "existing": "",
+    "found": [
+      {
+        "email": "sales@farrow-ball.com",
+        "source": "https://www.farrow-ball.com/",
+        "quality": "Customer Support",
+        "rank": 99,
+        "context": "official website"
+      }
+    ],
+    "pages": [
+      "https://www.farrow-ball.com/"
+    ]
+  },
+  {
+    "brand": "Fireclay Tile",
+    "website": "https://www.fireclaytile.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Grohe",
+    "website": "https://www.grohe.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.grohe.com/en-GB",
+      "https://www.grohe.com/en-GB/category/Bathroom/Washbasin_area/Washbasin_tap/Low_pressure_tap",
+      "https://www.grohe.com/en-GB/category/Kitchen/Kitchen_tap/Low_pressure_tap"
+    ]
+  },
+  {
+    "brand": "Hansgrohe",
+    "website": "https://www.hansgrohe.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.hansgrohe.com/",
+      "https://www.hansgrohe.com/contact",
+      "https://www.hansgrohe.com/contact",
+      "https://www.hansgrohe.com/contact",
+      "https://www.hansgrohe.com/about-us"
+    ]
+  },
+  {
+    "brand": "Heath Ceramics",
+    "website": "https://www.heathceramics.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Kohler",
+    "website": "https://www.kohler.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Lick",
+    "website": "https://www.lick.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Little Greene",
+    "website": "https://www.littlegreene.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Mandarin Stone",
+    "website": "https://www.mandarinstone.com",
+    "existing": "",
+    "found": [
+      {
+        "email": "info@mandarinstone.com",
+        "source": "https://www.mandarinstone.com/our-company/",
+        "quality": "General",
+        "rank": 4,
+        "context": "official website"
+      }
+    ],
+    "pages": [
+      "https://www.mandarinstone.com/",
+      "https://www.mandarinstone.com/contact/request-a-lookbook/",
+      "https://www.mandarinstone.com/our-company/"
+    ]
+  },
+  {
+    "brand": "Marazzi",
+    "website": "https://www.marazziusa.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Moen",
+    "website": "https://www.moen.com",
+    "existing": "",
+    "found": [],
+    "pages": [
+      "https://www.moen.com/",
+      "https://www.moen.com/customer-support/contact-us"
+    ]
+  },
+  {
+    "brand": "Native Trails",
+    "website": "https://www.nativetrailshome.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Open Spaces",
+    "website": "https://www.getopenspaces.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Plank Hardware",
+    "website": "https://plankhardware.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Porcelanosa",
+    "website": "https://www.porcelanosa.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Rohl",
+    "website": "https://www.houseofrohl.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Sherwin-Williams",
+    "website": "https://www.sherwin-williams.com",
+    "existing": "",
+    "found": [
+      {
+        "email": "yourname@address.com",
+        "source": "https://www.sherwin-williams.com/homeowners/inspiration/diy-influencers",
+        "quality": "Customer Support",
+        "rank": 99,
+        "context": "targeted page"
+      }
+    ],
+    "pages": [
+      "https://www.sherwin-williams.com/",
+      "https://www.sherwin-williams.com/homeowners/contact-us",
+      "https://www.sherwin-williams.com/homeowners/inspiration/diy-influencers"
+    ]
+  },
+  {
+    "brand": "Signature Hardware",
+    "website": "https://www.signaturehardware.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "The Container Store",
+    "website": "https://www.containerstore.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "The Home Edit",
+    "website": "https://thehomeedit.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "TileBar",
+    "website": "https://www.tilebar.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "TOTO",
+    "website": "https://www.totousa.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Valspar",
+    "website": "https://www.valspar.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Villeroy & Boch",
+    "website": "https://www.villeroy-boch.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Yamazaki Home",
+    "website": "https://theyamazakihome.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Zia Tile",
+    "website": "https://www.ziatile.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Blinds.com",
+    "website": "https://www.blinds.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Brooklinen",
+    "website": "https://www.brooklinen.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Canva",
+    "website": "https://www.canva.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Caseta by Lutron",
+    "website": "https://www.casetawireless.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Coyuchi",
+    "website": "https://www.coyuchi.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Cultiver",
+    "website": "https://cultiver.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Desenio",
+    "website": "https://desenio.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Etsy",
+    "website": "https://www.etsy.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Eve",
+    "website": "https://www.evehome.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Everhem",
+    "website": "https://www.everhem.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Floorplanner",
+    "website": "https://floorplanner.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Fy!",
+    "website": "https://www.iamfy.co",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Goodee",
+    "website": "https://www.goodeeworld.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Govee",
+    "website": "https://www.govee.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Half Price Drapes",
+    "website": "https://www.halfpricedrapes.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Hawkins New York",
+    "website": "https://www.hawkinsnewyork.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Homestyler",
+    "website": "https://www.homestyler.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Houzz",
+    "website": "https://www.houzz.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "JUNIQE",
+    "website": "https://www.juniqe.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Lamps Plus",
+    "website": "https://www.lampsplus.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "LinenMe",
+    "website": "https://www.linenme.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Lowe's",
+    "website": "https://www.lowes.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "MagicLinen",
+    "website": "https://magiclinen.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Maison Flaneur",
+    "website": "https://www.maisonflaneur.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Marta Orozco",
+    "website": "https://www.martaorozco.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Milanote",
+    "website": "https://milanote.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Minted",
+    "website": "https://www.minted.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Morpholio Board",
+    "website": "https://www.morpholioapps.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Nanoleaf",
+    "website": "https://nanoleaf.me",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Neat Method",
+    "website": "https://neatmethod.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Novica",
+    "website": "https://www.novica.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Parachute",
+    "website": "https://www.parachutehome.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Pepper Home",
+    "website": "https://pepper-home.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Philips Hue",
+    "website": "https://www.philips-hue.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Piglet in Bed",
+    "website": "https://www.pigletinbed.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Planner 5D",
+    "website": "https://planner5d.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Quince",
+    "website": "https://www.quince.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "RoomSketcher",
+    "website": "https://www.roomsketcher.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Roomvo",
+    "website": "https://www.roomvo.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "SketchUp",
+    "website": "https://www.sketchup.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "SmartWings",
+    "website": "https://www.smartwingshome.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Society6",
+    "website": "https://society6.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "St. Frank",
+    "website": "https://www.stfrank.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "SwitchBot",
+    "website": "https://www.switch-bot.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "The Citizenry",
+    "website": "https://www.the-citizenry.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "The Company Store",
+    "website": "https://www.thecompanystore.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "The Shade Store",
+    "website": "https://www.theshadestore.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "The White Company",
+    "website": "https://www.thewhitecompany.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  },
+  {
+    "brand": "Umbra",
+    "website": "https://www.umbra.com",
+    "existing": "",
+    "found": [],
+    "pages": []
+  }
+]

@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   const modalKey = process.env.MODAL_PROXY_KEY;
   const modalSecret = process.env.MODAL_PROXY_SECRET;
   if (!endpoint || !modalKey || !modalSecret) {
-    return NextResponse.json({ error: "The segmentation service is not configured." }, { status: 503 });
+    return NextResponse.json({ error: "Object detection is temporarily unavailable. Please try again later or save your design and return when the service is ready.", code: "SERVICE_NOT_CONFIGURED" }, { status: 503 });
   }
 
   let usage: Awaited<ReturnType<typeof consumeCredits>> | null = null;

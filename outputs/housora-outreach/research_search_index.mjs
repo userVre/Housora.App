@@ -1,0 +1,17 @@
+import fs from 'node:fs/promises';
+import {FileBlob,SpreadsheetFile} from '@oai/artifact-tool';
+const base=JSON.parse(await fs.readFile('C:/Users/LENOVO/Desktop/Housora/outputs/housora-outreach/email_research.json','utf8'));
+const book='C:/Users/LENOVO/Desktop/Housora/outputs/housora-outreach/Housora_Outreach_Database_Revised.xlsx';
+const wb=await SpreadsheetFile.importXlsx(await FileBlob.load(book));const v=wb.worksheets.getItem('All 120+ Brands').getUsedRange(true).values;const h=v[1];const rows=v.slice(2).filter(r=>r[0]).map(r=>Object.fromEntries(h.map((x,i)=>[x,r[i]??'']))).filter(r=>r['Already Contacted']==='NO');
+const baseMap=new Map(base.map(x=>[x.brand,x]));
+const banned=/^(noreply|no-reply|donotreply|privacy|legal|careers?|jobs?|wholesale|orders?|returns?|billing|accounts?|webmaster|security|abuse|gdpr|data|dpo)@/i;
+const bad=/example\.|yourname@|email@|name@|sentry\.io|wixpress|shopify|cloudflare|amazonaws/i;
+const rx=/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+const pri=[/creator|influenc|collab|ambassador/i,/partner|sponsor/i,/marketing|communications?|\bpr\b|press|media/i,/affiliate/i,/hello|info|contact|office|studio|team/i,/support|service|help|care|sales/i];
+function q(e){return pri[0].test(e)||pri[1].test(e)?'Creator/Partnership':pri[2].test(e)?'PR/Marketing':pri[3].test(e)?'General':pri[4].test(e)?'General':'Customer Support'}
+function rank(e){const i=pri.findIndex(x=>x.test(e));return i<0?99:i}
+function emails(s){return [...new Set((s.match(rx)||[]).map(e=>e.toLowerCase().replace(/^u003e/,'')).filter(e=>!banned.test(e)&&!bad.test(e)))]}
+function decode(s){return s.replace(/<!\[CDATA\[|\]\]>/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')}
+async function search(r){let dom;try{dom=new URL(r['Official Website']).hostname.replace(/^www\./,'')}catch{return []}const queries=[`site:${dom} (creator OR influencer OR partnership OR collaboration) email`,`site:${dom} (press OR media OR marketing OR PR) email`,`site:${dom} (contact OR about) email`];const out=[];for(const query of queries){try{const c=new AbortController();const t=setTimeout(()=>c.abort(),7000);const resp=await fetch('https://www.bing.com/search?format=rss&q='+encodeURIComponent(query),{signal:c.signal,headers:{'user-agent':'Mozilla/5.0'}});clearTimeout(t);if(!resp.ok)continue;const xml=await resp.text();for(const item of xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)){const block=item[1];const link=decode((block.match(/<link>([\s\S]*?)<\/link>/i)||[])[1]||'');let host='';try{host=new URL(link).hostname.replace(/^www\./,'')}catch{}if(!(host===dom||host.endsWith('.'+dom)))continue;for(const e of emails(decode(block)))out.push({email:e,source:link,quality:q(e),rank:rank(e),context:'official-domain search result'})}}catch{}}return [...new Map(out.sort((a,b)=>a.rank-b.rank).map(x=>[x.email,x])).values()]}
+let n=0,next=0;async function worker(){while(next<rows.length){const i=next++;const r=rows[i],b=baseMap.get(r['Brand Name']);if(b?.found?.length)continue;const found=await search(r);if(found.length){b.found=found;n++}if((i+1)%20===0)console.log(`searched ${i+1}/${rows.length}`)}}await Promise.all(Array.from({length:15},()=>worker()));
+await fs.writeFile('C:/Users/LENOVO/Desktop/Housora/outputs/housora-outreach/email_research_enriched.json',JSON.stringify(base,null,2));console.log(JSON.stringify({newBrands:n,totalWithCandidates:base.filter(x=>x.found.length).length}));

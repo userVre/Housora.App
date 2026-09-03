@@ -1,0 +1,153 @@
+{
+  "actionable": 179,
+  "contacted": 6,
+  "totalEmails": 74,
+  "newEmails": 53,
+  "counts": {
+    "Creator/Partnership": 5,
+    "Marketing/PR": 25,
+    "General": 27,
+    "Customer Support": 17
+  },
+  "noEmail": 105,
+  "namedDecisionMakersWithoutEmail": 0,
+  "restricted": [
+    "Ruggable",
+    "The Container Store",
+    "Lamps Plus"
+  ],
+  "messages": 179,
+  "wordRange": [
+    45,
+    99
+  ],
+  "phraseProblemsRemaining": 0,
+  "emailUnique": true,
+  "lightArtsyBouncePresent": false,
+  "top20": [
+    {
+      "brand": "Wayfair",
+      "email": "influencers@wayfair.com",
+      "tier": "Tier 1 — Creator/Partnership"
+    },
+    {
+      "brand": "Article",
+      "email": "collaborations@article.com",
+      "tier": "Tier 1 — Creator/Partnership"
+    },
+    {
+      "brand": "COAT Paints",
+      "email": "partnerships@coatpaints.com",
+      "tier": "Tier 1 — Creator/Partnership"
+    },
+    {
+      "brand": "Etsy",
+      "email": "creatorco@etsy.com",
+      "tier": "Tier 1 — Creator/Partnership"
+    },
+    {
+      "brand": "Quince",
+      "email": "community@onequince.com",
+      "tier": "Tier 1 — Creator/Partnership"
+    },
+    {
+      "brand": "IKEA",
+      "email": "press.us@ikea.com",
+      "tier": "Tier 2 — Marketing/PR"
+    },
+    {
+      "brand": "Benjamin Moore",
+      "email": "pressrequests@benjaminmoore.com",
+      "tier": "Tier 2 — Marketing/PR"
+    },
+    {
+      "brand": "Crate & Barrel",
+      "email": "mediainquiries@crateandbarrel.com",
+      "tier": "Tier 2 — Marketing/PR"
+    },
+    {
+      "brand": "Joybird",
+      "email": "press@joybird.com",
+      "tier": "Tier 2 — Marketing/PR"
+    },
+    {
+      "brand": "Muuto",
+      "email": "press@muuto.com",
+      "tier": "Tier 2 — Marketing/PR"
+    },
+    {
+      "brand": "Artemide",
+      "email": "marketing@artemide.com",
+      "tier": "Tier 2 — Marketing/PR"
+    },
+    {
+      "brand": "Flor",
+      "email": "publicrelations@flor.com",
+      "tier": "Tier 2 — Marketing/PR"
+    },
+    {
+      "brand": "Gantri",
+      "email": "press@gantri.com",
+      "tier": "Tier 2 — Marketing/PR"
+    },
+    {
+      "brand": "Tom Dixon",
+      "email": "marketing@tomdixon.net",
+      "tier": "Tier 2 — Marketing/PR"
+    },
+    {
+      "brand": "Buster + Punch",
+      "email": "press@busterandpunch.com",
+      "tier": "Tier 2 — Marketing/PR"
+    },
+    {
+      "brand": "Cambria",
+      "email": "public.relations@cambriausa.com",
+      "tier": "Tier 2 — Marketing/PR"
+    },
+    {
+      "brand": "Clé Tile",
+      "email": "press@cletile.com",
+      "tier": "Tier 2 — Marketing/PR"
+    },
+    {
+      "brand": "Duravit",
+      "email": "marketing@us.duravit.com",
+      "tier": "Tier 2 — Marketing/PR"
+    },
+    {
+      "brand": "Lick",
+      "email": "pressoffice@lick.com",
+      "tier": "Tier 2 — Marketing/PR"
+    },
+    {
+      "brand": "Rohl",
+      "email": "media@houseofrohl.com",
+      "tier": "Tier 2 — Marketing/PR"
+    }
+  ],
+  "applications": [
+    "Wayfair",
+    "Plaid Crafts",
+    "Fredesigner",
+    "Decor On Decor",
+    "Lumira Furniture",
+    "IKEA",
+    "Article",
+    "Arteverk",
+    "Crate & Barrel",
+    "Joybird"
+  ],
+  "dm": [
+    "Albany Park",
+    "Arhaus",
+    "Castlery",
+    "CB2",
+    "Design Within Reach",
+    "Ferm Living",
+    "Floyd",
+    "Hem",
+    "Herman Miller",
+    "Inside Weather"
+  ]
+}
