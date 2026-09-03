@@ -1,0 +1,41 @@
+/* Product pricing: controls first, then plans, top-ups and cost reference. */
+.commerce-page.pricing-page { padding-top: 32px; padding-bottom: 48px; }
+.pricing-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.pricing-toolbar .balance-pill { margin: 0; min-height: 48px; }
+.pricing-toolbar .billing-toggle button { min-height: 44px; }
+.pricing-page .plan-grid { margin-top: 32px; }
+.pricing-page .plan-card { min-height: 0; padding: 24px; }
+.pricing-page .plan-card > p { margin: 12px 0; min-height: 48px; }
+.pricing-page .plan-card > strong { margin-top: 8px; }
+.pricing-page .plan-card ul { margin: 24px 0; gap: 12px; }
+.pricing-page .plan-card.popular { box-shadow: none; }
+.pricing-page .topup-section { margin-top: 32px; padding: 24px; gap: 32px; }
+.pricing-page .topup-section h2 { font-size: 28px; }
+.pricing-page .topup-section .pack-grid button { min-height: 64px; }
+.pricing-page .checkout-error { margin: 16px 0 0; max-width: none; }
+.credit-cost-section { margin-top: 32px; border: 1px solid var(--night-line); border-radius: var(--radius-lg); overflow: hidden; background: var(--night-panel); }
+.credit-cost-section > header { padding: 24px; }
+.credit-cost-section h2 { margin: 0 0 8px; font: 600 24px/1.3 var(--font-body); }
+.credit-cost-section p { margin: 0; color: var(--night-muted); line-height: 1.6; }
+.credit-cost-table { width: 100%; table-layout: fixed; border-collapse: collapse; text-align: left; font-size: 14px; line-height: 1.5; }
+.credit-cost-table th, .credit-cost-table td { padding: 16px 24px; border-top: 1px solid var(--night-line); vertical-align: top; overflow-wrap: anywhere; }
+.credit-cost-table thead { background: var(--night); color: var(--night-muted); }
+.credit-cost-table thead th:first-child { width: 29%; }
+.credit-cost-table thead th:last-child { width: 17%; }
+.credit-cost-table tbody th { font-weight: 600; color: var(--night-text); }
+.credit-cost-table td { color: var(--night-muted); }
+.credit-cost-table th:last-child, .credit-cost-table td:last-child { text-align: right; }
+.credit-cost-table td:last-child { color: var(--night-text); font-weight: 700; font-variant-numeric: tabular-nums; }
+.credit-cost-section .credit-cost-note { padding: 20px 24px; border-top: 1px solid var(--night-line); font-size: 14px; }
+@media (max-width: 620px) {
+  .commerce-page.pricing-page { padding-top: 20px; }
+  .pricing-toolbar { justify-content: center; gap: 12px; }
+  .pricing-page .plan-card { padding: 20px; }
+  .pricing-page .plan-card > p { min-height: 0; }
+  .credit-cost-section > header { padding: 20px 16px; }
+  .credit-cost-table { font-size: 13px; }
+  .credit-cost-table th, .credit-cost-table td { padding: 12px 10px; }
+  .credit-cost-table thead th:first-child { width: 30%; }
+  .credit-cost-table thead th:last-child { width: 20%; }
+  .credit-cost-section .credit-cost-note { padding: 16px; }
+}

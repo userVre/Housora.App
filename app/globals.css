@@ -2,6 +2,7 @@
 @import "./studio.css";
 @import "./discover.css";
 @import "./object-tools.css";
+@import "./pricing.css";
 
 :root {
   --ink: #171713;

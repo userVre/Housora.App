@@ -62,6 +62,7 @@ All actions have visible keyboard focus and accessible names. Touch targets are 
 
 | Surface | Contract |
 | --- | --- |
+| Pricing layout | Start with live balance and Monthly/Yearly controls, without a marketing hero. Order: plans, extra-credit packs, then the read-only credit-cost table. Costs reuse `lib/ai-costs.ts`; selecting existing detections is free. |
 | Checkout | A purchase button creates a server-side Whop checkout with the signed-in Clerk user and a fixed allow-listed offer. The browser never receives API secrets. |
 | Fulfillment | Credits or plan access are added only after a verified `payment.succeeded` webhook. Repeated webhook IDs have no effect. Reversals remove only the associated grant or access. |
 | Credit order | Plan credits are consumed first, then purchased credits by nearest expiry. Purchased credits expire after 12 months. |

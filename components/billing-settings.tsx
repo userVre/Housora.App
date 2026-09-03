@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, CreditCard, GearSix, ShieldCheck, Sparkle, UserCircle } from "@phosphor-icons/react";
 import { api } from "../convex/_generated/api";
 import type { WhopOfferKey } from "../lib/whop";
+import { AI_COSTS } from "../lib/ai-costs";
 
 const plans = [
   { name: "Free", monthly: "$0", yearly: "$0", credits: "12 credits once", description: "Try the complete room-design workflow.", features: ["Image editing", "Object detection", "3D and AR previews"] },
@@ -46,15 +47,13 @@ export function PricingPage() {
     }
   }
 
-  return <div className="commerce-page">
-    <header className="commerce-hero">
-      <span className="eyebrow">Simple, flexible pricing</span>
-      <h1>Pay for the design work you need.</h1>
-      <p>Start free, choose a monthly credit allowance, and add top-ups whenever a project needs more.</p>
+  return <div className="commerce-page pricing-page">
+    <h1 className="visually-hidden">Pricing</h1>
+    <header className="pricing-toolbar">
       <div className="balance-pill"><Sparkle /> <b>{balance?.total ?? "—"}</b> credits available</div>
       <div className="billing-toggle" role="group" aria-label="Billing period">
-        <button className={!annual ? "active" : ""} onClick={() => setAnnual(false)}>Monthly</button>
-        <button className={annual ? "active" : ""} onClick={() => setAnnual(true)}>Yearly <small>Save 2 months</small></button>
+        <button aria-pressed={!annual} className={!annual ? "active" : ""} onClick={() => setAnnual(false)}>Monthly</button>
+        <button aria-pressed={annual} className={annual ? "active" : ""} onClick={() => setAnnual(true)}>Yearly <small>Save 2 months</small></button>
       </div>
     </header>
     {checkoutReturned ? <p className="checkout-success" role="status"><Check /> Checkout complete. We’re confirming your purchase with Whop; your balance updates automatically.</p> : null}
@@ -66,9 +65,25 @@ export function PricingPage() {
         {index === 0 ? <button disabled>{balance?.plan === "free" ? "Current starter plan" : "Starter plan"}</button> : (() => { const offer = `${plan.name.toLowerCase()}_${annual ? "yearly" : "monthly"}` as WhopOfferKey; const current = balance?.plan === offer; return <button className={plan.popular ? "primary-action" : ""} disabled={Boolean(pending) || current} onClick={() => checkout(offer)}>{current ? "Current plan" : pending?.startsWith(plan.name.toLowerCase()) ? "Opening secure checkout…" : `Choose ${plan.name}`}</button>; })()}
       </article>)}
     </section>
-    <section className="credit-guide"><div><span className="eyebrow">Credit costs</span><h2>Know the cost before you create.</h2><p>AR viewing is free. Credits are only used when Housora runs an AI task for you.</p></div><div className="credit-costs"><span><b>1</b><i>Select an object<small>Create a precise editable mask</small></i></span><span><b>4</b><i>Generate or edit<small>Create a room or revise an image</small></i></span><span><b>5</b><i>Select + edit<small>Mask and change one object</small></i></span><span><b>12</b><i>Create a 3D model<small>Generate a textured model for AR</small></i></span><span><b>Free</b><i>View in your room<small>Open an existing model in AR</small></i></span></div></section>
     <section className="topup-section"><div><span className="eyebrow">Extra credits</span><h2>Add credits, keep your plan.</h2><p>Choose a pack, then continue to Whop’s secure checkout. Purchased credits remain available for 12 months.</p></div><div className="pack-purchase"><div className="pack-grid" role="radiogroup" aria-label="Extra credit pack">{packs.map(pack => <button key={pack.key} role="radio" aria-checked={selectedPack === pack.key} className={`${pack.best ? "best " : ""}${selectedPack === pack.key ? "selected" : ""}`} disabled={Boolean(pending)} onClick={() => { setSelectedPack(pack.key); setError(""); }}><span><b>{pack.credits} credits</b>{pack.best ? <small>Best value</small> : null}</span><strong>{pack.price}</strong></button>)}</div><button className="primary-action pack-checkout" disabled={Boolean(pending)} onClick={() => checkout(selectedPack)}>{pending?.startsWith("credits_") ? "Opening secure checkout…" : `Buy ${packs.find(pack => pack.key === selectedPack)?.credits} credits`}</button></div></section>
     {error ? <p className="checkout-error" role="alert">{error}</p> : null}
+    <section className="credit-cost-section" aria-labelledby="credit-cost-title">
+      <header><h2 id="credit-cost-title">Credit costs</h2><p>One balance for every AI tool. Here’s what each action uses.</p></header>
+      <table className="credit-cost-table">
+        <caption className="visually-hidden">Housora credit cost per action</caption>
+        <thead><tr><th scope="col">Action</th><th scope="col">What’s included</th><th scope="col">Credits</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Auto-detect objects</th><td>Scan one photo for objects and surfaces, with masks and cropped previews.</td><td>{AI_COSTS.detection}</td></tr>
+          <tr><th scope="row">Generate an image</th><td>Create a new design with one image-generation request.</td><td>{AI_COSTS.imageEdit}</td></tr>
+          <tr><th scope="row">Edit an image or object</th><td>Apply one AI edit. Reuse detected objects without paying for another scan.</td><td>{AI_COSTS.imageEdit}</td></tr>
+          <tr><th scope="row">First scan + one edit</th><td>{AI_COSTS.detection} credit to detect objects + {AI_COSTS.imageEdit} credits for one edit.</td><td>{AI_COSTS.detection + AI_COSTS.imageEdit} total</td></tr>
+          <tr><th scope="row">Create a 3D model</th><td>Generate one textured 3D model from a furniture image.</td><td>{AI_COSTS.model3d}</td></tr>
+          <tr><th scope="row">Select a detected object</th><td>Choose or switch between objects from your completed scan.</td><td>Free</td></tr>
+          <tr><th scope="row">View in AR</th><td>Open an existing 3D model in your room on a supported device.</td><td>Free</td></tr>
+        </tbody>
+      </table>
+      <p className="credit-cost-note">Example: scan a photo once and edit two objects = {AI_COSTS.detection + AI_COSTS.imageEdit * 2} credits. Failed or empty detection scans return the scanning credit.</p>
+    </section>
     <footer className="legal-links"><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><span>Payments are securely processed by Whop.</span></footer>
   </div>;
 }
