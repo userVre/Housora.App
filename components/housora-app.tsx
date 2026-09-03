@@ -606,8 +606,14 @@ export function HousoraApp({
     window.history.pushState({ view: next }, "", url);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  const startBlankProject = () => {
-    setProjectDraft(null);
+  const startBlankProject = async () => {
+    const draftId = `draft-${Date.now()}`;
+    const title = `Untitled project ${savedDesigns.length + 1}`;
+    const image = "/pictures/interior-design-cover.png";
+    try {
+      await saveDesign({ id: draftId, title, image, mode: "Interior" });
+    } catch {}
+    setProjectDraft({ title, image, prompt: "", mode: "Interior" });
     navigate("album");
   };
   const startFromReference = (reference: InspirationReference) => {
@@ -1707,10 +1713,7 @@ function ProjectsPage({
   onOpen: (design: SavedDesign) => void;
 }) {
   return (
-    <section
-      className="visual-projects clean-projects"
-      aria-labelledby="projects-title"
-    >
+    <section className="visual-projects clean-projects" aria-labelledby="projects-title">
       <header className="visual-projects-header">
         <div>
           <span className="eyebrow">Your design space</span>
@@ -1719,43 +1722,52 @@ function ProjectsPage({
           </div>
           <p>
             {designs.length
-              ? "Choose a project to continue designing."
-              : "Start with your photo or try an example."}
+              ? `You have ${designs.length} saved project${designs.length > 1 ? "s" : ""} — pick one to continue or start a new one.`
+              : "Start with your photo or try an example. New projects appear here instantly, even before you generate."}
           </p>
         </div>
+        <button className="primary-action" onClick={onNew} aria-label="Create new project">
+          <Plus /> New project
+        </button>
       </header>
+
       <div className="project-library-toolbar clean-project-toolbar">
         <div className="project-tabs">
           <span>Saved projects</span>
+          <small style={{ marginLeft: 8, color: "#8f9187", fontSize: 11 }}>{designs.length} total</small>
         </div>
+        <span className="project-hint">Click any card to open in editor — 3D and Edit are inside.</span>
       </div>
+
       <div className={`album-grid ${designs.length ? "" : "album-grid-empty"}`}>
-        <button className="new-album-card" onClick={onNew}>
+        <button className="new-album-card" onClick={onNew} aria-label="Create new empty project">
           <span>
             <Plus />
           </span>
           <b>New project</b>
-          <small>Upload a photo or try an example</small>
+          <small>Creates instantly on the right → then upload or try example</small>
         </button>
         {designs.map((design) => (
-          <button
-            className="album-card"
-            key={design.id}
-            onClick={() => onOpen(design)}
-          >
+          <button className="album-card" key={design.id} onClick={() => onOpen(design)} aria-label={`Open ${design.title}`}>
             <span>
-              <Image
-                src={design.image}
-                alt=""
-                fill
-                sizes="(max-width: 700px) 50vw, 240px"
-              />
+              <Image src={design.image} alt="" fill sizes="(max-width: 700px) 50vw, 240px" />
+              <i className="card-badge">{design.mode}</i>
             </span>
             <b>{design.title}</b>
-            <small>{design.mode} · Saved design</small>
+            <small>
+              {design.mode} · Saved design
+            </small>
           </button>
         ))}
       </div>
+
+      {designs.length === 0 ? (
+        <div className="projects-empty-hint">
+          <p>
+            Tip: <b>New project</b> creates a draft immediately — it will stay here even if you close the tab. You can then upload your space in <b>Create</b> or jump to <b>3D studio</b>.
+          </p>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -1998,22 +2010,29 @@ function AlbumWorkspace({
           <ArrowLeft /> Projects
         </button>
         <span>{initialDraft?.title ?? "New project"}</span>
-        {preview && tab === "edit" ? <div className="album-bar-actions">
-          <button className="album-3d-button" onClick={() => open3d(selectedObject?.thumbnail || preview)}><Cube /> 3D studio</button>
-          <button aria-label="Compare with original" aria-pressed={compareOriginal} title="Compare with original" onClick={() => setCompareOriginal(value => !value)}><ImagesSquare /></button>
-          <button aria-label="Download image" title="Download image" onClick={() => void exportImage(false)}><DownloadSimple /></button>
-          <button className="share-design" onClick={() => void exportImage(true)}>Share</button>
-        </div> : <ol className="creation-progress" aria-label="Creation progress">
-          <li className={preview ? "complete" : "active"}>Space</li>
-          <li
-            className={
-              preview && tab === "create" ? "active" : preview ? "complete" : ""
-            }
-          >
-            Direction
-          </li>
-          <li className={tab === "edit" ? "active" : ""}>Result</li>
-        </ol>}
+        <div className="album-bar-center">
+          {preview ? (
+            <div className="album-bar-actions">
+              <button className="album-3d-button primary-3d" onClick={() => open3d(selectedObject?.thumbnail || preview)} title="Open 3D studio — create AR-ready models">
+                <Cube /> 3D studio
+              </button>
+              <button aria-label="Compare with original" aria-pressed={compareOriginal} title="Compare with original" onClick={() => setCompareOriginal((value) => !value)}>
+                <ImagesSquare />
+              </button>
+              <button aria-label="Download image" title="Download image" onClick={() => void exportImage(false)}>
+                <DownloadSimple />
+              </button>
+              <button className="share-design" onClick={() => void exportImage(true)}>
+                Share
+              </button>
+            </div>
+          ) : null}
+          <ol className="creation-progress" aria-label="Creation progress">
+            <li className={preview ? "complete" : "active"}>Space</li>
+            <li className={preview && tab === "create" ? "active" : preview ? "complete" : ""}>Direction</li>
+            <li className={tab === "edit" ? "active" : ""}>Result</li>
+          </ol>
+        </div>
       </header>
       <input
         ref={fileRef}
@@ -2201,6 +2220,18 @@ function AlbumWorkspace({
                       setDetailChoices((current) => ({ ...current, [label]: value }))
                     }
                   />
+                ) : null}
+                {preview ? (
+                  <button className="studio-entry-card" onClick={() => open3d(preview)} aria-label="Open 3D studio">
+                    <span className="studio-entry-icon">
+                      <Cube />
+                    </span>
+                    <span className="studio-entry-copy">
+                      <b>3D studio — Create AR-ready object</b>
+                      <small>Where to find 3D: choose any furniture, generate 12 cr, preview in AR (no app)</small>
+                    </span>
+                    <ArrowRight />
+                  </button>
                 ) : null}
                 {preview ? (
                   <button
