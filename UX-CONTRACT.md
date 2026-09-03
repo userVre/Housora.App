@@ -15,7 +15,17 @@ The minimum path is upload or paste photo → optional prompt → Interior/Exter
 - Completed: four concepts plus optional refinement and editor entry.
 - Recoverable error: retained photo and prompt, precise reason, Retry and Replace photo.
 
-The Create composer uses two local tabs. Design brief contains mode, room/building/garden type, style, prompt, optional mode-specific details, aspect ratio, resolution, and model. Detected objects is empty before upload and becomes the active tab after a valid image is loaded. It groups demo-detected structure and editable objects without removing or mixing the design brief controls.
+The Create composer uses two local tabs. Design brief contains mode, room/building/garden type, style, prompt, optional mode-specific details, aspect ratio, resolution, and model. Detected objects is empty before upload. On entering Edit with a new image, offer a credit confirmation before sending pixels to SAM. Never render hard-coded/demo detections. Show only returned masks with real crops, confidence and normalized bounds; a scan may miss objects. Switching tabs retains results; replacing the image resets them.
+
+## Detection and 3D actions (September 2026)
+
+- Costs are owned by `lib/ai-costs.ts` and enforced server-side. Detection costs 1 Housora credit; image editing 4; 3D generation 12. Provider credits are separate.
+- `CreditConfirmation` and `WorkspaceDialog` own costly-action confirmation, live balance, keyboard focus, inert background and cancellation. Consent is required even when older preferences disable high-cost prompts.
+- No request on Cancel. A synchronous client lock and server credit-event deduplication prevent a repeated detection/3D request ID from dispatching twice.
+- Empty/failed detection returns its credit. 3D terminal failure is refunded through the verified task tracking route; temporary polling failures never trigger a replacement generation. Keep the studio open while running. Download completed models because provider URLs are temporary.
+- Album header owns the 3D studio entry. A detected object's 3D action passes its actual masked crop to the same studio; upload/replacement remains available. Opening the studio itself costs nothing.
+- Selection highlights follow actual normalized image coordinates. Object edits reuse detection without another segmentation charge.
+- Canonical owners: object forms/list = `components/detected-objects.tsx`; dialogs = `components/credit-confirmation.tsx`; visual tokens/scrollbars = `app/globals.css`; feature rules = `app/object-tools.css`; balance/refunds = `convex/credits.ts` and `lib/credits.ts`. English product copy is retained.
 
 ## Progressive disclosure
 

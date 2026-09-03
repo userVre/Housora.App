@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { consumeCredits, refundCredits } from "../../../../lib/credits";
 import { createTripoTrackingToken } from "../../../../lib/tripo-tracking";
+import { AI_COSTS } from "../../../../lib/ai-costs";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -24,20 +25,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Send the furniture image as form data." }, { status: 400 });
     }
     const file = form.get("image");
+    const requestId = form.get("requestId");
+    if (form.get("confirmed") !== "true" || typeof requestId !== "string" || !/^[a-f0-9-]{36}$/i.test(requestId)) {
+      return NextResponse.json({ error: "Confirm the credit cost before creating a 3D model." }, { status: 400 });
+    }
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "Choose a furniture image first." }, { status: 400 });
     }
     if (!acceptedTypes.has(file.type) || file.size > 10 * 1024 * 1024) {
       return NextResponse.json({ error: "Use a JPG, PNG or WEBP image under 10 MB." }, { status: 400 });
     }
-    usage = await consumeCredits(userId, 12, "Textured 3D model and AR preview");
+    const reserved = await consumeCredits(userId, AI_COSTS.model3d, "Textured 3D model and AR preview", `3d:${requestId}`);
+    if (reserved.duplicate) return NextResponse.json({ error: "This model was already submitted. Check the existing task before trying again." }, { status: 409 });
+    usage = reserved;
 
     const uploadBody = new FormData();
     uploadBody.append("file", file, file.name || "furniture.png");
-    const uploadResponse = await fetch(`${TRIPO_BASE}/upload/sts`, {
+    const uploadResponse = await fetch(`${TRIPO_BASE}/upload`, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}` },
       body: uploadBody,
+      signal: AbortSignal.timeout(25_000),
     });
     const upload = await uploadResponse.json().catch(() => null);
     const imageToken = upload?.data?.image_token;
@@ -46,7 +54,7 @@ export async function POST(request: Request) {
       usage = null;
       return NextResponse.json(
         { error: upload?.message || "Tripo could not upload the image." },
-        { status: uploadResponse.status || 502 },
+        { status: uploadResponse.ok ? 502 : uploadResponse.status },
       );
     }
 
@@ -63,6 +71,7 @@ export async function POST(request: Request) {
         face_limit: 10000,
         enable_image_autofix: true,
       }),
+      signal: AbortSignal.timeout(25_000),
     });
     const task = await taskResponse.json().catch(() => null);
     const taskId = task?.data?.task_id;
@@ -71,7 +80,7 @@ export async function POST(request: Request) {
       usage = null;
       return NextResponse.json(
         { error: task?.message || "Tripo could not start the 3D model." },
-        { status: taskResponse.status || 502 },
+        { status: taskResponse.ok ? 502 : taskResponse.status },
       );
     }
     return NextResponse.json({

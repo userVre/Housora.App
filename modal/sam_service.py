@@ -24,6 +24,38 @@ HF_CACHE_DIR = "/cache/huggingface"
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
 MAX_IMAGE_PIXELS = 25_000_000
 
+# Search vocabulary, not results: show entries only when SAM returns real masks.
+AUTO_PROMPTS = {
+    "Interior": ["wall", "floor", "ceiling", "window", "door", "sofa", "armchair",
+                 "chair", "coffee table", "dining table", "rug", "lamp", "plant",
+                 "cabinet", "shelf", "bed", "curtain", "fireplace", "painting"],
+    "Exterior": ["wall", "roof", "window", "door", "steps", "driveway", "fence",
+                 "tree", "plant", "lamp", "chair", "table", "balcony"],
+    "Garden": ["tree", "plant", "grass", "path", "fence", "chair", "bench",
+               "table", "flower pot", "lamp", "pool", "pergola"],
+}
+
+
+def _box_iou(a, b):
+    overlap = max(0, min(a[2], b[2]) - max(a[0], b[0])) * max(0, min(a[3], b[3]) - max(a[1], b[1]))
+    union = (a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - overlap
+    return overlap / union if union > 0 else 0
+
+
+def _thumbnail(image, mask, box):
+    """Real masked crop on white, also usable as an image-to-3D source."""
+    import numpy as np
+    from PIL import Image
+
+    alpha = Image.fromarray((np.asarray(mask.squeeze()) > 0).astype(np.uint8) * 255)
+    isolated = Image.new("RGB", image.size, "white")
+    isolated.paste(image, mask=alpha)
+    crop = isolated.crop(tuple(int(v) for v in box))
+    crop.thumbnail((768, 768))
+    output = io.BytesIO()
+    crop.save(output, format="WEBP", quality=90)
+    return "data:image/webp;base64," + base64.b64encode(output.getvalue()).decode("ascii")
+
 app = modal.App(APP_NAME)
 
 # SAM 3 requires the official repository, Python 3.12+, PyTorch 2.7+
@@ -45,8 +77,13 @@ sam_image = (
         "numpy>=1.26,<2",
         "pillow>=11,<12",
         "pydantic>=2,<3",
+        "einops>=0.8,<1",
+        "pycocotools>=2.0.10,<3",
+        "decord>=0.6,<1",
+        "psutil>=5.9,<8",
         "git+https://github.com/facebookresearch/sam3.git",
     )
+    .run_commands("python -c 'from sam3.model.sam3_image_processor import Sam3Processor; from sam3.model_builder import build_sam3_image_model'")
     .env({"HF_HOME": HF_CACHE_DIR})
 )
 
@@ -108,7 +145,7 @@ def _mask_to_data_url(mask: Any) -> str:
 @app.cls(
     image=sam_image,
     gpu="L4",
-    timeout=180,
+    timeout=300,
     min_containers=0,
     max_containers=2,
     scaledown_window=300,
@@ -148,13 +185,14 @@ class SamSegmenter:
         from fastapi import HTTPException
 
         image_value = payload.get("image")
+        auto = payload.get("auto_detect") is True
         prompt_value = payload.get("prompt") or payload.get("object")
         if not isinstance(image_value, str):
             raise HTTPException(status_code=422, detail="image is required")
-        if not isinstance(prompt_value, str) or not prompt_value.strip():
+        if not auto and (not isinstance(prompt_value, str) or not prompt_value.strip()):
             raise HTTPException(status_code=422, detail="prompt is required")
 
-        prompt = prompt_value.strip()
+        prompt = "" if auto else prompt_value.strip()
         if len(prompt) > 160:
             raise HTTPException(status_code=422, detail="prompt is too long")
 
@@ -166,6 +204,42 @@ class SamSegmenter:
         threshold = min(max(threshold, 0.05), 0.95)
         max_masks = min(max(max_masks, 1), 12)
         image = _decode_image(image_value)
+        image.thumbnail((1280, 1280))
+
+        if auto:
+            mode = payload.get("mode", "Interior")
+            if mode not in AUTO_PROMPTS:
+                raise HTTPException(status_code=422, detail="invalid design mode")
+            candidates = []
+            with self.torch.inference_mode(), self.torch.autocast(
+                device_type="cuda", dtype=self.torch.bfloat16
+            ):
+                state = self.processor.set_image(image)
+                self.processor.set_confidence_threshold(threshold)
+                for label in AUTO_PROMPTS[mode]:
+                    self.processor.reset_all_prompts(state)
+                    output = self.processor.set_text_prompt(state=state, prompt=label)
+                    for mask, box, score in zip(output["masks"], output["boxes"], output["scores"]):
+                        score_value = float(score.item())
+                        if score_value < threshold:
+                            continue
+                        coords = box.detach().float().cpu().tolist()
+                        coords = [max(0, min(image.width, coords[0])), max(0, min(image.height, coords[1])),
+                                  max(0, min(image.width, coords[2])), max(0, min(image.height, coords[3]))]
+                        if coords[2] - coords[0] < 4 or coords[3] - coords[1] < 4:
+                            continue
+                        candidates.append((score_value, label, coords, mask.detach().bool().cpu()))
+            objects = []
+            for score_value, label, box, mask in sorted(candidates, key=lambda item: item[0], reverse=True):
+                normalized = [box[0] / image.width, box[1] / image.height, box[2] / image.width, box[3] / image.height]
+                if any(_box_iou(normalized, item["box"]) > 0.8 for item in objects):
+                    continue
+                objects.append({"id": f"object-{len(objects) + 1}", "label": label,
+                                "score": score_value, "box": normalized,
+                                "mask": _mask_to_data_url(mask), "thumbnail": _thumbnail(image, mask, box)})
+                if len(objects) >= 24:
+                    break
+            return {"objects": objects, "width": image.width, "height": image.height, "model": "sam-3", "auto_detect": True}
 
         with self.torch.inference_mode(), self.torch.autocast(
             device_type="cuda", dtype=self.torch.bfloat16

@@ -13,8 +13,8 @@ function serverKey() {
   return value;
 }
 
-export async function consumeCredits(ownerId: string, amount: number, description: string) {
-  const eventId = `usage:${ownerId}:${crypto.randomUUID()}`;
+export async function consumeCredits(ownerId: string, amount: number, description: string, requestId?: string) {
+  const eventId = `usage:${ownerId}:${requestId || crypto.randomUUID()}`;
   const usage = await client().mutation(api.credits.consumeServer, {
     serverKey: serverKey(), ownerId, eventId, amount, description,
   });

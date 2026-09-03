@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { consumeCredits, refundCredits } from "../../../../lib/credits";
+import { AI_COSTS } from "../../../../lib/ai-costs";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "The image source is not supported." }, { status: 400 });
     }
 
-    usage = await consumeCredits(userId, 4, "AI image generation or edit");
+    usage = await consumeCredits(userId, AI_COSTS.imageEdit, "AI image generation or edit");
 
     const aspectRatio = ["1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3", "auto"]
       .includes(body.aspectRatio || "") ? body.aspectRatio : "auto";

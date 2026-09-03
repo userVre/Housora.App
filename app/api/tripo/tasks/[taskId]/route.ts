@@ -31,17 +31,19 @@ export async function GET(
     const response = await fetch(`https://api.tripo3d.ai/v2/openapi/task/${encodeURIComponent(taskId)}`, {
       headers: { Authorization: `Bearer ${key}` },
       cache: "no-store",
+      signal: AbortSignal.timeout(25_000),
     });
     const result = await response.json().catch(() => null);
     if (!response.ok || result?.code !== 0) {
       return NextResponse.json(
         { error: result?.message || "Could not read the Tripo task." },
-        { status: response.status || 502 },
+        { status: response.ok ? 502 : response.status },
       );
     }
     const task = result.data;
-    if (task.status === "failed" || task.status === "cancelled") {
-      await refundUsageEvent(userId, tracking.usageEventId, "3D generation failed").catch(() => undefined);
+    if (["failed", "cancelled", "banned", "expired", "unknown"].includes(task.status) || (task.status === "success" && !task.output?.pbr_model && !task.output?.model && !task.output?.base_model)) {
+      await refundUsageEvent(userId, tracking.usageEventId, "3D generation failed");
+      return NextResponse.json({ status: "failed", error: "The model could not be generated. Your Housora credits were returned." });
     }
     return NextResponse.json({
       status: task.status,

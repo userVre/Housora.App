@@ -92,6 +92,9 @@ Product spacing follows a 4/8/12/16/24/32/48/64px scale. Page introductions use 
 - Don’t hide advanced professional capability permanently; reveal it progressively after value.
 # Commerce and account surfaces
 
+- Detection uses actual cropped object thumbnails, sentence-case labels, confidence metadata and one selected outline. The 3D studio lives beside image actions in the album header and is also reachable from a detected object; its preview and controls stay in one wide, responsive dialog.
+- Existing runtime variables in `app/globals.css` remain canonical (Model B): canvas `--night`, surface `--night-panel`, text `--night-text`, muted `--night-muted`, border `--night-line`, accent `--sage`, type `--font-body` and radii `--radius*`. `app/object-tools.css` consumes these variables without new palette values.
+
 - Pricing keeps the product shell and uses three comparable plan cards, a monthly/yearly segmented control, an always-visible live balance, explicit per-action credit costs, and separate top-up packs.
 - Settings uses a stable left section navigator on desktop and a horizontal scroller on narrow screens. Account identity stays with Clerk; product preferences stay with Convex.
 - Privacy controls are opt-in. Analytics and session replay are separate, and replay cannot remain enabled when analytics is disabled.
