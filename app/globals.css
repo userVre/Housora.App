@@ -7497,3 +7497,34 @@ html {
 .projects-empty-hint { margin-top: 18px; padding: 12px 14px; background: #1b1c18; border: 1px solid var(--night-line); border-radius: 10px; }
 .projects-empty-hint p { font-size: 12px; line-height: 1.6; color: var(--night-muted); margin: 0; }
 @media (max-width: 900px) { .project-hint { display: none; } .album-bar-center { gap: 8px; } }
+
+/* Discover + Saved clarity + Mobile 100% professional */
+.inspiration-page{padding-bottom:40px}
+.discover-results-count{font-size:12px;letter-spacing:0.02em}
+.inspiration-grid{padding-bottom:24px}
+.saved-page .saved-heading{padding-bottom:18px;border-bottom:1px solid var(--night-line);margin-bottom:20px}
+.saved-page .saved-heading h1{font-size:clamp(32px,4vw,44px);line-height:1;letter-spacing:-0.03em}
+.saved-tabs{margin-top:16px}
+.saved-masonry{padding-top:8px}
+.saved-tile{border-radius:14px}
+.product-main{padding-bottom:24px}
+
+/* Mobile: make bottom nav complete + header breathing room */
+.mobile-bottom-nav{grid-template-columns:repeat(4,1fr);gap:4px;padding-inline:6px}
+.mobile-bottom-nav button{font-size:10px}
+.mobile-account-button{top:12px;right:12px;width:38px;height:38px;box-shadow:0 6px 20px rgba(0,0,0,0.35)}
+@media (max-width: 760px){
+  .inspiration-page{padding:20px 14px 28px}
+  .inspiration-grid{columns:2 140px;column-gap:10px}
+  .inspiration-card{break-inside:avoid}
+  .saved-page{padding:22px 14px 28px}
+  .discover-filters{margin-inline:0;padding-bottom:6px;gap:6px}
+  .simple-discover-tools{gap:10px}
+  .inspiration-modal, .saved-modal{margin:12px;max-height:calc(100dvh - 24px)}
+}
+@media (max-width: 480px){
+  .inspiration-grid{columns:1;column-gap:0}
+}
+/* Fix image 400 and preload warnings: ensure fallback */
+.inspiration-card img, .saved-tile img{object-fit:cover}
+.saved-modal-image, .reference-image{position:relative;overflow:hidden}
