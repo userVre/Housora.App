@@ -7392,3 +7392,80 @@ html {
   .album-bar-actions { flex-wrap: wrap; }
   .album-control-panel .album-panel-content { padding: 16px; }
 }
+
+/* === HOTFIX 2025-09: Projects / Album / 3D Studio spacing & clarity === */
+.clean-projects { padding-top: 56px; padding-bottom: 80px; }
+.clean-projects .visual-projects-header {
+  grid-template-columns: 1fr;
+  gap: 18px;
+  padding: 6px 0 28px;
+  border-bottom: 1px solid var(--night-line);
+  margin-bottom: 28px;
+}
+.clean-projects .visual-projects-header .eyebrow { letter-spacing: 0.14em; font-size: 11px; color: #8f8f87; }
+.clean-projects .project-title-row { display: flex; align-items: baseline; gap: 12px; }
+.clean-projects .project-title-row h1 { font-size: clamp(36px, 4.2vw, 52px); line-height: 1; letter-spacing: -0.03em; margin: 0; text-wrap: balance; }
+.clean-projects .visual-projects-header p { font-size: 13px; line-height: 1.6; color: var(--night-muted); margin-top: 8px; max-width: 540px; }
+.clean-project-toolbar { padding: 0; margin-bottom: 20px; border: 0; }
+.clean-project-toolbar .project-tabs { display: inline-flex; gap: 8px; min-height: auto; }
+.clean-project-toolbar .project-tabs span { background: #2a2a26; border: 1px solid #34362f; border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600; line-height: 1; }
+.album-grid, .album-grid-empty { gap: 16px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); align-items: start; }
+.new-album-card, .album-card { border-radius: 14px; overflow: hidden; background: var(--night-panel); border: 1px solid var(--night-line); text-align: left; }
+.new-album-card { min-height: 220px; padding: 18px; display: grid; place-items: center; gap: 10px; text-align: center; border-style: dashed; background: transparent; }
+.new-album-card > span { width: 42px; height: 42px; border-radius: 999px; background: var(--night-panel); border: 1px solid var(--night-line); display: grid; place-items: center; }
+.album-card > span { aspect-ratio: 4/3; }
+.album-card b { margin-top: 10px; font-size: 13px; line-height: 1.3; }
+.album-card small { margin-top: 4px; font-size: 11px; }
+
+.album-workspace-bar { padding-inline: 20px; gap: 16px; }
+.album-workspace-bar > span { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+.creation-progress { gap: 10px; }
+.creation-progress li { font-size: 11px; }
+.album-workspace-body { gap: 0; }
+.album-canvas { padding: 24px; }
+.album-empty { gap: 18px; max-width: 560px; margin: auto; text-align: center; }
+.album-empty h1 { margin: 8px 0 6px; }
+.album-empty p { font-size: 13px; }
+.album-control-panel { background: #181815; }
+.album-panel-content { gap: 18px; padding: 20px 18px 24px; }
+.album-mode-switch { padding: 4px; gap: 4px; }
+.album-mode-switch button { height: 36px; font-size: 12px; }
+.album-help { font-size: 12px; line-height: 1.6; color: #b8b6a8; margin-bottom: 2px; }
+.visual-select > label { margin-bottom: 6px; font-size: 10px; letter-spacing: 0.08em; }
+.visual-select > button { height: 42px; font-size: 13px; }
+.prompt-field textarea { font-size: 13px; line-height: 1.6; }
+.album-details-toggle { padding: 12px 14px; }
+.direction-details { gap: 14px; padding-top: 14px; }
+
+/* Detect objects dialog */
+.workspace-dialog { max-width: 520px; width: calc(100vw - 32px); border-radius: 16px; }
+.workspace-dialog header h2 { font-size: 18px; line-height: 1.3; }
+.credit-confirm-body dl { gap: 10px; }
+
+/* 3D Studio — fix truncated card + spacing + scroll */
+.workspace-dialog-wide { width: min(1080px, calc(100vw - 24px)); max-height: min(84vh, 860px); display: flex; flex-direction: column; overflow: hidden; }
+.workspace-dialog-wide .tripo-workspace { flex: 1; min-height: 0; overflow: auto; padding: 20px 22px 22px; }
+.tripo-grid { grid-template-columns: 1.08fr 0.92fr; gap: 18px; align-items: start; min-height: auto; }
+.tripo-stage { min-height: 460px; border-radius: 14px; overflow: hidden; background: #0f0f0e; display: grid; place-items: center; }
+.tripo-stage img { width: 100%; height: 100%; object-fit: cover; }
+.tripo-panel { padding: 18px; border-radius: 14px; background: #1b1c18; border: 1px solid var(--night-line); display: flex; flex-direction: column; gap: 14px; }
+.tripo-panel h3 { font-size: 20px; line-height: 1.15; margin: 4px 0 8px; text-wrap: balance; }
+.tripo-panel > p { font-size: 13px; line-height: 1.6; }
+.tripo-steps { gap: 10px; margin: 4px 0; }
+.tripo-steps li { font-size: 13px; }
+.tripo-actions { display: grid; gap: 10px; margin-top: 8px; }
+.tripo-actions button, .tripo-actions a { min-height: 44px; font-size: 13px; font-weight: 600; }
+.tripo-expiry-note { font-size: 11px; line-height: 1.5; margin-top: 6px; }
+@media (max-width: 860px) {
+  .workspace-dialog-wide { width: calc(100vw - 16px); max-height: 90vh; }
+  .tripo-grid { grid-template-columns: 1fr; }
+  .tripo-stage { min-height: 360px; }
+}
+@media (max-width: 760px) {
+  .clean-projects { padding: 28px 18px 80px; }
+  .album-grid, .album-grid-empty { grid-template-columns: 1fr 1fr; gap: 12px; }
+}
+@media (max-width: 480px) {
+  .album-grid, .album-grid-empty { grid-template-columns: 1fr; }
+  .clean-projects .project-title-row h1 { font-size: 34px; }
+}
