@@ -269,3 +269,11 @@ export const cleanupExpiredCachesInternal = internalMutation({
     return cleanupCaches(ctx, limit);
   },
 });
+
+export const cleanupOrphanAssetsInternal = internalMutation({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, { limit }) => {
+    const { cleanupOrphanAssets } = await import("./cacheCleanup");
+    return cleanupOrphanAssets(ctx, limit);
+  },
+});

@@ -11,5 +11,11 @@ crons.daily(
   internal.jobs.cleanupExpiredCachesInternal,
   { limit: 200 },
 );
+crons.daily(
+  "cleanup orphan assets",
+  { hourUTC: 4, minuteUTC: 0 },
+  internal.jobs.cleanupOrphanAssetsInternal,
+  { limit: 100 },
+);
 
 export default crons;
