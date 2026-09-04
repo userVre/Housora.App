@@ -32,7 +32,13 @@ export const save = mutation({
     let roomId = existing?.roomId;
     const now = Date.now();
     if (!projectId || !roomId) {
-      const clientId = await ctx.db.insert("housoraClients", { ownerId, name: "Personal project", createdAt: now });
+      let clientId: string | null = null;
+      const existingClient = await ctx.db.query("housoraClients").withIndex("by_owner_name", (q) => q.eq("ownerId", ownerId).eq("name", "Personal project")).unique();
+      if (existingClient) {
+        clientId = existingClient._id as unknown as string;
+      } else {
+        clientId = await ctx.db.insert("housoraClients", { ownerId, name: "Personal project", createdAt: now }) as unknown as string;
+      }
       projectId = await ctx.db.insert("housoraProjects", { ownerId, clientId, name: args.title, status: "active", createdAt: now, updatedAt: now });
       await ctx.db.insert("projectMembers", { projectId, userId: ownerId, role: "owner", createdAt: now });
       roomId = await ctx.db.insert("housoraRooms", { ownerId, projectId, name: args.title, type: args.mode, createdAt: now });

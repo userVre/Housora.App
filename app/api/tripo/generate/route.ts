@@ -3,6 +3,8 @@ import { auth } from "@clerk/nextjs/server";
 import { consumeCredits, refundCredits } from "../../../../lib/credits";
 import { createTripoTrackingToken } from "../../../../lib/tripo-tracking";
 import { AI_COSTS } from "../../../../lib/ai-costs";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "../../../../convex/_generated/api";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -44,7 +46,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Use a JPG, PNG or WEBP image under 10 MB." }, { status: 400 });
     }
     const reserved = await consumeCredits(userId, AI_COSTS.model3d, "Textured 3D model and AR preview", `3d:${requestId}`);
-    if (reserved.duplicate) return NextResponse.json({ error: "This model was already submitted. Check the existing task before trying again." }, { status: 409 });
+    if (reserved.duplicate) {
+      // If Tripo already accepted the task but the initial response was interrupted, recover it without charging again
+      try {
+        const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONVEX_URL;
+        if (convexUrl) {
+          const client = new ConvexHttpClient(convexUrl);
+          const existing: any = await client.query(api.tripoRequests.getByRequestServer, { ownerId: userId, requestId: requestId as string });
+          if (existing?.taskId) {
+            return NextResponse.json({
+              taskId: existing.taskId,
+              trackingToken: createTripoTrackingToken({ taskId: existing.taskId, ownerId: userId, usageEventId: existing.usageEventId }),
+              recovered: true,
+            });
+          }
+        }
+      } catch {}
+      return NextResponse.json({ error: "This model was already submitted. Check Saved models or Recent tasks before trying again. No second charge was made." }, { status: 409 });
+    }
     usage = reserved;
 
     const uploadBody = new FormData();
@@ -90,6 +109,16 @@ export async function POST(request: Request) {
         { error: task?.message || "Tripo could not start the 3D model." },
         { status: taskResponse.ok ? 502 : taskResponse.status },
       );
+    }
+    // Persist mapping before returning so interrupted responses can be recovered
+    try {
+      const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONVEX_URL;
+      if (convexUrl) {
+        const client = new ConvexHttpClient(convexUrl);
+        await client.mutation(api.tripoRequests.saveServer, { ownerId: userId, requestId: requestId as string, taskId, usageEventId: usage.eventId });
+      }
+    } catch (e) {
+      console.warn("tripoRequests save failed", e);
     }
     return NextResponse.json({
       taskId,

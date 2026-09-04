@@ -61,8 +61,12 @@ export const execute = internalAction({
 export const expire = internalAction({
   args: identity,
   handler: async (ctx, args) => {
-    await ctx.runMutation(internal.jobs.failInternal, { requestId: args.requestId, error: "This task timed out. No automatic paid retry was submitted." });
     const job = await ctx.runQuery(api.jobs.getServer, { serverKey: process.env.WHOP_WEBHOOK_SECRET!, ownerId: args.ownerId, requestId: args.requestId });
-    if (job?.status === "failed") await ctx.runMutation(api.credits.refundUsageEventServer, { serverKey: process.env.WHOP_WEBHOOK_SECRET!, ownerId: args.ownerId, usageEventId: args.usageEventId, description: "Background task failed or timed out" });
+    if (!job || job.status === "success") return;
+    if (job.status !== "failed") {
+      await ctx.runMutation(internal.jobs.failInternal, { requestId: args.requestId, error: "This task timed out. No automatic paid retry was submitted." });
+    }
+    const updated = await ctx.runQuery(api.jobs.getServer, { serverKey: process.env.WHOP_WEBHOOK_SECRET!, ownerId: args.ownerId, requestId: args.requestId });
+    if (updated?.status === "failed") await ctx.runMutation(api.credits.refundUsageEventServer, { serverKey: process.env.WHOP_WEBHOOK_SECRET!, ownerId: args.ownerId, usageEventId: args.usageEventId, description: "Background task failed or timed out" });
   },
 });

@@ -34,10 +34,23 @@ export const list = query({
 export const undo = mutation({
   args: { roomId: v.string(), projectId: v.string() },
   handler: async (ctx, { roomId, projectId }) => {
-    await requireProjectAccess(ctx, projectId, ["owner", "designer", "collaborator"]);
+    const { ownerId } = await requireProjectAccess(ctx, projectId, ["owner", "designer", "collaborator"]);
     const rows = await ctx.db.query("roomVersions").withIndex("by_room", (q) => q.eq("roomId", roomId)).collect();
     const filtered = rows.filter((r) => (r as any).projectId === projectId).sort((a, b) => b.createdAt - a.createdAt);
     if (filtered.length < 2) return null;
-    return filtered[1];
+    const previous = filtered[1];
+    // Create a new version that reverts to previous state - preserves history instead of deleting
+    const newVersionId = await ctx.db.insert("roomVersions", {
+      ownerId,
+      projectId,
+      roomId,
+      image: previous.image,
+      prompt: previous.prompt,
+      mode: previous.mode,
+      parentVersionId: filtered[0]._id,
+      label: "undo",
+      createdAt: Date.now(),
+    });
+    return await ctx.db.get(newVersionId);
   },
 });

@@ -304,4 +304,14 @@ export default defineSchema({
     .index("by_project", ["projectId"])
     .index("by_owner", ["ownerId"])
     .index("by_job", ["cubiCasaJobId"]),
+  // 3D generation request deduplication - prevents second paid task if response interrupted
+  tripoRequests: defineTable({
+    ownerId: v.string(),
+    requestId: v.string(),
+    taskId: v.string(),
+    usageEventId: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_owner_request", ["ownerId", "requestId"])
+    .index("by_task", ["taskId"]),
 });

@@ -122,7 +122,7 @@ export const saveGenerationCacheServer = mutation({
 // --- Async jobs ---
 
 export const enqueueServer = mutation({
-  args: { serverKey: v.string(), ownerId: v.string(), type: v.union(v.literal("segment"), v.literal("edit")), requestId: v.string(), inputHash: v.string(), image: v.string(), prompt: v.optional(v.string()), mode: v.optional(v.string()), mask: v.optional(v.string()), aspectRatio: v.optional(v.string()) },
+  args: { serverKey: v.string(), ownerId: v.string(), type: v.union(v.literal("segment"), v.literal("edit")), requestId: v.string(), inputHash: v.string(), image: v.string(), prompt: v.optional(v.string()), mode: v.optional(v.string()), mask: v.optional(v.string()), aspectRatio: v.optional(v.string()), projectId: v.optional(v.string()), roomId: v.optional(v.string()) },
   handler: async (ctx, args) => {
     requireServerKey(args.serverKey);
     const requestId = `${args.type}:${args.ownerId}:${args.requestId}`;
@@ -132,7 +132,7 @@ export const enqueueServer = mutation({
     const usageEventId = `usage:${args.ownerId}:${args.type}:${args.requestId}`;
     const usage = await consumeInTransaction(ctx, { ownerId: args.ownerId, eventId: usageEventId, amount: args.type === "segment" ? 1 : 4, description: args.type === "segment" ? "Object detection" : "Image edit" });
     if (usage.duplicate) throw new Error("This request was already processed.");
-    await ctx.db.insert("aiJobs", { ownerId: args.ownerId, type: args.type, status: "queued", requestId, inputHash: args.inputHash, inputImage: args.image, mode: args.mode, progress: 0, usageEventId, createdAt: Date.now(), updatedAt: Date.now() });
+    await ctx.db.insert("aiJobs", { ownerId: args.ownerId, type: args.type, status: "queued", requestId, inputHash: args.inputHash, inputImage: args.image, mode: args.mode, progress: 0, usageEventId, projectId: args.projectId, roomId: args.roomId, createdAt: Date.now(), updatedAt: Date.now() });
     await ctx.scheduler.runAfter(0, internal.durableAi.execute, { requestId, ownerId: args.ownerId, type: args.type, image: args.image, mask: args.mask, prompt: args.prompt, mode: args.mode, aspectRatio: args.aspectRatio, usageEventId, inputHash: args.inputHash });
     await ctx.scheduler.runAfter(10 * 60_000, internal.durableAi.expire, { requestId, ownerId: args.ownerId, usageEventId });
     return { requestId, status: "queued" };

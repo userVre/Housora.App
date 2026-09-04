@@ -77,6 +77,8 @@ export async function POST(request: Request) {
       requestId?: string;
       confirmed?: boolean;
       mask?: string;
+      projectId?: string;
+      roomId?: string;
     };
     const image = body.image?.trim();
     const prompt = body.prompt?.trim();
@@ -108,7 +110,7 @@ export async function POST(request: Request) {
     }
 
     if (process.env.DURABLE_AI_ENABLED === "true") {
-      const job = await enqueueAi({ ownerId: userId, type: "edit", requestId: body.requestId, inputHash: genHash, image, mask, prompt, aspectRatio });
+      const job = await enqueueAi({ ownerId: userId, type: "edit", requestId: body.requestId, inputHash: genHash, image, mask, prompt, aspectRatio, projectId: body.projectId, roomId: body.roomId });
       return NextResponse.json(job, { status: 202 });
     }
     usage = await consumeCredits(userId, AI_COSTS.imageEdit, "AI image generation or edit", `edit:${body.requestId}`);

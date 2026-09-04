@@ -42,7 +42,6 @@ async function createFreeAccount(ctx: any, ownerId: string, now: number) {
 
 async function refreshSubscription(ctx: any, account: any, now: number) {
   if (
-    !account.plan.endsWith("_yearly") ||
     account.status !== "active" ||
     !account.monthlyAllowance ||
     !account.periodEndsAt ||

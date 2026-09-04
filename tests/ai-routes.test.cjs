@@ -23,6 +23,8 @@ function route(file, { signedIn = true, duplicate = false, noCredits = false } =
     : name.endsWith('/composite-object-edit') ? { compositeObjectEdit: async () => Buffer.from('test') }
     : name.endsWith('/image-storage') ? { storeProjectImage: async () => 'https://storage.example.com/image.png' }
     : name.endsWith('/durable-ai') ? { enqueueAi: async () => ({ requestId: 'job-1', status: 'queued' }) }
+    : name.includes('convex/_generated/api') ? { api: { tripoRequests: { getByRequestServer: {}, saveServer: {} } } }
+    : name.includes('convex/browser') ? { ConvexHttpClient: class { async query() { return null; } async mutation() { return null; } } }
     : require(name);
   const responses = [];
   const fetch = async (...args) => { calls.fetch.push(args); if (!responses.length) throw Error('Unexpected provider request'); return responses.shift(); };

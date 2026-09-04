@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     }
 
     if (auto && process.env.DURABLE_AI_ENABLED === "true") {
-      const job = await enqueueAi({ ownerId: userId, type: "segment", requestId: body.requestId, inputHash: imageHash, image, mode: modeNorm });
+      const job = await enqueueAi({ ownerId: userId, type: "segment", requestId: body.requestId, inputHash: imageHash, image, mode: modeNorm, projectId: body.projectId as string | undefined, roomId: body.roomId as string | undefined });
       return NextResponse.json(job, { status: 202 });
     }
     const reserved = await consumeCredits(userId, AI_COSTS.detection, "Object detection with SAM 3", `detect:${body.requestId}`);

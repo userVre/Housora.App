@@ -14,7 +14,14 @@ export async function cleanupCaches(ctx: MutationCtx, limit = 200) {
   };
   await remove(await ctx.db.query("segmentationCache").withIndex("by_expires", q => q.lt("expiresAt", now)).take(max));
   if (deleted < max) await remove(await ctx.db.query("generationCache").withIndex("by_expires", q => q.lt("expiresAt", now)).take(max - deleted));
-  if (deleted < max) await remove(await ctx.db.query("segmentationCache").withIndex("by_owner_hash_mode", q => q.eq("ownerId", undefined)).take(max - deleted));
-  if (deleted < max) await remove(await ctx.db.query("generationCache").withIndex("by_owner_hash", q => q.eq("ownerId", undefined)).take(max - deleted));
+  // Legacy global caches without ownerId - bounded scan after expired cleanup
+  if (deleted < max) {
+    const legacySeg = (await ctx.db.query("segmentationCache").collect()).filter((r: any) => r.ownerId === undefined).slice(0, max - deleted);
+    await remove(legacySeg);
+  }
+  if (deleted < max) {
+    const legacyGen = (await ctx.db.query("generationCache").collect()).filter((r: any) => r.ownerId === undefined).slice(0, max - deleted);
+    await remove(legacyGen);
+  }
   return { deleted };
 }

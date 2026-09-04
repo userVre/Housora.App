@@ -831,8 +831,13 @@ export function HousoraApp({
             onNew={startBlankProject}
             onOpen={openSavedProject}
           />
-          <RecentAiTasks onOpen={(image, objects, taskMode) => {
-            setProjectDraft({ id: safeUUID(), title: "Recovered result", image, detectedObjects: objects, mode: taskMode === "Exterior" || taskMode === "Garden" ? taskMode : "Interior" });
+          <RecentAiTasks onOpen={(image, objects, taskMode, projectId, roomId) => {
+            // Attach recovered result to its original project/room if available, else new draft
+            if (projectId && roomId) {
+              setProjectDraft({ id: safeUUID(), projectId, roomId, title: "Recovered result", image, detectedObjects: objects, mode: taskMode === "Exterior" || taskMode === "Garden" ? taskMode : "Interior" });
+            } else {
+              setProjectDraft({ id: safeUUID(), title: "Recovered result", image, detectedObjects: objects, mode: taskMode === "Exterior" || taskMode === "Garden" ? taskMode : "Interior" });
+            }
             navigate("album");
           }} />
           </>
@@ -2047,6 +2052,8 @@ function AlbumWorkspace({
           requestId: safeUUID(),
           confirmed: true,
           aspectRatio: "auto",
+          projectId: versionContext?.projectId,
+          roomId: versionContext?.roomId,
         }),
       });
       const result = await readAiResponse(response);
@@ -4241,20 +4248,6 @@ function LegacyThreeDWorkspace() {
 }
 
 function ExportWorkspace() {
-  const [exporting, setExporting] = useState(false);
-  const [message, setMessage] = useState("");
-  const createPdf = async () => {
-    setExporting(true);
-    setMessage("");
-    try {
-      await downloadDesignPackage();
-      setMessage("Your two-page design package has downloaded.");
-    } catch {
-      setMessage("The PDF could not be created. Please try again.");
-    } finally {
-      setExporting(false);
-    }
-  };
   return (
     <section className="export-workspace">
       <div className="export-copy">
@@ -4264,17 +4257,14 @@ function ExportWorkspace() {
           Export the concept, selected materials, layout notes and reference
           prompt in one concise design package.
         </p>
-        <button
-          className="primary-action"
-          onClick={createPdf}
-          disabled={exporting}
-        >
+        <div className="service-notice" role="status" style={{ marginBottom: 12 }}>
+          <b>PDF export not available yet</b>
+          <p>We are finalizing verified exports. The current design can be downloaded as an image from the editor. No credits were charged.</p>
+        </div>
+        <button className="primary-action" disabled aria-disabled="true" title="PDF export is not release-ready">
           <FilePdf />
-          {exporting ? "Building PDF…" : "Download design package"}
+          Download design package — coming soon
         </button>
-        <p className="export-message" role="status" aria-live="polite">
-          {message}
-        </p>
       </div>
       <div className="export-preview">
         <span>ISMAIL STUDIO</span>

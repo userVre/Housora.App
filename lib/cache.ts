@@ -51,7 +51,10 @@ export async function getCachedSegmentation(imageHash: string, mode: string, own
   }
 }
 export async function saveCachedSegmentation(imageHash: string, mode: string, objects: unknown, width?: number, height?: number, ownerId?: string) {
-  const oid = ownerId || "unknown";
+  if (!ownerId) {
+    console.warn("saveCachedSegmentation skipped: missing ownerId");
+    return;
+  }
   try {
     const payload = JSON.stringify(objects);
     if (payload.length > 400_000) {
@@ -63,9 +66,8 @@ export async function saveCachedSegmentation(imageHash: string, mode: string, ob
       const payloadUrl = await client.mutation(api.models.cachePayloadUrlServer, { serverKey: serverKey(), storageId });
       objects = { payloadUrl, storageId };
     }
-    await convex().mutation(api.jobs.saveSegmentationCacheServer, { serverKey: serverKey(), ownerId: oid, imageHash, mode, objects, width, height });
+    await convex().mutation(api.jobs.saveSegmentationCacheServer, { serverKey: serverKey(), ownerId, imageHash, mode, objects, width, height });
   } catch (e) {
-    // surface failure for debugging, but don't throw to caller
     console.warn("saveCachedSegmentation failed", e);
   }
 }
@@ -84,9 +86,12 @@ export async function getCachedGeneration(inputHash: string, ownerId?: string) {
   }
 }
 export async function saveCachedGeneration(inputHash: string, resultImage: string, prompt: string, ownerId?: string, modelVersion?: string, aspectRatio?: string) {
-  const oid = ownerId || "unknown";
+  if (!ownerId) {
+    console.warn("saveCachedGeneration skipped: missing ownerId");
+    return;
+  }
   try {
-    await convex().mutation(api.jobs.saveGenerationCacheServer, { serverKey: serverKey(), ownerId: oid, inputHash, resultImage, prompt, modelVersion, aspectRatio });
+    await convex().mutation(api.jobs.saveGenerationCacheServer, { serverKey: serverKey(), ownerId, inputHash, resultImage, prompt, modelVersion, aspectRatio });
   } catch (e) {
     console.warn("saveCachedGeneration failed", e);
   }
