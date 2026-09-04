@@ -30,7 +30,7 @@ export const resolveComment = mutation({
     const o = await owner(ctx);
     const c = await ctx.db.get(commentId);
     if (!c) throw new Error("Comment not found");
-    await requireProjectAccess(ctx, (c as any).projectId, ["owner", "designer", "collaborator"]);
+    await requireProjectAccess(ctx, c.projectId);
     // Only owner/designer or author can resolve
     if ((c as any).authorId !== o.id) {
       const access = await requireProjectAccess(ctx, (c as any).projectId);
@@ -44,6 +44,9 @@ export const setApproval = mutation({
   args: { versionId: v.string(), projectId: v.string(), status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected"), v.literal("changes_requested")), comment: v.optional(v.string()) },
   handler: async (ctx, a) => {
     await requireProjectAccess(ctx, a.projectId, ["owner", "designer", "client_viewer", "collaborator"]);
+    const versionId = ctx.db.normalizeId("roomVersions", a.versionId);
+    const version = versionId ? await ctx.db.get(versionId) : null;
+    if (!version || version.projectId !== a.projectId) throw new Error("Version does not belong to this project.");
     const o = await owner(ctx);
     const existing = await ctx.db.query("approvals").withIndex("by_version", (q) => q.eq("versionId", a.versionId)).first();
     if (existing) await ctx.db.patch(existing._id, { ...a, actorId: o.id, createdAt: Date.now() });
@@ -77,7 +80,7 @@ export const getShareLink = query({
     const row = await ctx.db.query("shareLinks").withIndex("by_token", (q) => q.eq("token", token)).unique();
     if (!row) return null;
     if ((row as any).revokedAt) return null;
-    if ((row as any).expiresAt && (row as any).expiresAt < Date.now()) return null;
+    if (row.expiresAt !== undefined && row.expiresAt <= Date.now()) return null;
     return row;
   },
 });
@@ -89,5 +92,23 @@ export const revokeShareLink = mutation({
     if (!row) throw new Error("Link not found");
     await requireProjectAccess(ctx, (row as any).projectId, ["owner", "designer"]);
     await ctx.db.patch(row._id, { revokedAt: Date.now() } as any);
+  },
+});
+
+// Tokens grant read-only access to project images, never member or billing data.
+export const getSharedProject = query({
+  args: { token: v.string() },
+  handler: async (ctx, { token }) => {
+    const link = await ctx.db.query("shareLinks").withIndex("by_token", q => q.eq("token", token)).unique();
+    if (!link || link.revokedAt !== undefined || (link.expiresAt !== undefined && link.expiresAt <= Date.now())) return null;
+    const id = ctx.db.normalizeId("housoraProjects", link.projectId);
+    const project = id ? await ctx.db.get(id) : null;
+    if (!project) return null;
+    const rooms = await ctx.db.query("housoraRooms").withIndex("by_project", q => q.eq("projectId", link.projectId)).take(50);
+    const previews = await Promise.all(rooms.map(async room => {
+      const version = await ctx.db.query("roomVersions").withIndex("by_room", q => q.eq("roomId", room._id)).order("desc").first();
+      return { name: room.name, image: version?.projectId === link.projectId ? version.image : null };
+    }));
+    return { name: project.name, rooms: previews };
   },
 });

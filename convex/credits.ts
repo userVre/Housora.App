@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import type { MutationCtx } from "./_generated/server";
 
 const DAY = 24 * 60 * 60 * 1000;
 const MONTH = 30 * DAY;
@@ -142,40 +143,7 @@ export const consumeServer = mutation({
   },
   handler: async (ctx, args) => {
     requireServerKey(args.serverKey);
-    if (!Number.isInteger(args.amount) || args.amount <= 0) throw new Error("Invalid credit amount.");
-    const duplicate = await ctx.db.query("creditTransactions").withIndex("by_event", (q) => q.eq("eventId", args.eventId)).unique();
-    if (duplicate) return { subscriptionUsed: 0, purchasedUsed: 0, duplicate: true };
-
-    const now = Date.now();
-    let account = await getAccount(ctx, args.ownerId);
-    if (!account) account = await createFreeAccount(ctx, args.ownerId, now);
-    account = await refreshSubscription(ctx, account, now);
-    const grants = (await ctx.db.query("creditGrants").withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId)).collect())
-      .filter((grant) => grant.status === "active" && grant.expiresAt > now && grant.remaining > 0)
-      .sort((a, b) => a.expiresAt - b.expiresAt);
-    const purchased = grants.reduce((sum, grant) => sum + grant.remaining, 0);
-    if (account.subscriptionCredits + purchased < args.amount) throw new Error("Not enough credits. Add credits or upgrade your plan.");
-
-    const subscriptionUsed = Math.min(account.subscriptionCredits, args.amount);
-    let purchasedUsed = args.amount - subscriptionUsed;
-    await ctx.db.patch(account._id, { subscriptionCredits: account.subscriptionCredits - subscriptionUsed, updatedAt: now });
-    let remainingToUse = purchasedUsed;
-    for (const grant of grants) {
-      if (!remainingToUse) break;
-      const used = Math.min(grant.remaining, remainingToUse);
-      await ctx.db.patch(grant._id, { remaining: grant.remaining - used });
-      remainingToUse -= used;
-    }
-    await ctx.db.insert("creditTransactions", {
-      ownerId: args.ownerId,
-      eventId: args.eventId,
-      type: "usage",
-      description: args.description,
-      subscriptionDelta: -subscriptionUsed,
-      purchasedDelta: -purchasedUsed,
-      createdAt: now,
-    });
-    return { subscriptionUsed, purchasedUsed, duplicate: false };
+    return consumeInTransaction(ctx, args);
   },
 });
 
@@ -261,11 +229,11 @@ export const fulfillWhopServer = mutation({
     let account = ownerId ? await getAccount(ctx, ownerId) : null;
     if (!account && args.membershipId) {
       account = await ctx.db.query("creditAccounts").withIndex("by_membership", (q) => q.eq("whopMembershipId", args.membershipId)).unique();
-      ownerId = account?.ownerId;
+      ownerId = account?.ownerId ?? ownerId;
     }
     if (!account && args.paymentId) {
       account = await ctx.db.query("creditAccounts").withIndex("by_payment", (q) => q.eq("lastPaymentId", args.paymentId)).unique();
-      ownerId = account?.ownerId;
+      ownerId = account?.ownerId ?? ownerId;
     }
     if (!ownerId && args.paymentId) {
       const grant = await ctx.db.query("creditGrants").withIndex("by_payment", (q) => q.eq("paymentId", args.paymentId)).first();
@@ -291,6 +259,12 @@ export const fulfillWhopServer = mutation({
 
     if (args.eventType !== "payment.succeeded") return { duplicate: false };
     if (!args.offerKey) return { duplicate: false, ignored: true };
+    // A provider can redeliver the same payment with a different webhook ID.
+    // Treat the payment identity as idempotent as well as the delivery identity.
+    if (args.paymentId) {
+      const priorGrant = await ctx.db.query("creditGrants").withIndex("by_payment", q => q.eq("paymentId", args.paymentId)).first();
+      if (priorGrant || account.lastPaymentId === args.paymentId) return { duplicate: true };
+    }
     const subscription: Record<string, { allowance: number; accessDays: number }> = {
       creator_monthly: { allowance: 120, accessDays: 35 },
       creator_yearly: { allowance: 120, accessDays: 370 },
@@ -323,3 +297,41 @@ export const fulfillWhopServer = mutation({
     return { duplicate: false };
   },
 });
+
+export async function consumeInTransaction(ctx: MutationCtx, args: { ownerId: string; eventId: string; amount: number; description: string }) {
+  if (!Number.isInteger(args.amount) || args.amount <= 0) throw new Error("Invalid credit amount.");
+  const duplicate = await ctx.db.query("creditTransactions").withIndex("by_event", (q) => q.eq("eventId", args.eventId)).unique();
+  if (duplicate) return { subscriptionUsed: 0, purchasedUsed: 0, duplicate: true };
+
+  const now = Date.now();
+  let account = await getAccount(ctx, args.ownerId);
+  if (!account) account = await createFreeAccount(ctx, args.ownerId, now);
+  account = await refreshSubscription(ctx, account, now);
+  const grants = (await ctx.db.query("creditGrants").withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId)).collect())
+    .filter((grant) => grant.status === "active" && grant.expiresAt > now && grant.remaining > 0)
+    .sort((a, b) => a.expiresAt - b.expiresAt);
+  const purchased = grants.reduce((sum, grant) => sum + grant.remaining, 0);
+  const availableSubscription = account.status === "active" && (!account.accessEndsAt || account.accessEndsAt > now) ? account.subscriptionCredits : 0;
+  if (availableSubscription + purchased < args.amount) throw new Error("Not enough credits. Add credits or upgrade your plan.");
+
+  const subscriptionUsed = Math.min(availableSubscription, args.amount);
+  let purchasedUsed = args.amount - subscriptionUsed;
+  await ctx.db.patch(account._id, { subscriptionCredits: account.subscriptionCredits - subscriptionUsed, updatedAt: now });
+  let remainingToUse = purchasedUsed;
+  for (const grant of grants) {
+    if (!remainingToUse) break;
+    const used = Math.min(grant.remaining, remainingToUse);
+    await ctx.db.patch(grant._id, { remaining: grant.remaining - used });
+    remainingToUse -= used;
+  }
+  await ctx.db.insert("creditTransactions", {
+    ownerId: args.ownerId,
+    eventId: args.eventId,
+    type: "usage",
+    description: args.description,
+    subscriptionDelta: -subscriptionUsed,
+    purchasedDelta: -purchasedUsed,
+    createdAt: now,
+  });
+  return { subscriptionUsed, purchasedUsed, duplicate: false };
+}

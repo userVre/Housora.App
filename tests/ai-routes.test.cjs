@@ -17,7 +17,12 @@ function route(file, { signedIn = true, duplicate = false, noCredits = false } =
     : name === '@clerk/nextjs/server' ? { auth: async () => ({ userId: signedIn ? 'user-test' : null }) }
     : name.endsWith('/credits') ? credits
     : name.endsWith('/ai-costs') ? { AI_COSTS: { detection: 1, imageEdit: 4, model3d: 12 } }
+    : name.endsWith('/cache') ? { hashImage: () => 'image-hash', hashGeneration: () => 'generation-hash', getCachedSegmentation: async () => null, saveCachedSegmentation: async () => {}, getCachedGeneration: async () => null, saveCachedGeneration: async () => {} }
     : name.endsWith('/tripo-tracking') ? { createTripoTrackingToken: () => 'signed-token', verifyTripoTrackingToken: () => ({ usageEventId: 'usage:1' }) }
+    : name.endsWith('/model-storage') ? { persistModel: async () => 'https://storage.example.com/model.glb' }
+    : name.endsWith('/composite-object-edit') ? { compositeObjectEdit: async () => Buffer.from('test') }
+    : name.endsWith('/image-storage') ? { storeProjectImage: async () => 'https://storage.example.com/image.png' }
+    : name.endsWith('/durable-ai') ? { enqueueAi: async () => ({ requestId: 'job-1', status: 'queued' }) }
     : require(name);
   const responses = [];
   const fetch = async (...args) => { calls.fetch.push(args); if (!responses.length) throw Error('Unexpected provider request'); return responses.shift(); };
@@ -32,6 +37,17 @@ process.env.MODAL_SAM_ENDPOINT = 'https://test.modal.run';
 process.env.MODAL_PROXY_KEY = 'test-key';
 process.env.MODAL_PROXY_SECRET = 'test-secret';
 process.env.TRIPO_API_KEY = 'test-key';
+process.env.GROK_IMAGE_KEY = 'test-key';
+
+test('Grok preserves URL reference images through the edit endpoint', async () => {
+  const r = route('app/api/ai/edit/route.ts');
+  r.responses.push(json({ data: [{ url: 'https://example.com/result.png' }] }));
+  const response = await r.POST(new Request('http://localhost/api/ai/edit', { method: 'POST', body: JSON.stringify({ image: 'https://example.com/source.png', prompt: 'Change the wall', requestId, confirmed: true }) }));
+  assert.equal(response.status, 200);
+  assert.equal(r.calls.fetch[0][0], 'https://api.x.ai/v1/images/edits');
+  assert.equal(JSON.parse(r.calls.fetch[0][1].body).image.url, 'https://example.com/source.png');
+  assert.equal(r.calls.consume.length, 1);
+});
 
 test('detection requires auth and explicit confirmation without charging', async () => {
   for (const options of [{ signedIn: false }, {}]) {
@@ -80,4 +96,14 @@ test('3D uploads to multipart endpoint, charges 12 and returns secure tracking',
 test('Tripo application error in HTTP 200 is an error and refunds', async () => {
   const r = route('app/api/tripo/generate/route.ts'); r.responses.push(json({ code: 100, message: 'Invalid image' }));
   assert.equal((await r.POST(model())).status, 502); assert.equal(r.calls.refund.length, 1);
+});
+
+test('completed 3D task returns persisted model URL', async () => {
+  const r = route('app/api/tripo/tasks/[taskId]/route.ts');
+  r.responses.push(json({ code: 0, data: { status: 'success', output: { pbr_model: 'https://provider.example/model.glb' } } }));
+  const response = await r.GET(new Request('http://localhost/api/tripo/tasks/task-1234?trackingToken=test'), { params: Promise.resolve({ taskId: 'task-1234' }) });
+  const body = await response.json();
+  assert.equal(body.persisted, true);
+  assert.equal(body.modelUrl, 'https://storage.example.com/model.glb');
+  assert.equal(r.calls.refund.length, 0);
 });

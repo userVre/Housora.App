@@ -6,21 +6,23 @@ import { Cube, MagnifyingGlass, ArrowRight, UploadSimple } from "@phosphor-icons
 import { AI_COSTS, type DetectedObject } from "../lib/ai-costs";
 import { prepareImage } from "../lib/prepare-image";
 import { smoothMask } from "../lib/mask-postprocess";
+import { readAiResponse } from "../lib/await-ai-response";
 import { CreditConfirmation } from "./credit-confirmation";
 
-export function DetectedObjects({ hasImage, mode, image, onUpload, onImageChange, active = true, onSelect, onCreate3d }: {
+export function DetectedObjects({ hasImage, mode, image, onUpload, onImageChange, active = true, onSelect, onCreate3d, initialObjects }: {
+  initialObjects?: DetectedObject[];
   hasImage: boolean; mode: "Interior" | "Exterior" | "Garden"; image: string;
-  onUpload: () => void; onImageChange?: (image: string) => void; active?: boolean;
+  onUpload: () => void; onImageChange?: (image: string, storageWarning?: string) => void; active?: boolean;
   onSelect?: (object: DetectedObject | null) => void;
   onCreate3d?: (image: string) => void;
 }) {
-  const [objects, setObjects] = useState<DetectedObject[]>([]);
+  const [objects, setObjects] = useState<DetectedObject[]>(initialObjects || []);
   const [selected, setSelected] = useState<DetectedObject | null>(null);
   const [instruction, setInstruction] = useState("");
   const [status, setStatus] = useState<"idle" | "detecting" | "ready" | "editing" | "error">("idle");
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState<"detect" | "edit" | null>(null);
-  const prompted = useRef(false);
+  const prompted = useRef(Boolean(initialObjects));
   const inFlight = useRef(false);
   const alive = useRef(true);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
@@ -44,7 +46,7 @@ export function DetectedObjects({ hasImage, mode, image, onUpload, onImageChange
         body: JSON.stringify({ image: pixels, autoDetect: true, mode, confirmed: true, requestId: crypto.randomUUID() }),
         signal: AbortSignal.timeout(295_000),
       });
-      const result = await response.json();
+      const result = await readAiResponse(response);
       if (!response.ok) throw new Error(result.error || "Detection failed. Please try again.");
       if (!Array.isArray(result.objects)) throw new Error("Detection returned an invalid result. Contact support.");
       if (!alive.current) return;
@@ -89,16 +91,20 @@ export function DetectedObjects({ hasImage, mode, image, onUpload, onImageChange
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           image: pixels,
+          mask: selected.mask,
           prompt: `Edit only the ${selected.label} inside the normalized bounding box ${JSON.stringify(selected.box)}: ${instruction.trim()}. Preserve other objects, room architecture, perspective and lighting.`,
           requestId: crypto.randomUUID(),
           confirmed: true,
         }),
         signal: AbortSignal.timeout(295_000),
       });
-      const result = await response.json();
+      const result = await readAiResponse(response);
       if (!response.ok || !result.image) throw new Error(result.error || "Image editing failed.");
       if (!alive.current) return;
-      onImageChange?.(result.image);
+      onImageChange?.(result.image, result.storageWarning);
+      setSelected(null);
+      setObjects([]);
+      onSelect?.(null);
       setInstruction("");
       setStatus("ready");
     } catch (reason) {

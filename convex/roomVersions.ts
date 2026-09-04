@@ -12,6 +12,14 @@ export const create = mutation({
   args: { projectId: v.string(), roomId: v.string(), image: v.string(), prompt: v.optional(v.string()), mode: v.optional(v.string()), parentVersionId: v.optional(v.string()), label: v.optional(v.string()) },
   handler: async (ctx, a) => {
     const { ownerId } = await requireProjectAccess(ctx, a.projectId, ["owner", "designer", "collaborator"]);
+    const roomId = ctx.db.normalizeId("housoraRooms", a.roomId);
+    const room = roomId ? await ctx.db.get(roomId) : null;
+    if (!room || room.projectId !== a.projectId) throw new Error("Room does not belong to this project.");
+    if (a.parentVersionId) {
+      const parentId = ctx.db.normalizeId("roomVersions", a.parentVersionId);
+      const parent = parentId ? await ctx.db.get(parentId) : null;
+      if (!parent || parent.projectId !== a.projectId || parent.roomId !== a.roomId) throw new Error("Invalid parent version.");
+    }
     return await ctx.db.insert("roomVersions", { ownerId, ...a, createdAt: Date.now() });
   },
 });

@@ -1,1 +1,36 @@
-{"name":"housora-rebuild","version":"1.0.0","private":true,"scripts":{"dev":"node node_modules/next/dist/bin/next dev","build":"node node_modules/next/dist/bin/next build","start":"node node_modules/next/dist/bin/next start"},"dependencies":{"@clerk/nextjs":"^7.8.3","@google/model-viewer":"^4.3.1","@phosphor-icons/react":"^2.1.7","@whop/sdk":"^1.0.14","convex":"^1.45.0","jspdf":"^4.2.1","next":"^15.4.6","posthog-js":"^1.422.5","react":"^19.1.1","react-dom":"^19.1.1"},"devDependencies":{"@types/node":"^22.10.0","@types/react":"^19.0.0","@types/react-dom":"^19.0.0","typescript":"^5.7.2"}}
+{
+  "name": "housora-rebuild",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node node_modules/next/dist/bin/next dev",
+    "build": "node node_modules/next/dist/bin/next build",
+    "start": "node node_modules/next/dist/bin/next start",
+    "test": "vitest run && node --test tests/ai-routes.test.cjs tests/security.test.cjs tests/security.integration.test.cjs",
+    "typecheck": "tsc --noEmit --skipLibCheck"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^7.8.3",
+    "@google/model-viewer": "^4.3.1",
+    "@phosphor-icons/react": "^2.1.7",
+    "@whop/sdk": "^1.0.14",
+    "convex": "^1.45.0",
+    "jspdf": "^4.2.1",
+    "next": "^15.4.6",
+    "posthog-js": "^1.422.5",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "sharp": "^0.35.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "convex-test": "^0.0.56",
+    "typescript": "^5.7.2",
+    "vitest": "^5.0.0"
+  },
+  "overrides": {
+    "postcss": "8.5.23"
+  }
+}

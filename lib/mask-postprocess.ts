@@ -20,18 +20,21 @@ export async function smoothMask(maskDataUrl: string, opts?: { feather?: number;
     ctx.putImageData(data, 0, 0);
   }
   // 2) feather edge via blur
-  ctx.globalCompositeOperation = "source-in";
-  (ctx as any).filter = `blur(${feather}px)`;
-  ctx.drawImage(canvas, 0, 0);
-  (ctx as any).filter = "none";
-  ctx.globalCompositeOperation = "source-over";
-  // re-threshold to binary after blur for clean alpha
+  const source = document.createElement("canvas");
+  source.width = w; source.height = h;
+  source.getContext("2d")!.drawImage(canvas, 0, 0);
+  ctx.fillStyle = "black";
+  ctx.fillRect(0, 0, w, h);
+  ctx.filter = `blur(${feather}px)`;
+  ctx.drawImage(source, 0, 0);
+  ctx.filter = "none";
+  // SAM returns an opaque grayscale mask, not an alpha-only cutout.
+  // Keep grayscale feathering; thresholding alpha would select the whole photo.
   const out = ctx.getImageData(0, 0, w, h);
   for (let i = 0; i < out.data.length; i += 4) {
-    const a = out.data[i + 3];
-    const v = a > 90 ? 255 : 0;
+    const v = out.data[i];
     out.data[i] = out.data[i + 1] = out.data[i + 2] = v;
-    out.data[i + 3] = v;
+    out.data[i + 3] = 255;
   }
   ctx.putImageData(out, 0, 0);
   return canvas.toDataURL("image/png");
@@ -45,14 +48,14 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 function toBinary(d: ImageData): Uint8Array {
   const b = new Uint8Array(d.width * d.height);
-  for (let i = 0, p = 0; i < b.length; i++, p += 4) b[i] = d.data[p + 3] > 128 ? 1 : 0;
+  for (let i = 0, p = 0; i < b.length; i++, p += 4) b[i] = d.data[p] * d.data[p + 3] / 255 > 128 ? 1 : 0;
   return b;
 }
 function fromBinary(d: ImageData, b: Uint8Array) {
   for (let i = 0, p = 0; i < b.length; i++, p += 4) {
     const v = b[i] ? 255 : 0;
     d.data[p] = d.data[p + 1] = d.data[p + 2] = v;
-    d.data[p + 3] = v ? 255 : 0;
+    d.data[p + 3] = 255;
   }
 }
 function dilate(bin: Uint8Array, w: number, h: number, r: number) {

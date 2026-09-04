@@ -2,7 +2,7 @@
 .simple-discover-tools{padding:0 0 22px;display:grid;gap:14px}
 .simple-discover-tools .inspiration-search{width:min(100%,620px);height:52px;max-width:none;border-radius:12px;background:#171815;border:1px solid #2a2a26}
 .simple-discover-tools .inspiration-search:focus-within{border-color:#4a4a44;box-shadow:0 0 0 3px rgba(184,94,52,0.12)}
-.discover-filters{scrollbar-width:thin;scroll-padding-inline:12px}
+.discover-filters{scrollbar-width:thin;scrollbar-color:#5a5b51 #171815;scroll-padding-inline:12px}
 .discover-filters::-webkit-scrollbar{height:6px}
 .copy-prompt{width:100%;height:44px;margin-top:9px;border:1px solid #5a5b51;border-radius:8px;background:#282925;color:#f1eee7;display:flex;align-items:center;justify-content:center;gap:7px;font-size:12px;font-weight:600}
 .copy-prompt:hover{background:#34352f}

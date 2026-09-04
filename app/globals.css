@@ -7528,3 +7528,12 @@ html {
 /* Fix image 400 and preload warnings: ensure fallback */
 .inspiration-card img, .saved-tile img{object-fit:cover}
 .saved-modal-image, .reference-image{position:relative;overflow:hidden}
+.recent-ai-tasks{margin:24px auto 48px;width:min(1120px,calc(100% - 48px));padding:24px;border:1px solid var(--night-border,#34362f);border-radius:16px}
+.recent-ai-tasks h2{font-size:22px;margin:0 0 8px}
+.recent-ai-tasks p,.recent-ai-tasks small{color:var(--night-muted,#b4b5ac)}
+.recent-ai-tasks ul{padding:0;list-style:none;margin:16px 0 0}
+.recent-ai-tasks li{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-top:1px solid var(--night-border,#34362f)}
+.recent-ai-tasks small{display:block;margin-top:4px}
+.recent-ai-tasks button{min-height:44px;padding:10px 16px;border-radius:8px;border:1px solid #62655a;background:#24271f;color:#f4f0e8;white-space:nowrap}
+.recent-ai-tasks button:focus-visible{outline:2px solid #d5dfc4;outline-offset:3px}
+@media(max-width:600px){.recent-ai-tasks{width:calc(100% - 24px);padding:16px}.recent-ai-tasks li{flex-wrap:wrap}}

@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { refundUsageEvent } from "../../../../../lib/credits";
 import { verifyTripoTrackingToken } from "../../../../../lib/tripo-tracking";
+import { persistModel } from "../../../../../lib/model-storage";
 
 export const runtime = "nodejs";
+export const maxDuration = 180;
 
 export async function GET(
   request: Request,
@@ -48,14 +50,22 @@ export async function GET(
       );
     }
     const task = result.data;
-    if (["failed", "cancelled", "banned", "expired", "unknown"].includes(task.status) || (task.status === "success" && !task.output?.pbr_model && !task.output?.model && !task.output?.base_model)) {
+    if (["failed", "cancelled", "banned", "expired"].includes(task.status) || (task.status === "success" && !task.output?.pbr_model && !task.output?.model && !task.output?.base_model)) {
       await refundUsageEvent(userId, tracking.usageEventId, "3D generation failed");
       return NextResponse.json({ status: "failed", error: "The model could not be generated. Your Housora credits were returned." });
+    }
+    let modelUrl = task.output?.pbr_model || task.output?.model || task.output?.base_model || null;
+    let storageWarning: string | null = null;
+    if (task.status === "success" && modelUrl) {
+      try { modelUrl = await persistModel(userId, taskId, modelUrl); }
+      catch { storageWarning = "The model is ready but could not be saved. Download it now; the provider link is temporary."; }
     }
     return NextResponse.json({
       status: task.status,
       progress: task.progress || 0,
-      modelUrl: task.output?.pbr_model || task.output?.model || task.output?.base_model || null,
+      modelUrl,
+      persisted: task.status === "success" && !storageWarning,
+      storageWarning,
       previewUrl: task.output?.rendered_image || task.output?.generated_image || null,
       error: task.error_msg || null,
     });

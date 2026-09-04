@@ -58,6 +58,8 @@ import { DetectedObjects } from "./detected-objects";
 import { CreditConfirmation, WorkspaceDialog } from "./credit-confirmation";
 import { AI_COSTS, type DetectedObject } from "../lib/ai-costs";
 import { prepareImage } from "../lib/prepare-image";
+import { readAiResponse } from "../lib/await-ai-response";
+import { RecentAiTasks } from "./recent-ai-tasks";
 
 type DesignMode = "Interior" | "Exterior" | "Garden";
 type WorkspacePage =
@@ -73,12 +75,19 @@ type WorkspacePage =
   | "settings";
 type SavedDesign = {
   id: string;
+  projectId?: string;
+  roomId?: string;
+  prompt?: string;
   title: string;
   image: string;
   mode: DesignMode;
   savedAt: string;
 };
 type ProjectDraft = {
+  detectedObjects?: DetectedObject[];
+  id?: string;
+  projectId?: string;
+  roomId?: string;
   title: string;
   image: string;
   prompt?: string;
@@ -512,6 +521,9 @@ export function HousoraApp({
   useEffect(() => { void initializeCredits(); }, [initializeCredits]);
   const savedDesigns: SavedDesign[] = (designRows ?? []).map((row) => ({
     id: row.designId,
+    projectId: row.projectId,
+    roomId: row.roomId,
+    prompt: row.prompt,
     title: row.title,
     image: row.image,
     mode: row.mode as DesignMode,
@@ -528,6 +540,14 @@ export function HousoraApp({
   const profileEmail = user?.primaryEmailAddress?.emailAddress || "Signed in";
   const profileInitials = `${user?.firstName?.[0] || ""}${user?.lastName?.[0] || ""}` || profileName.slice(0, 2).toUpperCase();
   const [projectDraft, setProjectDraft] = useState<ProjectDraft | null>(null);
+  useEffect(() => {
+    if (activePage !== "album" || !designRows) return;
+    const designId = new URLSearchParams(window.location.search).get("design");
+    const row = designRows.find(item => item.designId === designId);
+    if (row && projectDraft?.id !== row.designId) {
+      setProjectDraft({ id: row.designId, projectId: row.projectId, roomId: row.roomId, title: row.title, image: row.image, prompt: row.prompt, mode: row.mode });
+    }
+  }, [activePage, designRows, projectDraft?.id]);
   const [removedDesign, setRemovedDesign] = useState<SavedDesign | null>(null);
   const [notice, setNotice] = useState("");
   useEffect(() => {
@@ -553,15 +573,31 @@ export function HousoraApp({
     return () => window.removeEventListener("popstate", restoreView);
   }, [normalized]);
   const saveDesign = async (design: Omit<SavedDesign, "savedAt">) => {
-    await saveDesignRecord({
+    let image = design.image;
+    if (/^(data:|blob:)/.test(image)) {
+      const form = new FormData();
+      form.append("image", await (await fetch(image)).blob(), "design.png");
+      const response = await fetch("/api/assets/image", { method: "POST", body: form });
+      const result = await response.json();
+      if (!response.ok || !result.url) throw new Error(result.error || "Image could not be saved.");
+      image = result.url;
+    }
+    const context = await saveDesignRecord({
       designId: design.id,
       title: design.title,
-      image: design.image,
+      image,
       mode: design.mode,
       savedAt: new Date().toISOString(),
+      prompt: design.prompt,
     });
     setNotice("Design saved");
+    if (new URLSearchParams(window.location.search).get("view") === "album") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("design", design.id);
+      window.history.replaceState(window.history.state, "", url);
+    }
     window.setTimeout(() => setNotice(""), 3200);
+    return context;
   };
   const unsaveDesign = async (id: string) => {
     setRemovedDesign(savedDesigns.find((item) => item.id === id) ?? null);
@@ -594,11 +630,13 @@ export function HousoraApp({
     await removeReferenceRecord({ title });
     setNotice("Inspiration removed");
   };
-  const navigate = (next: WorkspacePage) => {
+  const navigate = (next: WorkspacePage, designId?: string) => {
     setActivePage(next);
     setProfileOpen(false);
     const url = new URL(window.location.href);
     url.searchParams.set("view", next);
+    if (designId) url.searchParams.set("design", designId);
+    else url.searchParams.delete("design");
     if (next !== "discover") {
       url.searchParams.delete("q");
       url.searchParams.delete("space");
@@ -606,14 +644,10 @@ export function HousoraApp({
     window.history.pushState({ view: next }, "", url);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  const startBlankProject = async () => {
-    const draftId = `draft-${Date.now()}`;
+  const startBlankProject = () => {
+    const draftId = crypto.randomUUID();
     const title = `Untitled project ${savedDesigns.length + 1}`;
-    const image = "/pictures/interior-design-cover.png";
-    try {
-      await saveDesign({ id: draftId, title, image, mode: "Interior" });
-    } catch {}
-    setProjectDraft({ title, image, prompt: "", mode: "Interior" });
+    setProjectDraft({ id: draftId, title, image: "", prompt: "", mode: "Interior" });
     navigate("album");
   };
   const startFromReference = (reference: InspirationReference) => {
@@ -627,11 +661,15 @@ export function HousoraApp({
   };
   const openSavedProject = (design: SavedDesign) => {
     setProjectDraft({
+      id: design.id,
+      projectId: design.projectId,
+      roomId: design.roomId,
+      prompt: design.prompt,
       title: design.title,
       image: design.image,
       mode: design.mode,
     });
-    navigate("album");
+    navigate("album", design.id);
   };
   const openStudio = () => navigate("studio");
 
@@ -771,17 +809,24 @@ export function HousoraApp({
         ) : null}
         {activePage === "create" ? (
           <AlbumWorkspace
+            key={projectDraft?.id || "new-project"}
             onBack={() => navigate("projects")}
             onSaveDesign={saveDesign}
             onOpenStudio={openStudio}
           />
         ) : null}
         {activePage === "projects" ? (
+          <>
           <ProjectsPage
             designs={savedDesigns}
             onNew={startBlankProject}
             onOpen={openSavedProject}
           />
+          <RecentAiTasks onOpen={(image, objects, taskMode) => {
+            setProjectDraft({ id: crypto.randomUUID(), title: "Recovered result", image, detectedObjects: objects, mode: taskMode === "Exterior" || taskMode === "Garden" ? taskMode : "Interior" });
+            navigate("album");
+          }} />
+          </>
         ) : null}
         {activePage === "clients" ? (
           <ClientsPage
@@ -1745,7 +1790,7 @@ function ProjectsPage({
             <Plus />
           </span>
           <b>New project</b>
-          <small>Creates instantly on the right → then upload or try example</small>
+          <small>Upload a photo or try an example</small>
         </button>
         {designs.map((design) => (
           <button className="album-card" key={design.id} onClick={() => onOpen(design)} aria-label={`Open ${design.title}`}>
@@ -1764,7 +1809,7 @@ function ProjectsPage({
       {designs.length === 0 ? (
         <div className="projects-empty-hint">
           <p>
-            Tip: <b>New project</b> creates a draft immediately — it will stay here even if you close the tab. You can then upload your space in <b>Create</b> or jump to <b>3D studio</b>.
+            Start with a photo or an example. Save your design to reopen it here later.
           </p>
         </div>
       ) : null}
@@ -1779,7 +1824,7 @@ function AlbumWorkspace({
   initialDraft,
 }: {
   onBack: () => void;
-  onSaveDesign: (design: Omit<SavedDesign, "savedAt">) => Promise<void>;
+  onSaveDesign: (design: Omit<SavedDesign, "savedAt">) => Promise<{ projectId: string; roomId: string }>;
   onOpenStudio: () => void;
   initialDraft?: ProjectDraft | null;
 }) {
@@ -1792,7 +1837,7 @@ function AlbumWorkspace({
   const [preview, setPreview] = useState<string | null>(
     initialDraft?.image ?? null,
   );
-  const [tab, setTab] = useState<"create" | "edit">("create");
+  const [tab, setTab] = useState<"create" | "edit">(initialDraft?.detectedObjects ? "edit" : "create");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailChoices, setDetailChoices] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
@@ -1807,9 +1852,28 @@ function AlbumWorkspace({
   const [activeTool, setActiveTool] = useState("select");
   const [selectedObject, setSelectedObject] = useState<DetectedObject | null>(null);
   const [previewRatio, setPreviewRatio] = useState(1.5);
-  // 2. Version history + undo/redo per image/project
+  // 2. Version history + undo/redo per image/project — persisted to savedDesigns for reload
   const [history, setHistory] = useState<string[]>(() => (initialDraft?.image ? [initialDraft.image] : []));
   const [historyIndex, setHistoryIndex] = useState(0);
+  const [designId] = useState(() => initialDraft?.id || crypto.randomUUID());
+  const [versionContext, setVersionContext] = useState(initialDraft?.projectId && initialDraft.roomId ? { projectId: initialDraft.projectId, roomId: initialDraft.roomId } : null);
+  const savedVersions = useQuery(api.roomVersions.list, versionContext || "skip");
+  const historyLoaded = useRef(false);
+  useEffect(() => {
+    if (historyLoaded.current || !savedVersions?.length) return;
+    historyLoaded.current = true;
+    const images = [...savedVersions].reverse().map(version => version.image).slice(-20);
+    setHistory(images);
+    const selected = images.lastIndexOf(initialDraft?.image || "");
+    setHistoryIndex(selected >= 0 ? selected : images.length - 1);
+  }, [savedVersions, initialDraft?.image]);
+  const persistImage = async (image: string, instruction = prompt) => {
+    setSaveError("");
+    historyLoaded.current = true;
+    const context = await onSaveDesign({ id: designId, title: initialDraft?.title || `${mode} design`, image, mode, prompt: instruction });
+    setVersionContext(context);
+    setSaved(true);
+  };
   const pushHistory = (img: string) => {
     setHistory((h) => {
       const next = h.slice(0, historyIndex + 1);
@@ -1957,6 +2021,7 @@ function AlbumWorkspace({
     setGenerationError("");
     try {
       const finalPrompt = buildGenerationPrompt();
+      if (!versionContext) await persistImage(preview, prompt);
       // Use prepareImage for consistent compression and size limit compliance
       const rawImage = preview.startsWith("data:") ? preview : await asDataUrl(preview);
       const image = rawImage.startsWith("data:") ? await prepareImage(rawImage).catch(() => rawImage) : rawImage;
@@ -1975,19 +2040,23 @@ function AlbumWorkspace({
           aspectRatio: "auto",
         }),
       });
-      const result = await response.json();
+      const result = await readAiResponse(response);
       if (!response.ok) throw new Error(result.error || "Generation failed.");
       if (!result.image) throw new Error("Model returned no image.");
       setPreview(result.image);
       pushHistory(result.image);
-      originalPreview.current = result.image;
       setSelectedObject(null);
       setTab("create");
       setCompareOriginal(false);
       setSaved(false);
-      if (result.cached) setExportStatus("Loaded from cache — no credits used. Same image + prompt as before.");
-      else setExportStatus("");
-      if (result.cached) setTimeout(() => setExportStatus(""), 4000);
+      try {
+        if (result.storageWarning) throw new Error(result.storageWarning);
+        await persistImage(result.image, finalPrompt);
+        setExportStatus(result.cached ? "Saved cached result — no credits used." : "Generated and saved to project history.");
+      } catch {
+        setSaveError("Your image is ready, but saving failed. Use Save this design to retry, or download it before leaving.");
+      }
+      setTimeout(() => setExportStatus(""), 4000);
     } catch (reason) {
       setGenerationError(reason instanceof Error ? reason.message : "Generation failed.");
     } finally {
@@ -2264,9 +2333,17 @@ function AlbumWorkspace({
             ) : null}
             {preview ? <div hidden={tab !== "edit"}>
               <DetectedObjects key={`${mode}:${preview}`} hasImage active={tab === "edit" && !threeDOpen}
+                initialObjects={preview === initialDraft?.image ? initialDraft.detectedObjects : undefined}
                 mode={mode} image={preview} onUpload={() => fileRef.current?.click()}
                 onSelect={setSelectedObject} onCreate3d={open3d}
-                onImageChange={(image) => { setPreview(image); pushHistory(image); setSelectedObject(null); setSaved(false); }} />
+                onImageChange={async (image, storageWarning) => {
+                  setPreview(image);
+                  pushHistory(image);
+                  setSelectedObject(null);
+                  setSaved(false);
+                  if (storageWarning) { setSaveError(storageWarning); return; }
+                  try { if (!versionContext) await persistImage(preview); await persistImage(image, "Object edit"); } catch { setSaveError("Your edit is ready, but saving failed. Save again or download before leaving."); }
+                }} />
             </div> : null}
             {preview ? (
               <button
@@ -2276,12 +2353,7 @@ function AlbumWorkspace({
                   setSaving(true);
                   setSaveError("");
                   try {
-                    await onSaveDesign({
-                      id: `album-${mode}-${preview.length}-${preview.slice(-24)}`,
-                      title: initialDraft?.title ?? `${mode} design`,
-                      image: preview,
-                      mode,
-                    });
+                    await persistImage(preview);
                     setSaved(true);
                   } catch (reason) {
                     setSaveError(
@@ -2309,16 +2381,33 @@ function AlbumWorkspace({
                 )}
               </button>
             ) : null}
-            {preview && history.length > 1 ? (
-              <div className="version-history-inline" role="status" aria-live="polite">
-                <ClockCounterClockwise size={14} /> {history.length} versions • {canUndo ? "Undo available" : "At oldest"} • Ctrl+Z / Shift+Ctrl+Z
-                <span style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
-                  <button onClick={undo} disabled={!canUndo} style={{ opacity: canUndo ? 1 : 0.4 }}>Undo</button>
-                  <button onClick={redo} disabled={!canRedo} style={{ opacity: canRedo ? 1 : 0.4 }}>Redo</button>
-                </span>
+            {preview && history.length > 0 ? (
+              <div className="version-history-panel" aria-label="Version history">
+                <div className="version-history-head">
+                  <span><ClockCounterClockwise size={14} /> {history.length} versions</span>
+                  <span style={{ display: "flex", gap: 6 }}>
+                    <button onClick={undo} disabled={!canUndo} style={{ opacity: canUndo ? 1 : 0.4 }}>Undo</button>
+                    <button onClick={redo} disabled={!canRedo} style={{ opacity: canRedo ? 1 : 0.4 }}>Redo</button>
+                  </span>
+                </div>
+                <div className="version-history-strip" role="list">
+                  {history.map((img, idx) => (
+                    <button
+                      key={`${idx}-${img.slice(-12)}`}
+                      role="listitem"
+                      className={idx === historyIndex ? "active" : ""}
+                      onClick={() => { setHistoryIndex(idx); setPreview(img); setSaved(false); }}
+                      title={`Version ${idx + 1}${idx === historyIndex ? " (current)" : ""}`}
+                      aria-label={`Version ${idx + 1}`}
+                    >
+                      <img src={img} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 6 }} />
+                    </button>
+                  ))}
+                </div>
+                <small style={{ color: "var(--night-muted)", fontSize: 11 }}>Choose a version to preview it. Save to keep your selection.</small>
               </div>
             ) : null}
-            {preview && tab === "edit" ? (
+            {preview ? (
               <p className="integration-error" role="alert">
                 {saveError || uploadError}
               </p>
@@ -3720,6 +3809,10 @@ function DesignStudio({
 }
 
 function ThreeDWorkspace({ initialImage = null, onBusyChange }: { initialImage?: string | null; onBusyChange?: (busy: boolean) => void } = {}) {
+  const { user } = useUser();
+  const trackingKey = user?.id ? `housora:tripo:${user.id}` : null;
+  const recentModels = useQuery(api.models.list, {});
+  const [modelSaved, setModelSaved] = useState(false);
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(initialImage);
   const [taskId, setTaskId] = useState<string | null>(null);
@@ -3734,6 +3827,15 @@ function ThreeDWorkspace({ initialImage = null, onBusyChange }: { initialImage?:
   const submitting = useRef(false);
   const [pollAttempt, setPollAttempt] = useState(0);
   const [trackingPaused, setTrackingPaused] = useState(false);
+  useEffect(() => {
+    if (!trackingKey) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem(trackingKey) || "null");
+      if (saved?.taskId && saved?.trackingToken && Date.now() - saved.createdAt < 23 * 60 * 60_000) {
+        setTaskId(saved.taskId); setTrackingToken(saved.trackingToken); setStatus("queued");
+      }
+    } catch { /* Private browsing may disable local storage. */ }
+  }, [trackingKey]);
 
   useEffect(() => {
     return () => {
@@ -3750,7 +3852,7 @@ function ThreeDWorkspace({ initialImage = null, onBusyChange }: { initialImage?:
     const readTask = async () => {
       try {
         const query = trackingToken ? `?trackingToken=${encodeURIComponent(trackingToken)}` : "";
-        const response = await fetch(`/api/tripo/tasks/${encodeURIComponent(taskId)}${query}`, { cache: "no-store", signal: AbortSignal.timeout(30_000) });
+        const response = await fetch(`/api/tripo/tasks/${encodeURIComponent(taskId)}${query}`, { cache: "no-store", signal: AbortSignal.timeout(180_000) });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "Could not check the 3D model.");
         if (cancelled) return;
@@ -3761,13 +3863,17 @@ function ThreeDWorkspace({ initialImage = null, onBusyChange }: { initialImage?:
           if (!result.modelUrl) throw new Error("Tripo completed without a model file.");
           setModelUrl(result.modelUrl);
           setModelPoster(result.previewUrl || null);
+          setModelSaved(result.persisted === true);
+          setError(result.storageWarning || "");
           setStatus("success");
+          if (trackingKey) { try { localStorage.removeItem(trackingKey); } catch {} }
           return;
         }
-        if (["failed", "banned", "expired", "cancelled", "unknown"].includes(result.status)) {
+        if (["failed", "banned", "expired", "cancelled"].includes(result.status)) {
           setError(result.error || `Tripo ended with status: ${result.status}.`);
           setStatus("failed");
           setTaskId(null);
+          if (trackingKey) { try { localStorage.removeItem(trackingKey); } catch {} }
           return;
         }
         setStatus(result.status === "running" ? "running" : "queued");
@@ -3791,7 +3897,7 @@ function ThreeDWorkspace({ initialImage = null, onBusyChange }: { initialImage?:
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [taskId, trackingToken, pollAttempt]);
+  }, [taskId, trackingToken, pollAttempt, trackingKey]);
 
   const chooseImage = (file?: File) => {
     if (!file) return;
@@ -3831,6 +3937,7 @@ function ThreeDWorkspace({ initialImage = null, onBusyChange }: { initialImage?:
       }
       setTaskId(result.taskId);
       setTrackingToken(result.trackingToken);
+      if (trackingKey) { try { localStorage.setItem(trackingKey, JSON.stringify({ taskId: result.taskId, trackingToken: result.trackingToken, createdAt: Date.now() })); } catch {} }
       setStatus("queued");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not start 3D generation.");
@@ -3850,7 +3957,7 @@ function ThreeDWorkspace({ initialImage = null, onBusyChange }: { initialImage?:
           <h2>See the furniture in your room.</h2>
           <p>Start with a clear furniture photo. Create a 3D model, then preview it in your room with a compatible phone. Check dimensions before buying: generated models may not be true to scale.</p>
         </div>
-        {modelUrl ? <span className="integration-ready"><CheckCircle /> AR ready</span> : null}
+        {modelUrl ? <span className="integration-ready"><CheckCircle /> 3D model ready</span> : null}
       </header>
 
       <div className="tripo-grid">
@@ -3916,8 +4023,12 @@ function ThreeDWorkspace({ initialImage = null, onBusyChange }: { initialImage?:
                 <button
                   onClick={async () => {
                     const arUrl = `${window.location.origin}/ar?src=${encodeURIComponent(modelUrl)}${modelPoster ? `&poster=${encodeURIComponent(modelPoster)}` : ""}`;
-                    await navigator.clipboard.writeText(arUrl);
-                    alert("AR browser link copied — open on phone for View in your room (no app needed).");
+                    try {
+                      await navigator.clipboard.writeText(arUrl);
+                      setError("AR link copied. Anyone with this link can view the model. Open it on a compatible phone.");
+                    } catch {
+                      setError("Couldn't copy the link. Allow clipboard access in your browser and try again.");
+                    }
                   }}
                 >
                   <ShareNetwork /> Copy AR browser link
@@ -3925,7 +4036,8 @@ function ThreeDWorkspace({ initialImage = null, onBusyChange }: { initialImage?:
               </>
             )}
           </div>
-          <small className="tripo-expiry-note">Generated Tripo links are temporary. Download the GLB or save it to permanent project storage before sharing. AR link is a shareable browser URL (Google model-viewer) — no app install.</small>
+          <small className="tripo-expiry-note">{modelSaved ? "Saved to your account. Anyone you send the AR link to can view this model." : "Unsaved provider links are temporary. Download your model if saving fails."} AR requires a compatible phone; generated dimensions are approximate.</small>
+          {recentModels?.length ? <div className="tripo-recent-models"><h3>Saved models</h3>{recentModels.filter(model => model.url).map((model, index) => <button key={model.taskId} disabled={busy} onClick={() => { setTaskId(null); setModelUrl(model.url); setModelPoster(null); setModelSaved(true); setStatus("success"); setError(""); }}>Open model {recentModels.length - index} · {new Date(model.createdAt).toLocaleDateString()}</button>)}</div> : null}
         </aside>
       </div>
       <CreditConfirmation open={confirmOpen} cost={AI_COSTS.model3d} title="Create this 3D model?"

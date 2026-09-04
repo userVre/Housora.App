@@ -1,0 +1,143 @@
+{
+  "sam": {
+    "status": "success",
+    "httpStatus": 200,
+    "autoDetect": true,
+    "objects": [
+      {
+        "label": "coffee table",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "plant",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "sofa",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "plant",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "plant",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "floor",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "chair",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "plant",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "painting",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "plant",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "plant",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "chair",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "lamp",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "wall",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "ceiling",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "wall",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "ceiling",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "shelf",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "chair",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "window",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "shelf",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "chair",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "curtain",
+        "hasMask": true,
+        "hasThumbnail": true
+      },
+      {
+        "label": "chair",
+        "hasMask": true,
+        "hasThumbnail": true
+      }
+    ]
+  },
+  "grok": {
+    "status": "success",
+    "httpStatus": 200,
+    "errorCode": null,
+    "hasImage": true
+  },
+  "tripo": {
+    "status": "success",
+    "httpStatus": 200,
+    "code": 0,
+    "taskId": "544117ef-c35a-4ee3-ac32-5592afa791fb",
+    "progress": 100,
+    "hasModel": true
+  }
+}

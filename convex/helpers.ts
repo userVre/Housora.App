@@ -12,7 +12,9 @@ export async function requireProjectAccess(
   allowed?: Array<"owner" | "designer" | "collaborator" | "client_viewer">,
 ): Promise<{ ownerId: string; role: string | null }> {
   const ownerId = await requireOwner(ctx);
-  const project = await ctx.db.get(projectId as any);
+  const normalizedId = ctx.db.normalizeId("housoraProjects", projectId);
+  if (!normalizedId) throw new Error("Project not found.");
+  const project = await ctx.db.get(normalizedId);
   if (!project) throw new Error("Project not found.");
   // Legacy projects table uses userId, housoraProjects uses ownerId
   const projectOwner = (project as any).ownerId ?? (project as any).userId;
@@ -31,6 +33,5 @@ export function cryptoToken(): string {
   // Node 20+ has crypto.randomUUID
   const g: any = globalThis as any;
   if (g.crypto?.randomUUID) return g.crypto.randomUUID();
-  // fallback
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}-${Math.random().toString(36).slice(2, 12)}`;
+  throw new Error("Secure token generation is unavailable.");
 }

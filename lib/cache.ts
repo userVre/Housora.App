@@ -21,7 +21,7 @@ export function hashImage(imageDataUrl: string): string {
 }
 export function hashGeneration(imageDataUrl: string, prompt: string, modelVersion?: string, aspectRatio?: string): string {
   const imgHash = hashImage(imageDataUrl);
-  const promptHash = createHash("sha256").update(prompt.trim().toLowerCase()).digest("hex").slice(0, 16);
+  const promptHash = createHash("sha256").update(prompt.trim()).digest("hex").slice(0, 16);
   const extra = createHash("sha256")
     .update(`${modelVersion || "default"}|${aspectRatio || "auto"}`)
     .digest("hex")
@@ -33,7 +33,13 @@ export async function getCachedSegmentation(imageHash: string, mode: string, own
   // Server-side: use serverKey + ownerId; client-side: fallback to authenticated query (no owner needed)
   if (ownerId) {
     try {
-      return await convex().query((api as any).jobs.getCachedSegmentationServer, { serverKey: serverKey(), ownerId, imageHash, mode });
+      const cached = await convex().query((api as any).jobs.getCachedSegmentationServer, { serverKey: serverKey(), ownerId, imageHash, mode });
+      if (cached?.objects?.payloadUrl) {
+        const response = await fetch(cached.objects.payloadUrl, { signal: AbortSignal.timeout(30_000) });
+        if (!response.ok) return null;
+        return { ...cached, objects: await response.json() };
+      }
+      return cached;
     } catch {
       return null;
     }
@@ -47,6 +53,16 @@ export async function getCachedSegmentation(imageHash: string, mode: string, own
 export async function saveCachedSegmentation(imageHash: string, mode: string, objects: unknown, width?: number, height?: number, ownerId?: string) {
   const oid = ownerId || "unknown";
   try {
+    const payload = JSON.stringify(objects);
+    if (payload.length > 400_000) {
+      const client = convex();
+      const uploadUrl = await client.mutation(api.models.uploadUrlServer, { serverKey: serverKey() });
+      const response = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: payload, signal: AbortSignal.timeout(60_000) });
+      if (!response.ok) throw new Error("Cache upload failed");
+      const { storageId } = await response.json();
+      const payloadUrl = await client.mutation(api.models.cachePayloadUrlServer, { serverKey: serverKey(), storageId });
+      objects = { payloadUrl, storageId };
+    }
     await convex().mutation(api.jobs.saveSegmentationCacheServer, { serverKey: serverKey(), ownerId: oid, imageHash, mode, objects, width, height });
   } catch (e) {
     // surface failure for debugging, but don't throw to caller

@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "3D generation is not configured in this deployment. In Vercel: add TRIPO_API_KEY (Project Environment Variables) for Production and Preview, then Redeploy without cache. You have 600 free Tripo credits – check api.tripo3d.ai.",
+          "3D generation is not configured in this deployment. Contact support to enable it. No credits were charged.",
         hint: "visit /api/health to verify runtime env",
       },
       { status: 503 },

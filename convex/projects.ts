@@ -18,9 +18,24 @@ export const listClients = query({ args:{}, handler: async(ctx)=>{ const ownerId
 // Projects (multi-room)
 export const createProject = mutation({
   args:{ clientId:v.string(), name:v.string(), description:v.optional(v.string())},
-  handler: async(ctx,a)=>{ const ownerId=await owner(ctx); const id=await ctx.db.insert("housoraProjects",{ownerId, ...a, status:"active", createdAt:Date.now(), updatedAt:Date.now()}); await ctx.db.insert("projectMembers",{projectId:id, userId:ownerId, role:"owner", createdAt:Date.now()}); return id; }
+  handler: async(ctx,a)=>{ const ownerId=await owner(ctx); const clientId=ctx.db.normalizeId("housoraClients",a.clientId); const client=clientId?await ctx.db.get(clientId):null; if(!clientId || !client || client.ownerId!==ownerId) throw new Error("Client not found."); const id=await ctx.db.insert("housoraProjects",{ownerId, ...a, clientId, status:"active", createdAt:Date.now(), updatedAt:Date.now()}); await ctx.db.insert("projectMembers",{projectId:id, userId:ownerId, role:"owner", createdAt:Date.now()}); return id; }
 });
-export const listProjects = query({ args:{}, handler: async(ctx)=>{ const ownerId=await owner(ctx); return await ctx.db.query("housoraProjects").withIndex("by_owner",q=>q.eq("ownerId",ownerId)).order("desc").collect(); }});
+export const listProjects = query({
+  args: {},
+  handler: async (ctx) => {
+    const ownerId = await owner(ctx);
+    const owned = await ctx.db.query("housoraProjects").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).collect();
+    const memberships = await ctx.db.query("projectMembers").withIndex("by_user", (q) => q.eq("userId", ownerId)).collect();
+    const memberProjectIds = new Set(memberships.map((m) => (m as any).projectId));
+    const memberProjects: any[] = [];
+    for (const pid of memberProjectIds) {
+      if (owned.some((p) => p._id === pid)) continue;
+      const proj = await ctx.db.get(pid as any);
+      if (proj) memberProjects.push(proj);
+    }
+    return [...owned, ...memberProjects].sort((a, b) => (b as any).createdAt - (a as any).createdAt);
+  },
+});
 export const getProject = query({
   args: { projectId: v.string() },
   handler: async (ctx, { projectId }) => {
@@ -69,7 +84,7 @@ export const getStyleLibrary = query({
 // RBAC
 export const addMember = mutation({
   args:{ projectId:v.string(), userId:v.string(), role:v.union(v.literal("designer"),v.literal("collaborator"),v.literal("client_viewer")), email:v.optional(v.string())},
-  handler: async(ctx,a)=>{ const ownerId=await owner(ctx); const proj=await ctx.db.get(a.projectId as any); if(!proj|| (proj as any).ownerId!==ownerId) throw new Error("not owner"); return await ctx.db.insert("projectMembers",{...a, createdAt:Date.now()}); }
+  handler: async(ctx,a)=>{ const ownerId=await owner(ctx); const projectId=ctx.db.normalizeId("housoraProjects",a.projectId); const proj=projectId?await ctx.db.get(projectId):null; if(!projectId||!proj||proj.ownerId!==ownerId) throw new Error("not owner"); if(a.userId===ownerId) throw new Error("The owner role cannot be replaced."); const existing=await ctx.db.query("projectMembers").withIndex("by_project_user",q=>q.eq("projectId",projectId).eq("userId",a.userId)).unique(); if(existing){ await ctx.db.patch(existing._id,{role:a.role,email:a.email}); return existing._id; } return await ctx.db.insert("projectMembers",{...a,projectId,createdAt:Date.now()}); }
 });
 export const listMembers = query({
   args: { projectId: v.string() },

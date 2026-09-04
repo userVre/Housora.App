@@ -2,6 +2,12 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  generatedModels: defineTable({
+    ownerId: v.string(),
+    taskId: v.string(),
+    storageId: v.id("_storage"),
+    createdAt: v.number(),
+  }).index("by_owner_task", ["ownerId", "taskId"]).index("by_owner", ["ownerId"]),
   users: defineTable(v.any())
     .index("by_email", ["email"])
     .index("by_authId", ["authId"])
@@ -78,7 +84,11 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_owner", ["ownerId"]),
   savedDesigns: defineTable({
+    removedAt: v.optional(v.number()),
     ownerId: v.string(),
+    projectId: v.optional(v.string()),
+    roomId: v.optional(v.string()),
+    prompt: v.optional(v.string()),
     designId: v.string(),
     title: v.string(),
     image: v.string(),
@@ -100,6 +110,7 @@ export default defineSchema({
     .index("by_owner_title", ["ownerId", "title"]),
   // Performance & pipeline: async jobs + caching
   aiJobs: defineTable({
+    inputImage: v.optional(v.string()),
     ownerId: v.string(),
     type: v.union(v.literal("segment"), v.literal("edit"), v.literal("tripo")),
     status: v.union(v.literal("queued"), v.literal("running"), v.literal("success"), v.literal("failed")),
@@ -122,7 +133,7 @@ export default defineSchema({
     .index("by_owner_status", ["ownerId", "status"])
     .index("by_hash", ["inputHash"]),
   segmentationCache: defineTable({
-    ownerId: v.string(),
+    ownerId: v.optional(v.string()),
     imageHash: v.string(),
     mode: v.string(),
     objects: v.any(),
@@ -135,7 +146,7 @@ export default defineSchema({
     .index("by_hash_mode", ["imageHash", "mode"])
     .index("by_expires", ["expiresAt"]),
   generationCache: defineTable({
-    ownerId: v.string(),
+    ownerId: v.optional(v.string()),
     inputHash: v.string(),
     resultImage: v.string(),
     prompt: v.string(),

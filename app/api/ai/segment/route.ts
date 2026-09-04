@@ -5,6 +5,7 @@ import { AI_COSTS } from "../../../../lib/ai-costs";
 import { getCachedSegmentation, hashImage, saveCachedSegmentation } from "../../../../lib/cache";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../convex/_generated/api";
+import { enqueueAi } from "../../../../lib/durable-ai";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -53,6 +54,10 @@ export async function POST(request: Request) {
       }
     }
 
+    if (auto && process.env.DURABLE_AI_ENABLED === "true") {
+      const job = await enqueueAi({ ownerId: userId, type: "segment", requestId: body.requestId, inputHash: imageHash, image, mode: modeNorm });
+      return NextResponse.json(job, { status: 202 });
+    }
     const reserved = await consumeCredits(userId, AI_COSTS.detection, "Object detection with SAM 3", `detect:${body.requestId}`);
     if (reserved.duplicate) return NextResponse.json({ error: "This detection was already submitted. Wait for its result." }, { status: 409 });
     usage = reserved;
