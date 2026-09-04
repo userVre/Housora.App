@@ -14,7 +14,13 @@ function serverKey() {
 }
 
 export async function consumeCredits(ownerId: string, amount: number, description: string, requestId?: string) {
-  const eventId = `usage:${ownerId}:${requestId || crypto.randomUUID()}`;
+  const fallbackId = (() => {
+    try {
+      if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+    } catch {}
+    return `id-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  })();
+  const eventId = `usage:${ownerId}:${requestId || fallbackId}`;
   const usage = await client().mutation(api.credits.consumeServer, {
     serverKey: serverKey(), ownerId, eventId, amount, description,
   });

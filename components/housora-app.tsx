@@ -61,6 +61,15 @@ import { prepareImage } from "../lib/prepare-image";
 import { readAiResponse } from "../lib/await-ai-response";
 import { RecentAiTasks } from "./recent-ai-tasks";
 
+function safeUUID() {
+  try {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+  } catch {}
+  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
 type DesignMode = "Interior" | "Exterior" | "Garden";
 type WorkspacePage =
   | "home"
@@ -645,7 +654,7 @@ export function HousoraApp({
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const startBlankProject = () => {
-    const draftId = crypto.randomUUID();
+    const draftId = safeUUID();
     const title = `Untitled project ${savedDesigns.length + 1}`;
     setProjectDraft({ id: draftId, title, image: "", prompt: "", mode: "Interior" });
     navigate("album");
@@ -823,7 +832,7 @@ export function HousoraApp({
             onOpen={openSavedProject}
           />
           <RecentAiTasks onOpen={(image, objects, taskMode) => {
-            setProjectDraft({ id: crypto.randomUUID(), title: "Recovered result", image, detectedObjects: objects, mode: taskMode === "Exterior" || taskMode === "Garden" ? taskMode : "Interior" });
+            setProjectDraft({ id: safeUUID(), title: "Recovered result", image, detectedObjects: objects, mode: taskMode === "Exterior" || taskMode === "Garden" ? taskMode : "Interior" });
             navigate("album");
           }} />
           </>
@@ -1855,7 +1864,7 @@ function AlbumWorkspace({
   // 2. Version history + undo/redo per image/project — persisted to savedDesigns for reload
   const [history, setHistory] = useState<string[]>(() => (initialDraft?.image ? [initialDraft.image] : []));
   const [historyIndex, setHistoryIndex] = useState(0);
-  const [designId] = useState(() => initialDraft?.id || crypto.randomUUID());
+  const [designId] = useState(() => initialDraft?.id || safeUUID());
   const [versionContext, setVersionContext] = useState(initialDraft?.projectId && initialDraft.roomId ? { projectId: initialDraft.projectId, roomId: initialDraft.roomId } : null);
   const savedVersions = useQuery(api.roomVersions.list, versionContext || "skip");
   const historyLoaded = useRef(false);
@@ -2035,7 +2044,7 @@ function AlbumWorkspace({
           space: space === "Auto-detect" ? null : space,
           style: style === "Auto style" ? null : style,
           details: detailChoices,
-          requestId: crypto.randomUUID(),
+          requestId: safeUUID(),
           confirmed: true,
           aspectRatio: "auto",
         }),
@@ -3928,7 +3937,7 @@ function ThreeDWorkspace({ initialImage = null, onBusyChange }: { initialImage?:
       const blob = await (await fetch(pixels)).blob();
       form.append("image", blob, "furniture.jpg");
       form.append("confirmed", "true");
-      form.append("requestId", crypto.randomUUID());
+      form.append("requestId", safeUUID());
       const response = await fetch("/api/tripo/generate", { method: "POST", body: form });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not start 3D generation.");

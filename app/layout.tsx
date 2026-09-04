@@ -22,10 +22,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONVEX_URL;
+  const rawConvexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONVEX_URL;
+  // Convex URL must not have trailing slash - ConvexReactClient is strict on some deployments
+  const convexUrl = rawConvexUrl?.replace(/\/+$/, "");
   const missing = [
     !clerkKey ? "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY" : null,
-    !convexUrl ? "CONVEX_URL" : null,
+    !convexUrl ? "NEXT_PUBLIC_CONVEX_URL (or CONVEX_URL)" : null,
   ].filter((value): value is string => Boolean(value));
   return (
     <html lang="en" data-scroll-behavior="smooth">

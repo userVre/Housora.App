@@ -9,6 +9,13 @@ import { smoothMask } from "../lib/mask-postprocess";
 import { readAiResponse } from "../lib/await-ai-response";
 import { CreditConfirmation } from "./credit-confirmation";
 
+function safeUUID() {
+  try {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  } catch {}
+  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
 export function DetectedObjects({ hasImage, mode, image, onUpload, onImageChange, active = true, onSelect, onCreate3d, initialObjects }: {
   initialObjects?: DetectedObject[];
   hasImage: boolean; mode: "Interior" | "Exterior" | "Garden"; image: string;
@@ -43,7 +50,7 @@ export function DetectedObjects({ hasImage, mode, image, onUpload, onImageChange
       const pixels = await prepareImage(image);
       const response = await fetch("/api/ai/segment", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: pixels, autoDetect: true, mode, confirmed: true, requestId: crypto.randomUUID() }),
+        body: JSON.stringify({ image: pixels, autoDetect: true, mode, confirmed: true, requestId: safeUUID() }),
         signal: AbortSignal.timeout(295_000),
       });
       const result = await readAiResponse(response);
@@ -93,7 +100,7 @@ export function DetectedObjects({ hasImage, mode, image, onUpload, onImageChange
           image: pixels,
           mask: selected.mask,
           prompt: `Edit only the ${selected.label} inside the normalized bounding box ${JSON.stringify(selected.box)}: ${instruction.trim()}. Preserve other objects, room architecture, perspective and lighting.`,
-          requestId: crypto.randomUUID(),
+          requestId: safeUUID(),
           confirmed: true,
         }),
         signal: AbortSignal.timeout(295_000),
