@@ -8,11 +8,14 @@
  * @module
  */
 
+import type * as cacheCleanup from "../cacheCleanup.js";
 import type * as collab from "../collab.js";
-import type * as durableAi from "../durableAi.js";
 import type * as credits from "../credits.js";
+import type * as crons from "../crons.js";
+import type * as durableAi from "../durableAi.js";
 import type * as floorPlans from "../floorPlans.js";
 import type * as furniture from "../furniture.js";
+import type * as helpers from "../helpers.js";
 import type * as jobs from "../jobs.js";
 import type * as jobsActions from "../jobsActions.js";
 import type * as models from "../models.js";
@@ -29,11 +32,14 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  cacheCleanup: typeof cacheCleanup;
   collab: typeof collab;
-  durableAi: typeof durableAi;
   credits: typeof credits;
+  crons: typeof crons;
+  durableAi: typeof durableAi;
   floorPlans: typeof floorPlans;
   furniture: typeof furniture;
+  helpers: typeof helpers;
   jobs: typeof jobs;
   jobsActions: typeof jobsActions;
   models: typeof models;
