@@ -85,8 +85,14 @@ export function DetectedObjects({ hasImage, mode, image, onUpload, onImageChange
     try {
       const pixels = await prepareImage(image);
       const response = await fetch("/api/ai/edit", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: pixels, prompt: `Edit only the ${selected.label} inside the normalized bounding box ${JSON.stringify(selected.box)}: ${instruction.trim()}. Preserve other objects, room architecture, perspective and lighting.` }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: pixels,
+          prompt: `Edit only the ${selected.label} inside the normalized bounding box ${JSON.stringify(selected.box)}: ${instruction.trim()}. Preserve other objects, room architecture, perspective and lighting.`,
+          requestId: crypto.randomUUID(),
+          confirmed: true,
+        }),
         signal: AbortSignal.timeout(295_000),
       });
       const result = await response.json();

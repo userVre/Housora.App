@@ -122,6 +122,7 @@ export default defineSchema({
     .index("by_owner_status", ["ownerId", "status"])
     .index("by_hash", ["inputHash"]),
   segmentationCache: defineTable({
+    ownerId: v.string(),
     imageHash: v.string(),
     mode: v.string(),
     objects: v.any(),
@@ -130,15 +131,20 @@ export default defineSchema({
     createdAt: v.number(),
     expiresAt: v.number(),
   })
+    .index("by_owner_hash_mode", ["ownerId", "imageHash", "mode"])
     .index("by_hash_mode", ["imageHash", "mode"])
     .index("by_expires", ["expiresAt"]),
   generationCache: defineTable({
+    ownerId: v.string(),
     inputHash: v.string(),
     resultImage: v.string(),
     prompt: v.string(),
+    modelVersion: v.optional(v.string()),
+    aspectRatio: v.optional(v.string()),
     createdAt: v.number(),
     expiresAt: v.number(),
   })
+    .index("by_owner_hash", ["ownerId", "inputHash"])
     .index("by_hash", ["inputHash"])
     .index("by_expires", ["expiresAt"]),
   // 2. Version history per image/project
@@ -247,6 +253,7 @@ export default defineSchema({
     role: v.union(v.literal("viewer"), v.literal("client_viewer")),
     createdBy: v.string(),
     expiresAt: v.optional(v.number()),
+    revokedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_token", ["token"])

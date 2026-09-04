@@ -15,79 +15,48 @@ function errorMessage(value: unknown) {
   return body.detail || body.message || body.error || "The image could not be edited.";
 }
 
-async function generateWithOpenRouter(image: string, prompt: string, key: string, aspectRatio: string) {
-  const response = await fetch("https://openrouter.ai/api/v1/images", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://housora.vercel.app",
-      "X-Title": "Housora",
-    },
-    body: JSON.stringify({
-      model: "microsoft/mai-image-2.5-pro",
-      prompt: prompt.slice(0, 4000),
-      n: 1,
-      aspect_ratio: aspectRatio,
-      input_references: [
-        {
-          type: "image_url",
-          image_url: { url: image },
-        },
-      ],
-    }),
-    signal: AbortSignal.timeout(285_000),
-  });
-  const result = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(errorMessage(result) || `OpenRouter error ${response.status}`);
-  const generated = result?.data?.[0];
-  const url =
-    generated?.url ||
-    (generated?.b64_json ? `data:${generated.media_type || "image/png"};base64,${generated.b64_json}` : null);
-  if (!url) throw new Error("Model returned no image.");
-  return { url, usage: result?.usage || null };
-}
+async function generateWithGrokImagine(image: string, prompt: string, key: string, aspectRatio: string) {
+  // Accurate per https://docs.x.ai/developers/model-capabilities/images/editing
+  // grok-imagine-image-2.0 supports real image editing with image.url (data URI or public URL)
+  // grok-2-image-1212 does NOT support reference-image editing — must not be used for edits
+  const isEdit = Boolean(image && image.startsWith("data:image/"));
+  const endpoint = isEdit ? "https://api.x.ai/v1/images/edits" : "https://api.x.ai/v1/images/generations";
+  const body: Record<string, unknown> = {
+    model: "grok-imagine-image-2.0",
+    prompt: prompt.slice(0, 4000),
+  };
+  if (isEdit) {
+    (body as any).image = { url: image, type: "image_url" };
+  }
+  // aspect_ratio supported on both endpoints per docs
+  if (aspectRatio && aspectRatio !== "auto") (body as any).aspect_ratio = aspectRatio;
 
-async function generateWithGrok(image: string, prompt: string, key: string) {
-  // xAI Grok image generation - OpenAI compatible
-  // For image-to-image, we include the reference image description in prompt when native image input not supported
-  const response = await fetch("https://api.x.ai/v1/images/generations", {
+  const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model: "grok-2-image-1212",
-      prompt: prompt.slice(0, 4000),
-      n: 1,
-      response_format: "url",
-      // Attempt to pass reference image if provider supports it (ignored if unsupported)
-      ...(image.startsWith("data:image/") ? { image } : {}),
-    }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(285_000),
   });
   const result = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(errorMessage(result) || `Grok error ${response.status}`);
-  const generated = result?.data?.[0];
-  const url =
-    generated?.url ||
-    (generated?.b64_json ? `data:${generated.media_type || "image/png"};base64,${generated.b64_json}` : null) ||
-    result?.url;
-  if (!url) throw new Error("Grok returned no image.");
-  return { url, usage: result?.usage || null };
+  if (!response.ok) throw new Error(errorMessage(result) || `Grok Imagine error ${response.status}`);
+  // edits endpoint returns { data: [{ url }]} or { url } depending on SDK; handle both
+  const data = (result as any)?.data?.[0] || (result as any)?.data || result;
+  const url = data?.url || data?.image_url || (data?.b64_json ? `data:${data.media_type || "image/png"};base64,${data.b64_json}` : null) || (result as any)?.url;
+  if (!url) throw new Error("Grok Imagine returned no image — model may not support this edit type.");
+  return { url, usage: (result as any)?.usage || null };
 }
 
 export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Sign in to generate designs." }, { status: 401 });
 
-  const openRouterKey = process.env.OPENROUTER_API_KEY;
-  const grokKey = process.env.GROK_IMAGE_KEY || process.env.XAI_API_KEY || process.env.GROK_API_KEY;
-
-  if (!openRouterKey && !grokKey) {
+  const grokKey = process.env.GROK_IMAGE_KEY || process.env.XAI_API_KEY;
+  if (!grokKey) {
     return NextResponse.json(
-      { error: "Image generation is not configured. Add OPENROUTER_API_KEY or GROK_IMAGE_KEY to your environment." },
+      { error: "Grok image editing is not configured. Set GROK_IMAGE_KEY (xAI) in Vercel env. OpenRouter is no longer used for image workflow." },
       { status: 503 },
     );
   }
@@ -102,6 +71,8 @@ export async function POST(request: Request) {
       space?: string | null;
       style?: string | null;
       details?: Record<string, string>;
+      requestId?: string;
+      confirmed?: boolean;
     };
     const image = body.image?.trim();
     const prompt = body.prompt?.trim();
@@ -115,54 +86,40 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "The image source is not supported." }, { status: 400 });
     }
 
-    // Generation cache: same image+prompt reuse within 14d is instant & free
-    const genHash = hashGeneration(image, prompt);
-    const cachedGen = await getCachedGeneration(genHash);
+    // Generation cache: same image+prompt+model+aspect reuse within 14d is instant & free, owner-scoped
+    const aspectRatio = ["1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3", "auto"].includes(body.aspectRatio || "") ? body.aspectRatio! : "auto";
+    const modelVersion = "grok-imagine-image-2.0";
+    const genHash = hashGeneration(image, prompt, modelVersion, aspectRatio);
+    const cachedGen = await getCachedGeneration(genHash, userId);
     if (cachedGen) {
-      return NextResponse.json({ image: cachedGen.resultImage, description: "", usage: null, cached: true });
+      return NextResponse.json({ image: cachedGen.resultImage, description: "", usage: null, cached: true, cacheNote: "Cached result — no credits charged. Same image, prompt, model and aspect ratio as before." });
     }
 
-    usage = await consumeCredits(userId, AI_COSTS.imageEdit, "AI image generation or edit");
+    if (!body.confirmed || typeof body.requestId !== "string" || !/^[a-f0-9-]{36}$/i.test(body.requestId)) {
+      return NextResponse.json({ error: "Confirm the credit cost and request ID before generating." }, { status: 400 });
+    }
 
-    const aspectRatio = ["1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3", "auto"].includes(body.aspectRatio || "")
-      ? body.aspectRatio!
-      : "auto";
+    usage = await consumeCredits(userId, AI_COSTS.imageEdit, "AI image generation or edit", `edit:${body.requestId}`);
+    if ((usage as any).duplicate) return NextResponse.json({ error: "This generation was already submitted. Wait for its result." }, { status: 409 });
 
     let result: { url: string; usage: unknown } | null = null;
-    let lastError: string | null = null;
-
-    // Prefer OpenRouter when available (supports true image-to-image with Mai), otherwise use Grok
-    if (openRouterKey) {
-      try {
-        result = await generateWithOpenRouter(image, prompt, openRouterKey, aspectRatio);
-      } catch (e) {
-        lastError = e instanceof Error ? e.message : String(e);
-        // If OpenRouter fails and Grok is available, fallback to Grok
-        if (grokKey) {
-          try {
-            result = await generateWithGrok(image, prompt, grokKey);
-            lastError = null;
-          } catch (grokErr) {
-            lastError = `${lastError} | Grok fallback: ${grokErr instanceof Error ? grokErr.message : String(grokErr)}`;
-          }
-        }
-      }
-    } else if (grokKey) {
-      try {
-        result = await generateWithGrok(image, prompt, grokKey);
-      } catch (e) {
-        lastError = e instanceof Error ? e.message : String(e);
-      }
-    }
-
-    if (!result) {
+    try {
+      result = await generateWithGrokImagine(image, prompt, grokKey, aspectRatio);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
       await refundCredits(userId, usage, "Image generation failed");
       usage = null;
-      return NextResponse.json({ error: lastError || "Generation failed." }, { status: 502 });
+      return NextResponse.json({ error: msg }, { status: 502 });
     }
 
-    // Save to generation cache (fire-and-forget)
-    void saveCachedGeneration(genHash, result.url, prompt);
+    // Persist result reliably before returning — don't depend on temporary provider URL
+    // Save to generation cache owner-scoped (await to surface failures)
+    try {
+      await saveCachedGeneration(genHash, result.url, prompt, userId, modelVersion, aspectRatio);
+    } catch (e) {
+      console.warn("saveCachedGeneration failed", e);
+      // don't fail the request, but surface in logs
+    }
 
     return NextResponse.json({ image: result.url, description: "", usage: result.usage });
   } catch (error) {

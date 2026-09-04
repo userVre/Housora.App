@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { requireProjectAccess } from "./helpers";
 
 async function owner(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
@@ -17,9 +18,23 @@ function requireServerKey(key: string) {
 export const getCachedSegmentation = query({
   args: { imageHash: v.string(), mode: v.string() },
   handler: async (ctx, { imageHash, mode }) => {
+    const ownerId = await owner(ctx);
     const row = await ctx.db
       .query("segmentationCache")
-      .withIndex("by_hash_mode", (q) => q.eq("imageHash", imageHash).eq("mode", mode))
+      .withIndex("by_owner_hash_mode", (q) => q.eq("ownerId", ownerId).eq("imageHash", imageHash).eq("mode", mode))
+      .unique();
+    if (!row || row.expiresAt < Date.now()) return null;
+    return row;
+  },
+});
+
+export const getCachedSegmentationServer = query({
+  args: { serverKey: v.string(), ownerId: v.string(), imageHash: v.string(), mode: v.string() },
+  handler: async (ctx, { serverKey: s, ownerId, imageHash, mode }) => {
+    requireServerKey(s);
+    const row = await ctx.db
+      .query("segmentationCache")
+      .withIndex("by_owner_hash_mode", (q) => q.eq("ownerId", ownerId).eq("imageHash", imageHash).eq("mode", mode))
       .unique();
     if (!row || row.expiresAt < Date.now()) return null;
     return row;
@@ -29,6 +44,7 @@ export const getCachedSegmentation = query({
 export const saveSegmentationCacheServer = mutation({
   args: {
     serverKey: v.string(),
+    ownerId: v.string(),
     imageHash: v.string(),
     mode: v.string(),
     objects: v.any(),
@@ -40,10 +56,11 @@ export const saveSegmentationCacheServer = mutation({
     const now = Date.now();
     const existing = await ctx.db
       .query("segmentationCache")
-      .withIndex("by_hash_mode", (q) => q.eq("imageHash", args.imageHash).eq("mode", args.mode))
+      .withIndex("by_owner_hash_mode", (q) => q.eq("ownerId", args.ownerId).eq("imageHash", args.imageHash).eq("mode", args.mode))
       .unique();
     if (existing) await ctx.db.delete(existing._id);
     await ctx.db.insert("segmentationCache", {
+      ownerId: args.ownerId,
       imageHash: args.imageHash,
       mode: args.mode,
       objects: args.objects,
@@ -58,23 +75,37 @@ export const saveSegmentationCacheServer = mutation({
 export const getCachedGeneration = query({
   args: { inputHash: v.string() },
   handler: async (ctx, { inputHash }) => {
-    const row = await ctx.db.query("generationCache").withIndex("by_hash", (q) => q.eq("inputHash", inputHash)).unique();
+    const ownerId = await owner(ctx);
+    const row = await ctx.db.query("generationCache").withIndex("by_owner_hash", (q) => q.eq("ownerId", ownerId).eq("inputHash", inputHash)).unique();
+    if (!row || row.expiresAt < Date.now()) return null;
+    return row;
+  },
+});
+
+export const getCachedGenerationServer = query({
+  args: { serverKey: v.string(), ownerId: v.string(), inputHash: v.string() },
+  handler: async (ctx, { serverKey: s, ownerId, inputHash }) => {
+    requireServerKey(s);
+    const row = await ctx.db.query("generationCache").withIndex("by_owner_hash", (q) => q.eq("ownerId", ownerId).eq("inputHash", inputHash)).unique();
     if (!row || row.expiresAt < Date.now()) return null;
     return row;
   },
 });
 
 export const saveGenerationCacheServer = mutation({
-  args: { serverKey: v.string(), inputHash: v.string(), resultImage: v.string(), prompt: v.string() },
+  args: { serverKey: v.string(), ownerId: v.string(), inputHash: v.string(), resultImage: v.string(), prompt: v.string(), modelVersion: v.optional(v.string()), aspectRatio: v.optional(v.string()) },
   handler: async (ctx, args) => {
     requireServerKey(args.serverKey);
     const now = Date.now();
-    const existing = await ctx.db.query("generationCache").withIndex("by_hash", (q) => q.eq("inputHash", args.inputHash)).unique();
+    const existing = await ctx.db.query("generationCache").withIndex("by_owner_hash", (q) => q.eq("ownerId", args.ownerId).eq("inputHash", args.inputHash)).unique();
     if (existing) await ctx.db.delete(existing._id);
     await ctx.db.insert("generationCache", {
+      ownerId: args.ownerId,
       inputHash: args.inputHash,
       resultImage: args.resultImage,
       prompt: args.prompt,
+      modelVersion: args.modelVersion,
+      aspectRatio: args.aspectRatio,
       createdAt: now,
       expiresAt: now + 14 * 24 * 60 * 60 * 1000,
     });
@@ -95,9 +126,12 @@ export const enqueue = mutation({
   },
   handler: async (ctx, args) => {
     const ownerId = await owner(ctx);
+    if (args.projectId) await requireProjectAccess(ctx, args.projectId);
     const existing = await ctx.db.query("aiJobs").withIndex("by_request", (q) => q.eq("requestId", args.requestId)).unique();
-    if (existing) return existing;
-    // dedup by hash: if recent same job success, reuse
+    if (existing) {
+      if (existing.ownerId !== ownerId) throw new Error("Request ID already used by another user.");
+      return existing;
+    }
     const now = Date.now();
     const id = await ctx.db.insert("aiJobs", {
       ownerId,

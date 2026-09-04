@@ -3,6 +3,8 @@ import { auth } from "@clerk/nextjs/server";
 import { consumeCredits, refundCredits } from "../../../../lib/credits";
 import { AI_COSTS } from "../../../../lib/ai-costs";
 import { getCachedSegmentation, hashImage, saveCachedSegmentation } from "../../../../lib/cache";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "../../../../convex/_generated/api";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -41,11 +43,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "The prepared image is too large. Try a smaller photo." }, { status: 413 });
     }
 
-    // Cache check before charging — repeated segmentation on same image+mode is free & instant
+    // Cache check before charging — repeated segmentation on same image+mode is free & instant, owner-scoped
     const modeNorm = ["Interior", "Exterior", "Garden"].includes(body.mode) ? body.mode : "Interior";
     const imageHash = hashImage(image);
     if (auto) {
-      const cached = await getCachedSegmentation(imageHash, modeNorm);
+      const cached = await getCachedSegmentation(imageHash, modeNorm, userId);
       if (cached) {
         return NextResponse.json({ objects: cached.objects, width: cached.width, height: cached.height, auto_detect: true, cached: true });
       }
@@ -110,8 +112,8 @@ export async function POST(request: Request) {
       await refundCredits(userId, usage, "No objects detected");
       usage = null;
     } else if (auto) {
-      // Save to cache for 30d — next identical image is instant & free
-      await saveCachedSegmentation(imageHash, modeNorm, result.objects, result.width, result.height);
+      // Save to cache for 30d — next identical image is instant & free, owner-scoped
+      await saveCachedSegmentation(imageHash, modeNorm, result.objects, result.width, result.height, userId);
     }
     if (auto) return NextResponse.json({ objects: result.objects, refunded: empty, cached: false });
     return NextResponse.json({
