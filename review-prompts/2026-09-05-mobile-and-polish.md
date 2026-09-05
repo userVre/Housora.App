@@ -1,6 +1,34 @@
 # Housora — mobile, visual direction and copy prompt pack
 
-Prepared 5 September 2026. This is a research and implementation handoff, NOT a completed mobile visual audit. Browser control returned `Transport closed`; no fresh mobile screenshots or real-device AR checks were captured. No paid provider calls were made. Local baseline observed: `aedec7f`, with only `tsconfig.tsbuildinfo` modified. Production parity was not established.
+Prepared 5 September 2026 and updated after a live authenticated audit of `https://housora.vercel.app/`. The production UI was inspected at explicit 1440×900, 1024×768, 768×1024 and 390×844 viewports. Projects, Discover, Saved, Pricing, the project Create/Edit workspace, detection confirmation, and 3D Studio were inspected without submitting paid provider requests. Physical AR, checkout, a signed-out landing session, and real deployed Convex authorization were not verified. GitHub `main` was previously pushed to `9bdf4c5`; independently verify Vercel and Convex deployment parity before release.
+
+## Live audit verdict
+
+Current visual/UX score: **6.5/10**. The visual language is coherent and the core features are discoverable, but mobile information architecture, tablet behavior, content density, copy accuracy, and launch-state integrity are not yet at a professional release bar. “10/10” is a target, not a test result.
+
+### Confirmed high-priority findings
+
+1. At 390×844, Projects forces New project and the saved project into two narrow columns. Descriptions wrap awkwardly, the cards feel cramped, and most of the page is unused empty space. Use one full-width primary New project action followed by full-width/large project cards, or a deliberate two-column thumbnail grid without long descriptions.
+2. At 768×1024, the navigation changes to a hamburger/off-canvas pattern, but the workspace can render with the drawer occupying space and a clipped active row. The editor becomes a narrow strip rather than using the tablet width. The drawer must overlay with a backdrop, trap focus, close on navigation/Escape, and never alter the canvas width.
+3. At 1024×768, the permanent sidebar plus editor panel leaves the image noticeably small. Treat compact desktop/tablet as a single-canvas layout with the inspector in a collapsible drawer or bottom sheet.
+4. Mobile workspace controls are reachable only after scrolling inside a specific right-edge pane. This nested-scroll behavior is not discoverable. Use one document scroll on phones and only one intentionally scrollable inspector on desktop.
+5. The mobile bottom navigation remains fixed while long forms and history scroll beneath it. Ensure `padding-bottom: calc(navHeight + env(safe-area-inset-bottom))`; focused fields and paid actions must never be obscured.
+6. Mobile header truncates the project name and crowds Back, 3D Studio and the account avatar. Keep Back and title, move secondary tools to a labelled More menu, and place 3D as a clear contextual action below or in the inspector.
+7. Discover initially displayed tall blank/dark media areas while images loaded. After loading, the first “Warm minimal living room” card collapsed to a thin strip while following cards were tall. Reserve a consistent aspect ratio, show a skeleton/fallback, validate the asset, and prevent layout shifts.
+8. Discover’s mobile filter row clips “Bathroom” and relies on a tiny scrollbar. Use scroll-snap chips with end padding and a subtle overflow cue; hide the raw scrollbar without hiding keyboard navigation.
+9. Saved mobile uses a narrow card whose title and metadata are visibly ellipsized (“Int…”, “Desi…”), while Open and overflow controls dominate the card. Make the card full width or restructure it into thumbnail + text + actions. Rename the page “Saved” or “Saved items” because it includes Designs and Inspiration.
+10. The detection confirmation has good cost transparency but a disproportionately tall footer with Cancel and Confirm stacked unevenly. Use a compact sticky action row on mobile, full-width primary and secondary buttons, and preserve focus/return focus.
+11. 3D Studio is a narrow nested-scroll modal. The primary generation action is below the fold and the copy is long. On phones it should be a full-screen sheet/page with one scroll region, a visible close/back control and sticky action area.
+12. 3D copy contradicts itself: it says “To create an accurate 3D model” while elsewhere warning that generated dimensions are approximate. Use “Create the best result” and consistently state that AI geometry and scale are approximate.
+13. The 3D entry subtitle is clipped in the mobile editor. Replace the long explanatory sentence with “Turn one furniture item into an AR-ready model” and put details inside the 3D flow.
+14. Desktop editor is visually stable, but a large amount of black canvas surrounds the image while the inspector is dense. Give the image more useful space, align the inspector hierarchy, and keep the canvas neutral so room colors remain trustworthy.
+15. Projects desktop repeats “Saved projects” and “1 total,” then adds “Click any card to open in editor — 3D and Edit are inside.” Remove instructional clutter and expose clear card affordances/actions.
+16. The account/avatar presentation was inconsistent across observed states, and the visible account balance is `120000` credits on a Free plan. Verify whether this is a deliberate admin/test grant. Do not silently rewrite legitimate balances; production test accounts and real customer entitlements must be distinguishable.
+17. Pricing repeats the Free allowance in both its summary and first bullet. Replace repeated prose with a compact allowance comparison.
+18. Pricing labels 150 credits/$25 as “Best value,” although 400/$55 has the lowest price per credit: about $0.1375 versus $0.1667. Move the factual “Lowest price per credit” label to 400, or remove the claim. Do not assert “Most popular” without usage evidence.
+19. Pricing’s three-column credit-cost table contains long descriptions. At phone width it needs semantic stacked rows/cards or a deliberately scrollable table with a visible cue; never shrink the copy into unreadable columns.
+20. Some copy overpromises: “You can refine every detail” is too absolute. Replace with “Adjust the style and key details after generation.”
+21. Required release checks remain: signed-out/public landing capture; real deployed Clerk/Convex cross-user authorization; Convex schema/functions deployment; Vercel commit parity; physical-device AR; checkout/webhook fixtures and safe test; real legal business variables; counsel review; production monitoring; and removal/exclusion of generated `tsconfig.tsbuildinfo` noise.
 
 ## How to run these safely
 

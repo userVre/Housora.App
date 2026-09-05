@@ -8,14 +8,14 @@ import { api } from "../convex/_generated/api";
 import type { WhopOfferKey } from "../lib/whop";
 import { AI_COSTS } from "../lib/ai-costs";
 const plans = [
-  { name: "Free", monthly: "$0", yearly: "$0", credits: "12 credits once — up to 3 image generations/edits OR 1 3D model OR 12 detections", description: "Try the complete room-design workflow. One shared balance for all tools.", features: ["Up to 3 image edits/generations, or 1 3D model, or 12 detections", "Mixed actions share one balance", "AR viewing is free after a model exists"] },
-  { name: "Creator", monthly: "$19/mo", yearly: "$190/yr", credits: "120 credits every month — up to 30 image generations/edits OR 10 3D models OR 120 detections", description: "For homeowners and independent designers.", features: ["Everything in Free", "Credits refresh monthly", "Buy extra credits anytime"], popular: true },
-  { name: "Studio", monthly: "$49/mo", yearly: "$490/yr", credits: "400 credits every month — up to 100 image generations/edits OR 33 3D models OR 400 detections", description: "For professionals with a steady project pipeline.", features: ["Everything in Creator", "Higher monthly allowance", "More headroom for mixed workflows"] },
+  { name: "Free", monthly: "$0", yearly: "$0", credits: "12 credits once", description: "Explore the full workflow before choosing a plan.", features: ["Up to 3 image generations or edits", "Or 1 complete 3D model", "AR viewing is always free"] },
+  { name: "Creator", monthly: "$19/mo", yearly: "$190/yr", credits: "120 credits each month", description: "For homeowners and independent designers.", features: ["Up to 30 image generations or edits", "Or up to 10 3D models", "Extra credits available anytime"], popular: true },
+  { name: "Studio", monthly: "$49/mo", yearly: "$490/yr", credits: "400 credits each month", description: "For professionals managing ongoing projects.", features: ["Up to 100 image generations or edits", "Or up to 33 3D models", "Best rate for regular production"] },
 ];
 const packs = [
   { key: "credits_50", credits: 50, price: "$10", best: false },
-  { key: "credits_150", credits: 150, price: "$25", best: true },
-  { key: "credits_400", credits: 400, price: "$55", best: false },
+  { key: "credits_150", credits: 150, price: "$25", best: false },
+  { key: "credits_400", credits: 400, price: "$55", best: true },
 ] as const;
 export function PricingPage() {
   const [annual, setAnnual] = useState(false);
@@ -48,7 +48,7 @@ export function PricingPage() {
     {checkoutReturned ? <p className="checkout-success" role="status"><Check aria-hidden size={16} /> Checkout complete. We’re confirming your purchase with Whop; your balance updates automatically.</p> : null}
     <section className="plan-grid" aria-label="Plans">
       {plans.map((plan, index) => <article key={plan.name} className={plan.popular ? "plan-card popular" : "plan-card"}>
-        {plan.popular ? <span className="popular-label">Best for most people</span> : null}
+        {plan.popular ? <span className="popular-label">Most popular</span> : null}
         <h2>{plan.name}</h2><p>{plan.description}</p><strong>{annual ? plan.yearly : plan.monthly}</strong><b>{plan.credits}</b>
         <ul>{plan.features.map(feature => <li key={feature}><Check aria-hidden size={16} />{feature}</li>)}</ul>
         {index === 0 ? <button disabled>{balance?.plan === "free" ? "Current starter plan" : "Starter plan"}</button> : (() => { const offer = `${plan.name.toLowerCase()}_${annual ? "yearly" : "monthly"}` as WhopOfferKey; const current = balance?.plan === offer; return <button className={plan.popular ? "primary-action" : ""} disabled={Boolean(pending) || current} onClick={() => checkout(offer)}>{current ? "Current plan" : pending?.startsWith(plan.name.toLowerCase()) ? "Opening secure checkout…" : `Choose ${plan.name}`}</button>; })()}

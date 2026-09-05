@@ -1782,8 +1782,8 @@ function ProjectsPage({
           </div>
           <p>
             {designs.length
-              ? `You have ${designs.length} saved project${designs.length > 1 ? "s" : ""} — pick one to continue or start a new one.`
-              : "Start with your photo or try an example. New projects appear here instantly, even before you generate."}
+              ? `Continue a saved project or begin a new room.`
+              : "Start with your photo or try an example. Your work will be saved here."}
           </p>
         </div>
         <button className="primary-action" onClick={onNew} aria-label="Create new project">
@@ -1793,10 +1793,8 @@ function ProjectsPage({
 
       <div className="project-library-toolbar clean-project-toolbar">
         <div className="project-tabs">
-          <span>Saved projects</span>
-          <small style={{ marginLeft: 8, color: "#8f9187", fontSize: 11 }}>{designs.length} total</small>
+          <span>{designs.length ? `Saved projects · ${designs.length}` : "Start a project"}</span>
         </div>
-        <span className="project-hint">Click any card to open in editor — 3D and Edit are inside.</span>
       </div>
 
       <div className={`album-grid ${designs.length ? "" : "album-grid-empty"}`}>
@@ -3178,7 +3176,7 @@ function SavedPage({
   return (
     <section className="saved-page" aria-labelledby="saved-title">
       <header className="saved-heading">
-        <h1 id="saved-title">Your saved designs</h1>
+        <h1 id="saved-title">Saved</h1>
         <p>{designs.length + references.length} saved</p>
       </header>
       <div

@@ -12,16 +12,17 @@ export function AuthGate({ children }: { children: ReactNode }) {
     <>
       <Show when="signed-out">
         <main className="auth-page">
+          <div className="auth-aurora" aria-hidden="true" />
           <section className="auth-card">
             <a className="auth-brand" href="/">Housora</a>
             <span className="eyebrow">Your design workspace</span>
-            <h1>Turn a real space into a design you can see, refine and share.</h1>
-            <p>Sign in to keep your projects, saved inspiration and generated designs available on every device.</p>
+            <h1>See your space differently—before you change a thing.</h1>
+            <p>Design from a real photo, refine individual objects, create a 3D model and preview it in your room.</p>
             <div className="auth-actions">
               <SignUpButton mode="modal"><button className="primary-action">Create your account</button></SignUpButton>
               <SignInButton mode="modal"><button>Sign in</button></SignInButton>
             </div>
-            <small>Your projects stay private to your account.</small>
+            <small>Your projects are private by default.</small>
           </section>
         </main>
       </Show>
