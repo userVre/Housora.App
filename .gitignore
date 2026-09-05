@@ -7,3 +7,5 @@ npm-debug.log*
 __pycache__/
 *.py[cod]
 .venv-modal/
+tsconfig.tsbuildinfo
+outputs/*.png

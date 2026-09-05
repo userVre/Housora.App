@@ -8,13 +8,35 @@ function token() {
 
 // Commercial-usable licenses per Sketchfab guidelines: CC0, CC-BY are safest; CC-BY-SA/ND often not commercial. We filter to CC0/CC-BY by default.
 const COMMERCIAL_LICENSES = ["CC0", "CC-BY"];
+const COMMERCIAL_LICENSE_SLUGS = ["cc0", "by"];
+
+const LICENSE_ALIASES: Record<string, string> = {
+  cc0: "CC0",
+  "cc0 public domain": "CC0",
+  by: "CC-BY",
+  "cc-by": "CC-BY",
+  "cc attribution": "CC-BY",
+};
+
+export function normalizeSketchfabLicense(value: unknown) {
+  if (typeof value === "string") return LICENSE_ALIASES[value.toLowerCase()] || value.toUpperCase();
+  if (value && typeof value === "object") {
+    const license = value as { slug?: string; label?: string; fullName?: string };
+    return normalizeSketchfabLicense(license.slug || license.label || license.fullName || "unknown");
+  }
+  return "UNKNOWN";
+}
+
+export function isCommercialSketchfabLicense(value: unknown) {
+  return COMMERCIAL_LICENSES.includes(normalizeSketchfabLicense(value));
+}
 
 export type SketchfabModel = {
   uid: string; name: string; thumbnail: string; license: string; categories: string[]; user: string;
 };
 
 export async function searchSketchfab(q: string, opts?: { category?: string; style?: string; licenses?: string[]; cursor?: string }) {
-  const licenses = (opts?.licenses || COMMERCIAL_LICENSES).join(",");
+  const licenses = (opts?.licenses || COMMERCIAL_LICENSE_SLUGS).join(",");
   const params = new URLSearchParams({
     type: "models",
     q: [q, opts?.category, opts?.style].filter(Boolean).join(" "),
@@ -35,7 +57,7 @@ export async function searchSketchfab(q: string, opts?: { category?: string; sty
     uid: r.uid,
     name: r.name,
     thumbnail: r.thumbnails?.images?.[0]?.url || r.thumbnails?.images?.[0]?.url || "",
-    license: r.license?.label || r.license || "unknown",
+    license: normalizeSketchfabLicense(r.license),
     categories: r.categories?.map((c: any) => c.name) || [],
     user: r.user?.username || "",
   }));

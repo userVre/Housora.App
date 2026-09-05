@@ -5,5 +5,8 @@ import { auth } from "@clerk/nextjs/server";
 export async function GET() {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Sign in to continue." }, { status: 401 });
-  return NextResponse.json({ error: "Floor-plan scanning is not available yet. No credits were charged.", code: "FEATURE_UNAVAILABLE" }, { status: 503 });
+  return NextResponse.json({
+    error: "CubiCasa sends conversion progress and delivery through the configured webhook; polling is not supported by this integration.",
+    code: "WEBHOOK_REQUIRED",
+  }, { status: 409 });
 }

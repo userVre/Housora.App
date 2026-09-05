@@ -22,6 +22,12 @@ export async function GET() {
     // 3D - Tripo
     TRIPO_API_KEY: has("TRIPO_API_KEY"),
     tripoReady: has("TRIPO_API_KEY"),
+    // optional catalogs / floor-plan integration
+    SKETCHFAB_API_TOKEN: has("SKETCHFAB_API_TOKEN"),
+    sketchfabReady: has("SKETCHFAB_API_TOKEN"),
+    CUBICASA_API_KEY: has("CUBICASA_API_KEY"),
+    CUBICASA_WEBHOOK_URL: has("CUBICASA_WEBHOOK_URL"),
+    cubicasaReady: has("CUBICASA_API_KEY") && has("CUBICASA_WEBHOOK_URL") && process.env.CUBICASA_MOBILE_SDK_READY === "true" && process.env.CUBICASA_EXPORTER_READY === "true",
     // AR - free via Google model-viewer, no key
     arRequiresCompatibleDevice: true,
     // core
