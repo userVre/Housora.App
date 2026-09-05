@@ -123,7 +123,7 @@ export function DetectedObjects({ hasImage, mode, image, onUpload, onImageChange
   if (!hasImage) return <div className="objects-empty"><MagnifyingGlass /><h3>Start with your photo</h3><p>Detect real objects, then choose what to edit.</p><button onClick={onUpload}><UploadSimple /> Upload a photo</button></div>;
   return <div className="real-objects-panel">
     <button className="source-layer" onClick={onUpload} disabled={busy}><span><Image src={image} alt="" fill sizes="48px" unoptimized /></span><div><b>Current image</b><small>Replace source photo</small></div><UploadSimple /></button>
-    {isServiceUnavailable ? <div className="service-notice" role="status"><b>Detection temporarily offline</b><p>We’re finishing the setup for object detection. You can still generate designs, save, and use 3D — detection will return shortly.</p></div> : null}
+    {isServiceUnavailable ? <div className="service-notice" role="status"><b>Object detection is unavailable</b><p>Your photo is safe and no detection credit was charged. You can retry later or continue generating, saving and using 3D.</p></div> : null}
     <div className="real-objects-heading"><h3>Detected objects {objects.length > 0 ? <span>{objects.length}</span> : null}</h3>
       {objects.length > 0 ? <button disabled={busy || isServiceUnavailable} onClick={() => setConfirmation("detect")}>Scan again</button> : null}</div>
     {status === "detecting" ? <div className="objects-empty" role="status"><span className="spinner" /><h3>Finding objects in your photo…</h3><p>The first scan can take a few minutes while the model starts. Keep this workspace open.</p></div> : objects.length === 0 ?

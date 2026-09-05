@@ -2323,7 +2323,7 @@ function AlbumWorkspace({
                     </span>
                     <span className="studio-entry-copy">
                       <b>3D studio — Create AR-ready object</b>
-                      <small>Where to find 3D: choose any furniture, generate 12 cr, preview in AR (no app)</small>
+                      <small>Select a piece of furniture, create its model, then preview it in AR on a compatible phone.</small>
                     </span>
                     <ArrowRight />
                   </button>
@@ -3988,7 +3988,7 @@ function ThreeDWorkspace({ initialSource = null, onBusyChange }: { initialSource
         <div>
           <span className="eyebrow"><Cube /> 3D & augmented reality</span>
           <h2>See the furniture in your room.</h2>
-          <p>Start with a clear furniture photo. Create a 3D model, then preview it in your room with a compatible phone. Check dimensions before buying: generated models may not be true to scale.</p>
+          <p>Start with one clearly visible piece of furniture. Create its 3D model, then preview it in your room on a compatible phone. Confirm real measurements before buying.</p>
         </div>
         {modelUrl ? <span className="integration-ready"><CheckCircle /> 3D model ready</span> : null}
       </header>
@@ -4032,7 +4032,7 @@ function ThreeDWorkspace({ initialSource = null, onBusyChange }: { initialSource
           />
           <span className="eyebrow">Image to 3D</span>
           <h3>{modelUrl ? "Your model is ready" : "Create an AR-ready object"}</h3>
-          <p>{modelUrl ? "Drag to rotate, scroll to zoom, or open this page on your phone and select View in your room." : sourceValidation.valid ? "For accurate placement, use a front three-quarter product photo and avoid objects that are cut off." : guidanceForInvalid()}</p>
+          <p>{modelUrl ? "Drag to rotate, scroll to zoom, or open this page on your phone and select View in your room." : sourceValidation.valid ? "For the clearest model, use a front three-quarter product photo with the entire object visible." : guidanceForInvalid()}</p>
           <ol className="tripo-steps">
             <li className={imagePreview ? "complete" : "active"}><span>1</span><b>Choose furniture</b></li>
             <li className={busy ? "active" : modelUrl ? "complete" : ""}><span>2</span><b>Generate with Tripo</b></li>

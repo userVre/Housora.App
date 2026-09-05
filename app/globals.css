@@ -7909,3 +7909,28 @@ html, body { overflow-x: hidden; max-width: 100vw; }
 @media (prefers-reduced-motion:reduce) {
   .auth-aurora { transform:none; }
 }
+
+/* Purposeful React-Bits-inspired motion: short, one-shot, and never blocks input. */
+@keyframes housora-reveal {
+  from { opacity:0; transform:translateY(14px); filter:blur(5px); }
+  to { opacity:1; transform:translateY(0); filter:blur(0); }
+}
+@keyframes housora-list-in {
+  from { opacity:0; transform:translateY(7px) scale(.992); }
+  to { opacity:1; transform:translateY(0) scale(1); }
+}
+.auth-card .eyebrow { animation:housora-reveal .46s cubic-bezier(.16,1,.3,1) both; }
+.auth-card h1 { animation:housora-reveal .56s .06s cubic-bezier(.16,1,.3,1) both; }
+.auth-card > p { animation:housora-reveal .56s .12s cubic-bezier(.16,1,.3,1) both; }
+.auth-actions { animation:housora-reveal .56s .18s cubic-bezier(.16,1,.3,1) both; }
+.real-object-list > button,.recent-ai-tasks li,.version-history-strip > button {
+  animation:housora-list-in .24s cubic-bezier(.16,1,.3,1) both;
+}
+.real-object-list > button:nth-child(2),.recent-ai-tasks li:nth-child(2),.version-history-strip > button:nth-child(2) { animation-delay:35ms; }
+.real-object-list > button:nth-child(3),.recent-ai-tasks li:nth-child(3),.version-history-strip > button:nth-child(3) { animation-delay:70ms; }
+.real-object-list > button:nth-child(n+4),.recent-ai-tasks li:nth-child(n+4),.version-history-strip > button:nth-child(n+4) { animation-delay:90ms; }
+.inspiration-card { content-visibility:auto; contain-intrinsic-size:320px 400px; }
+@media (prefers-reduced-motion:reduce) {
+  .auth-card .eyebrow,.auth-card h1,.auth-card > p,.auth-actions,
+  .real-object-list > button,.recent-ai-tasks li,.version-history-strip > button { animation:none !important; filter:none !important; transform:none !important; }
+}
