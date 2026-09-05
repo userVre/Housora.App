@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { refundUsageEvent } from "../../../../../lib/credits";
 import { verifyTripoTrackingToken } from "../../../../../lib/tripo-tracking";
 import { persistModel } from "../../../../../lib/model-storage";
+import { HOUSORA_CREDIT_COSTS, tripoCostUSD, warnIfProviderCostExceedsAllowed } from "../../../../../lib/cost-model";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
@@ -50,6 +51,10 @@ export async function GET(
       );
     }
     const task = result.data;
+    const consumedCredit = typeof task.consumed_credit === "number" ? task.consumed_credit : null;
+    const providerCostUSD = tripoCostUSD(consumedCredit);
+    if (consumedCredit !== null) console.info("[tripo-cost]", { taskId, consumedCredit, providerCostUSD });
+    warnIfProviderCostExceedsAllowed("3d", providerCostUSD, HOUSORA_CREDIT_COSTS.model3d, { taskId, consumedCredit });
     if (["failed", "cancelled", "banned", "expired"].includes(task.status) || (task.status === "success" && !task.output?.pbr_model && !task.output?.model && !task.output?.base_model)) {
       await refundUsageEvent(userId, tracking.usageEventId, "3D generation failed");
       return NextResponse.json({ status: "failed", error: "The model could not be generated. Your Housora credits were returned." });

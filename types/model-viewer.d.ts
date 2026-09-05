@@ -12,6 +12,10 @@ declare module "react" {
         "camera-controls"?: boolean;
         "auto-rotate"?: boolean;
         "shadow-intensity"?: string;
+        "shadow-softness"?: string;
+        "ar-scale"?: string;
+        "ar-placement"?: string;
+        "tone-mapping"?: string;
         exposure?: string;
         "environment-image"?: string;
         "touch-action"?: string;
@@ -19,4 +23,3 @@ declare module "react" {
     }
   }
 }
-

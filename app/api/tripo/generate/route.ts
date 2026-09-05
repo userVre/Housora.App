@@ -45,9 +45,21 @@ export async function POST(request: Request) {
     if (!acceptedTypes.has(file.type) || file.size > 10 * 1024 * 1024) {
       return NextResponse.json({ error: "Use a JPG, PNG or WEBP image under 10 MB." }, { status: 400 });
     }
+    const sourceKind = form.get("sourceKind");
+    if (sourceKind !== "sam-crop" && sourceKind !== "furniture-upload") {
+      return NextResponse.json({ error: "A room image cannot be used for 3D. Pick a detected furniture object (SAM crop) or upload a furniture-only image." }, { status: 400 });
+    }
+    if (sourceKind === "sam-crop") {
+      const rawBox = form.get("sourceBox");
+      try {
+        const box = typeof rawBox === "string" ? JSON.parse(rawBox) : null;
+        if (!Array.isArray(box) || box.length !== 4 || box.some((n)=>typeof n!=="number")) return NextResponse.json({ error: "Select a detected furniture object before generating. The full room photo cannot be used for image-to-3D." }, { status: 400 });
+        const [x0,y0,x1,y1]=box as number[]; const area=(x1-x0)*(y1-y0);
+        if (!(x1>x0 && y1>y0) || area>0.85) return NextResponse.json({ error: "This selection looks like the full room. Choose a specific piece of furniture from Detected objects, or upload a clean furniture photo on a plain background." }, { status: 400 });
+      } catch { return NextResponse.json({ error: "Select a detected furniture object before generating. The full room photo cannot be used for image-to-3D." }, { status: 400 }); }
+    }
     const reserved = await consumeCredits(userId, AI_COSTS.model3d, "Textured 3D model and AR preview", `3d:${requestId}`);
     if (reserved.duplicate) {
-      // If Tripo already accepted the task but the initial response was interrupted, recover it without charging again
       try {
         const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONVEX_URL;
         if (convexUrl) {
@@ -110,7 +122,6 @@ export async function POST(request: Request) {
         { status: taskResponse.ok ? 502 : taskResponse.status },
       );
     }
-    // Persist mapping before returning so interrupted responses can be recovered
     try {
       const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONVEX_URL;
       if (convexUrl) {

@@ -314,4 +314,16 @@ export default defineSchema({
   })
     .index("by_owner_request", ["ownerId", "requestId"])
     .index("by_task", ["taskId"]),
+  modelShares: defineTable({
+    ownerId: v.string(),
+    taskId: v.string(),
+    storageId: v.id("_storage"),
+    token: v.string(),
+    revokedAt: v.optional(v.number()),
+    expiresAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_token", ["token"])
+    .index("by_owner_task", ["ownerId", "taskId"])
+    .index("by_owner", ["ownerId"]),
 });

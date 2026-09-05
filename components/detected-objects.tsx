@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { Cube, MagnifyingGlass, ArrowRight, UploadSimple } from "@phosphor-icons/react";
+import { Box as Cube, Search as MagnifyingGlass, ArrowRight, Upload as UploadSimple } from "lucide-react";
 import { AI_COSTS, type DetectedObject } from "../lib/ai-costs";
 import { prepareImage } from "../lib/prepare-image";
 import { smoothMask } from "../lib/mask-postprocess";
@@ -21,7 +21,7 @@ export function DetectedObjects({ hasImage, mode, image, onUpload, onImageChange
   hasImage: boolean; mode: "Interior" | "Exterior" | "Garden"; image: string;
   onUpload: () => void; onImageChange?: (image: string, storageWarning?: string) => void; active?: boolean;
   onSelect?: (object: DetectedObject | null) => void;
-  onCreate3d?: (image: string) => void;
+  onCreate3d?: (object: DetectedObject) => void;
 }) {
   const [objects, setObjects] = useState<DetectedObject[]>(initialObjects || []);
   const [selected, setSelected] = useState<DetectedObject | null>(null);
@@ -132,7 +132,7 @@ export function DetectedObjects({ hasImage, mode, image, onUpload, onImageChange
         <span className="real-object-thumb"><Image src={object.thumbnail} alt="" fill sizes="56px" unoptimized /></span><span><b>{object.label}</b><small>Object {index + 1} · {Math.round(object.score * 100)}% confidence</small></span><ArrowRight />
       </button>)}</div>}
     {selected ? <section className="real-object-actions"><h4>Selected: {selected.label}</h4>
-      {onCreate3d ? <button className="object-3d-action" disabled={busy} onClick={() => onCreate3d(selected.thumbnail)}><Cube /><span><b>Create 3D from this object</b><small>{AI_COSTS.model3d} credits · confirmation required</small></span><ArrowRight /></button> : null}
+      {onCreate3d ? <button className="object-3d-action" disabled={busy} onClick={() => onCreate3d(selected)}><Cube /><span><b>Create 3D from this object</b><small>{AI_COSTS.model3d} credits · confirmation required</small></span><ArrowRight /></button> : null}
       {onImageChange ? <><label htmlFor="object-edit-instruction">Describe your change</label><textarea id="object-edit-instruction" style={{ resize: "none" }} value={instruction} disabled={busy} onChange={e => setInstruction(e.target.value)} placeholder={`For example: make this ${selected.label} sage green`} /><button className="primary-action" disabled={busy || !instruction.trim()} onClick={() => setConfirmation("edit")}>{status === "editing" ? "Editing…" : `Edit object · ${AI_COSTS.imageEdit} credits`}</button><small>AI edits may affect nearby details. Review the result.</small></> : null}
     </section> : null}
     {error && !isServiceUnavailable ? <p className="integration-error" role="alert">{error}</p> : null}

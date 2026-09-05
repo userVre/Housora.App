@@ -30,7 +30,7 @@ export function PostHogProvider({ children, apiKey, host }: { children: React.Re
         autocapture: false,
         capture_pageview: false,
         capture_pageleave: false,
-        disable_session_recording: !preferences.replayConsent,
+        disable_session_recording: true,
         mask_all_text: true,
         mask_all_element_attributes: true,
       });
@@ -38,8 +38,7 @@ export function PostHogProvider({ children, apiKey, host }: { children: React.Re
     }
     posthog.opt_in_capturing();
     if (user?.id) posthog.identify(user.id);
-    if (preferences.replayConsent) posthog.startSessionRecording();
-    else posthog.stopSessionRecording();
+    posthog.stopSessionRecording();
   }, [apiKey, host, preferences?.analyticsConsent, preferences?.replayConsent, user?.id]);
 
   useEffect(() => {

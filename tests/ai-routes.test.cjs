@@ -20,6 +20,7 @@ function route(file, { signedIn = true, duplicate = false, noCredits = false } =
     : name.endsWith('/cache') ? { hashImage: () => 'image-hash', hashGeneration: () => 'generation-hash', getCachedSegmentation: async () => null, saveCachedSegmentation: async () => {}, getCachedGeneration: async () => null, saveCachedGeneration: async () => {} }
     : name.endsWith('/tripo-tracking') ? { createTripoTrackingToken: () => 'signed-token', verifyTripoTrackingToken: () => ({ usageEventId: 'usage:1' }) }
     : name.endsWith('/model-storage') ? { persistModel: async () => 'https://storage.example.com/model.glb' }
+    : name.endsWith('/cost-model') ? { HOUSORA_CREDIT_COSTS: { model3d: 12 }, tripoCostUSD: () => null, warnIfProviderCostExceedsAllowed: () => {} }
     : name.endsWith('/composite-object-edit') ? { compositeObjectEdit: async () => Buffer.from('test') }
     : name.endsWith('/image-storage') ? { storeProjectImage: async () => 'https://storage.example.com/image.png' }
     : name.endsWith('/durable-ai') ? { enqueueAi: async () => ({ requestId: 'job-1', status: 'queued' }) }
@@ -34,7 +35,7 @@ function route(file, { signedIn = true, duplicate = false, noCredits = false } =
 const json = value => new Response(JSON.stringify(value), { status: 200, headers: { 'Content-Type': 'application/json' } });
 const requestId = '12345678-1234-1234-1234-123456789012';
 function detection(overrides = {}) { return new Request('http://localhost/api/ai/segment', { method: 'POST', body: JSON.stringify({ image: 'data:image/jpeg;base64,YQ==', autoDetect: true, confirmed: true, requestId, ...overrides }) }); }
-function model(confirmed = true) { const form = new FormData(); form.set('image', new File(['image'], 'test.jpg', { type: 'image/jpeg' })); form.set('requestId', requestId); form.set('confirmed', String(confirmed)); return new Request('http://localhost/api/tripo/generate', { method: 'POST', body: form }); }
+function model(confirmed = true, sourceKind = 'furniture-upload', sourceBox) { const form = new FormData(); form.set('image', new File(['image'], 'test.jpg', { type: 'image/jpeg' })); form.set('requestId', requestId); form.set('confirmed', String(confirmed)); form.set('sourceKind', sourceKind); if (sourceBox) form.set('sourceBox', JSON.stringify(sourceBox)); return new Request('http://localhost/api/tripo/generate', { method: 'POST', body: form }); }
 process.env.MODAL_SAM_ENDPOINT = 'https://test.modal.run';
 process.env.MODAL_PROXY_KEY = 'test-key';
 process.env.MODAL_PROXY_SECRET = 'test-secret';
@@ -89,6 +90,14 @@ test('insufficient credits never calls Modal', async () => {
 test('3D requires confirmation and blocks duplicate task dispatch', async () => {
   const r = route('app/api/tripo/generate/route.ts'); assert.equal((await r.POST(model(false))).status, 400); assert.equal(r.calls.consume.length, 0);
   const duplicate = route('app/api/tripo/generate/route.ts', { duplicate: true }); assert.equal((await duplicate.POST(model())).status, 409); assert.equal(duplicate.calls.fetch.length, 0);
+});
+test('3D rejects room images and oversized SAM crops before charging', async () => {
+  const room = route('app/api/tripo/generate/route.ts');
+  assert.equal((await room.POST(model(true, 'room-photo'))).status, 400);
+  assert.equal(room.calls.consume.length, 0); assert.equal(room.calls.fetch.length, 0);
+  const crop = route('app/api/tripo/generate/route.ts');
+  assert.equal((await crop.POST(model(true, 'sam-crop', [0, 0, 1, 1]))).status, 400);
+  assert.equal(crop.calls.consume.length, 0); assert.equal(crop.calls.fetch.length, 0);
 });
 test('3D uploads to multipart endpoint, charges 12 and returns secure tracking', async () => {
   const r = route('app/api/tripo/generate/route.ts'); r.responses.push(json({ code: 0, data: { image_token: 'file' } }), json({ code: 0, data: { task_id: 'task-1234' } }));

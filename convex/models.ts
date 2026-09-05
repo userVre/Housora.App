@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireOwner } from "./helpers";
+import { cryptoToken, requireOwner } from "./helpers";
 function server(key: string) {
   if (!process.env.WHOP_WEBHOOK_SECRET || key !== process.env.WHOP_WEBHOOK_SECRET) throw new Error("Unauthorized");
 }
@@ -55,5 +55,37 @@ export const list = query({
     const ownerId = await requireOwner(ctx);
     const rows = await ctx.db.query("generatedModels").withIndex("by_owner", q => q.eq("ownerId", ownerId)).order("desc").take(20);
     return Promise.all(rows.map(async row => ({ taskId: row.taskId, createdAt: row.createdAt, url: await ctx.storage.getUrl(row.storageId) })));
+  },
+});
+export const createShare = mutation({
+  args: { taskId: v.string() },
+  handler: async (ctx, { taskId }) => {
+    const ownerId = await requireOwner(ctx);
+    const model = await ctx.db.query("generatedModels").withIndex("by_owner_task", q => q.eq("ownerId", ownerId).eq("taskId", taskId)).unique();
+    if (!model) throw new Error("No persisted model to share. Generate a model first.");
+    const previous = await ctx.db.query("modelShares").withIndex("by_owner_task", q => q.eq("ownerId", ownerId).eq("taskId", taskId)).collect();
+    for (const share of previous) if (!share.revokedAt) await ctx.db.patch(share._id, { revokedAt: Date.now() });
+    const token = cryptoToken();
+    await ctx.db.insert("modelShares", { ownerId, taskId, storageId: model.storageId, token, createdAt: Date.now(), expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000 });
+    return token;
+  },
+});
+export const revokeShare = mutation({
+  args: { token: v.string() },
+  handler: async (ctx, { token }) => {
+    const ownerId = await requireOwner(ctx);
+    const share = await ctx.db.query("modelShares").withIndex("by_token", q => q.eq("token", token)).unique();
+    if (!share || share.ownerId !== ownerId) throw new Error("Share not found");
+    await ctx.db.patch(share._id, { revokedAt: Date.now() });
+  },
+});
+export const getSharedModel = query({
+  args: { token: v.string() },
+  handler: async (ctx, { token }) => {
+    const share = await ctx.db.query("modelShares").withIndex("by_token", q => q.eq("token", token)).unique();
+    if (!share || share.revokedAt || (share.expiresAt && share.expiresAt <= Date.now())) return null;
+    const url = await ctx.storage.getUrl(share.storageId);
+    if (!url) return null;
+    return { url, taskId: share.taskId };
   },
 });

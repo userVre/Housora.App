@@ -59,7 +59,7 @@ export async function POST(request: Request) {
   const grokKey = process.env.GROK_IMAGE_KEY || process.env.XAI_API_KEY;
   if (!grokKey) {
     return NextResponse.json(
-      { error: "Grok image editing is not configured. Set GROK_IMAGE_KEY (xAI) in Vercel env. OpenRouter is no longer used for image workflow." },
+      { error: "Grok image editing is not configured. Set GROK_IMAGE_KEY (xAI) in the server environment." },
       { status: 503 },
     );
   }

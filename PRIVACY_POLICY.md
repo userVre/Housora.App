@@ -40,7 +40,7 @@ Do not upload government identifiers, financial account credentials, medical rec
 - **Device and connection data:** IP address, approximate country or region derived from IP, browser and device type, operating system, language, time zone, referring URL, and technical identifiers.
 - **Usage and diagnostic data:** pages and screens viewed, buttons and features used, project and generation workflow milestones, timestamps, duration, errors, latency, API outcome, credit consumption, and crash or performance information.
 - **Cookie and local-storage data:** authentication, security, preferences, consent state, analytics identifiers, and session continuity.
-- **Optional session replay data:** interactions such as clicks, scrolling, navigation, viewport size, and rendered interface state, only where enabled in accordance with applicable consent rules. Housora intends to mask text inputs and exclude uploaded and generated visual content from replay. Session replay must not intentionally record passwords, payment fields, prompts, private project notes, uploaded images, generated images, masks, or 3D assets.
+- **Session replay:** disabled. Housora does not record session replays.
 
 ### 3.3 Data from other sources
 
@@ -74,9 +74,10 @@ We may disclose data to:
 
 - **Clerk:** authentication, account management, and security.
 - **Convex:** application database, synchronization, and file or project data storage, depending on configuration.
-- **fal.ai and Microsoft model infrastructure:** image generation, image editing, and object segmentation, depending on the selected model and provider route.
+- **xAI Grok:** image generation and image editing.
+- **Meta SAM hosted on Modal:** object segmentation.
 - **Tripo AI:** image-to-3D generation and related asset processing.
-- **PostHog:** product analytics, error analysis, feature flags, surveys, and optional privacy-configured session replay.
+- **PostHog:** optional product analytics when enabled by the user. Session replay is disabled.
 - **Whop or another disclosed payment provider:** subscriptions, credit purchases, payment status, taxes, fraud prevention, refunds, and billing support.
 - **Hosting, delivery, security, email, and support providers:** operating and protecting the Service.
 - **Professional advisers and authorities:** lawyers, auditors, insurers, regulators, courts, law enforcement, or others when legally required or reasonably necessary to protect rights and safety.
@@ -100,7 +101,7 @@ We retain personal data only as long as reasonably necessary for the purposes de
 | Raw third-party AI processing files | Provider-dependent; configure the shortest available retention and document it here |
 | Authentication and security logs | **[12 MONTHS]**, unless needed for an investigation |
 | Product analytics events | **[12–24 MONTHS]**, then delete or aggregate |
-| Session replays | **[30 DAYS OR LESS]** |
+| Session replays | Not collected |
 | Support records | **[24 MONTHS]** after closure, unless a longer period is needed for a dispute |
 | Billing, tax, and transaction records | The period required by applicable tax and accounting law, commonly **[5–10 YEARS]** |
 | Consent and legal-acceptance records | For the applicable limitation period and compliance needs |
@@ -109,7 +110,7 @@ When deletion is not immediately possible because data is in a secure backup, we
 
 ## 9. Cookies and analytics choices
 
-Housora uses strictly necessary technologies for authentication, security, billing, consent records, and core preferences. Where required, analytics, session replay, and marketing technologies remain disabled until the user consents.
+Housora uses strictly necessary technologies for authentication, security, billing, consent records, and core preferences. Optional analytics remain disabled until the user consents. Session replay is disabled.
 
 Users must be able to change optional choices through **Settings → Privacy & data**. Withdrawing consent must be as easy as giving it. Declining optional analytics must not prevent access to core paid or free functionality.
 

@@ -98,7 +98,7 @@ You control invitations, permissions, public or private links, and exports. Reci
 
 ## 9. Third-party services
 
-The Service relies on third-party providers, which may include Clerk, Convex, fal.ai, Microsoft model infrastructure, Tripo AI, PostHog, Whop, hosting providers, and device AR services. Their availability, processing, and terms may affect functionality. Housora is responsible for its own obligations but does not control unrelated third-party products. Links to third-party sites do not imply endorsement.
+The Service relies on third-party providers, which may include Clerk, Convex, xAI Grok, Meta SAM hosted on Modal, Tripo AI, PostHog when enabled, Whop, hosting providers, and device AR services. Their availability, processing, and terms may affect functionality. Housora is responsible for its own obligations but does not control unrelated third-party products. Links to third-party sites do not imply endorsement.
 
 ## 10. Intellectual property and feedback
 

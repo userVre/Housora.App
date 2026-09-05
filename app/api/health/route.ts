@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getLegalConfig } from "../../../lib/legal-config";
 
 export const runtime = "nodejs";
 
@@ -8,6 +9,7 @@ function has(name: string) {
 }
 
 export async function GET() {
+  const legal = getLegalConfig();
   const checks = {
     // generation
     GROK_IMAGE_KEY: has("GROK_IMAGE_KEY"),
@@ -28,13 +30,16 @@ export async function GET() {
     WHOP: has("WHOP_API_KEY"),
   };
 
-  const allCritical = checks.generationReady && checks.segmentationReady && checks.tripoReady;
+  const allCritical = checks.generationReady && checks.segmentationReady && checks.tripoReady && checks.CLERK && checks.CONVEX && checks.WHOP && legal.ready;
   return NextResponse.json({
     ok: allCritical,
+    ready: allCritical,
+    legalReady: legal.ready,
+    legal: { missing: legal.missing },
     timestamp: new Date().toISOString(),
     env: checks,
     hint: !allCritical
-      ? "Some services show 'is not configured' because Vercel hasn't deployed the latest env vars. After adding variables (Shared or Project), you must Redeploy in Vercel > Deployments > ⋯ > Redeploy (without cache)."
+      ? "This deployment is missing one or more required service or legal settings. Add them to the server environment, redeploy, and check this endpoint again."
       : "Configuration detected only. Provider connectivity, payments and device AR have not been tested by this endpoint.",
   });
 }

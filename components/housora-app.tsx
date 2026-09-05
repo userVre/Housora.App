@@ -10,47 +10,47 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
-  Buildings,
-  CaretDown,
+  Building2 as Buildings,
+  ChevronDown as CaretDown,
   Check,
-  CheckCircle,
-  Cube,
-  ClockCounterClockwise,
-  CopySimple,
+  CircleCheck as CheckCircle,
+  Box as Cube,
+  History as ClockCounterClockwise,
+  Copy as CopySimple,
   CreditCard,
-  CursorClick,
-  Selection,
-  ScribbleLoop,
-  TextT,
-  ChatCircle,
-  ImagesSquare,
-  CornersOut,
-  DotsThree,
-  ArrowCounterClockwise,
-  DownloadSimple,
+  MousePointerClick as CursorClick,
+  Scan as Selection,
+  Pencil as ScribbleLoop,
+  Type as TextT,
+  MessageCircle as ChatCircle,
+  Images as ImagesSquare,
+  Maximize2 as CornersOut,
+  Ellipsis as DotsThree,
+  RotateCcw as ArrowCounterClockwise,
+  Download as DownloadSimple,
   Eye,
-  FilePdf,
+  FileText as FilePdf,
   FolderOpen,
   Heart,
   House,
-  GearSix,
+  Settings as GearSix,
   Leaf,
-  LinkSimple,
-  List,
-  MagnifyingGlass,
-  PencilSimple,
+  Link as LinkSimple,
+  Menu as List,
+  Search as MagnifyingGlass,
+  Pencil as PencilSimple,
   Plus,
   Ruler,
-  ShareNetwork,
-  SignOut,
-  Sparkle,
-  SquaresFour,
-  TrashSimple,
-  UploadSimple,
+  Share2 as ShareNetwork,
+  LogOut as SignOut,
+  Sparkles as Sparkle,
+  LayoutGrid as SquaresFour,
+  Trash2 as TrashSimple,
+  Upload as UploadSimple,
   UserPlus,
   Users,
   X,
-} from "@phosphor-icons/react";
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ModelViewer } from "./model-viewer";
 import { PricingPage, SettingsPage } from "./billing-settings";
@@ -60,6 +60,7 @@ import { AI_COSTS, type DetectedObject } from "../lib/ai-costs";
 import { prepareImage } from "../lib/prepare-image";
 import { readAiResponse } from "../lib/await-ai-response";
 import { RecentAiTasks } from "./recent-ai-tasks";
+import { guidanceForInvalid, isValidThreeDSource, type ThreeDSource } from "../lib/threeD-validation";
 
 function safeUUID() {
   try {
@@ -1930,11 +1931,15 @@ function AlbumWorkspace({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [historyIndex, history]);
-  const [threeDSource, setThreeDSource] = useState<string | null>(null);
+  const [threeDSource, setThreeDSource] = useState<ThreeDSource | null>(null);
   const [threeDOpen, setThreeDOpen] = useState(false);
   const [threeDBusy, setThreeDBusy] = useState(false);
-  const open3d = (source: string) => {
-    if (!threeDBusy) setThreeDSource(source);
+  const open3d = (object: DetectedObject) => {
+    if (!threeDBusy) setThreeDSource({ image: object.thumbnail, kind: "sam-crop", objectLabel: object.label, objectBox: object.box });
+    setThreeDOpen(true);
+  };
+  const open3dFromPreview = () => {
+    if (!threeDBusy) setThreeDSource(null);
     setThreeDOpen(true);
   };
   const [compareOriginal, setCompareOriginal] = useState(false);
@@ -2096,32 +2101,29 @@ function AlbumWorkspace({
   return (
     <section className="album-workspace" aria-label="New project workspace">
       <header className="album-workspace-bar">
-        <button className="album-back" onClick={onBack}>
-          <ArrowLeft /> Projects
-        </button>
-        <span>{initialDraft?.title ?? "New project"}</span>
-        <div className="album-bar-center">
+        <div className="album-bar-left">
+          <button className="album-back" onClick={onBack} aria-label="Back to Projects">
+            <ArrowLeft /> Back to Projects
+          </button>
+          <span className="album-project-title">{initialDraft?.title ?? "New project"}</span>
+        </div>
+        <div className="album-bar-right">
           {preview ? (
             <div className="album-bar-actions">
-              <button className="album-3d-button primary-3d" onClick={() => open3d(selectedObject?.thumbnail || preview)} title="Open 3D studio — create AR-ready models">
-                <Cube /> 3D studio
-              </button>
-              <button aria-label="Compare with original" aria-pressed={compareOriginal} title="Compare with original" onClick={() => setCompareOriginal((value) => !value)}>
+              <button className="icon-secondary" aria-label="Compare with original" title="Compare with original" aria-pressed={compareOriginal} onClick={() => setCompareOriginal((value) => !value)}>
                 <ImagesSquare />
               </button>
-              <button aria-label="Download image" title="Download image" onClick={() => void exportImage(false)}>
+              <button className="icon-secondary" aria-label="Download image" title="Download image" onClick={() => void exportImage(false)}>
                 <DownloadSimple />
               </button>
-              <button className="share-design" onClick={() => void exportImage(true)}>
-                Share
+              <button className="icon-secondary" aria-label="Share design" title="Share design" onClick={() => void exportImage(true)}>
+                <ShareNetwork />
+              </button>
+              <button className="album-3d-button primary-3d" onClick={() => selectedObject ? open3d(selectedObject) : open3dFromPreview()} aria-label="Open 3D Studio" title="Open 3D Studio — create AR-ready models">
+                <Cube /> 3D Studio
               </button>
             </div>
           ) : null}
-          <ol className="creation-progress" aria-label="Creation progress">
-            <li className={preview ? "complete" : "active"}>Space</li>
-            <li className={preview && tab === "create" ? "active" : preview ? "complete" : ""}>Direction</li>
-            <li className={tab === "edit" ? "active" : ""}>Result</li>
-          </ol>
         </div>
       </header>
       <input
@@ -2198,13 +2200,13 @@ function AlbumWorkspace({
               ) : null}
             </div>
           )}
-          {preview && tab === "edit" ? <div className="canvas-tool-dock" role="toolbar" aria-label="Canvas tools">
-            <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo"><ArrowCounterClockwise /></button>
-            <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><ArrowRight /></button>
-            <span />
-            <button className={activeTool === "select" ? "active" : ""} onClick={() => setActiveTool("select")} title="Select an object" aria-label="Select an object"><CursorClick /></button>
-            <button className={compareOriginal ? "active" : ""} onClick={() => setCompareOriginal(value => !value)} title="Compare with original" aria-label="Compare with original"><ImagesSquare /></button>
-            <span />
+          {preview ? <div className="canvas-tool-dock" role="toolbar" aria-label="Canvas tools">
+            <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo last change"><ArrowCounterClockwise /></button>
+            <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)" aria-label="Redo last change"><ArrowRight /></button>
+            <span aria-hidden="true" />
+            <button className={activeTool === "select" && tab === "edit" ? "active" : ""} onClick={() => { setTab("edit"); setActiveTool("select"); }} title="Select an object to edit" aria-label="Select an object to edit"><CursorClick /></button>
+            <button className={compareOriginal ? "active" : ""} onClick={() => setCompareOriginal(value => !value)} title="Compare with original" aria-label="Compare with original" aria-pressed={compareOriginal}><ImagesSquare /></button>
+            <span aria-hidden="true" />
             <button onClick={() => void canvasRef.current?.requestFullscreen()} title="View fullscreen" aria-label="View fullscreen"><CornersOut /></button>
           </div> : null}
           {preview && tab === "edit" && (activeTool === "text" || activeTool === "comment") ? <form className="canvas-note-composer" onSubmit={(event) => { event.preventDefault(); if (!noteDraft.trim()) return; setCanvasNotes(items => [...items, { kind: activeTool, text: noteDraft.trim() }]); setNoteDraft(""); setActiveTool("select"); }}>
@@ -2230,10 +2232,13 @@ function AlbumWorkspace({
               aria-selected={tab === "edit"}
               onClick={() => setTab("edit")}
               disabled={!preview}
+              title={!preview ? "Upload an image to enable editing" : undefined}
+              aria-describedby={!preview ? "edit-disabled-reason" : undefined}
             >
               Edit
             </button>
           </div>
+          {!preview && tab === "create" ? <p id="edit-disabled-reason" className="edit-disabled-reason">Edit is disabled until you upload an image — it will scan objects you can change.</p> : null}
           <div className="album-panel-content">
             {exportStatus ? <p role="status">{exportStatus}</p> : null}
             {tab === "create" ? (
@@ -2241,8 +2246,9 @@ function AlbumWorkspace({
                 <p className="album-help">
                   {preview
                     ? "Shape the atmosphere. You can refine every detail after generation."
-                    : "Choose a direction now, or add a photo to begin."}
+                    : "Upload your space to get started — design direction is ready when you are."}
                 </p>
+                <div className={`create-secondary-group ${!preview ? "is-secondary" : ""}`}>
                 <div className="album-mode-switch" aria-label="Project type">
                   {(["Interior", "Exterior", "Garden"] as DesignMode[]).map(
                     (item) => (
@@ -2311,8 +2317,9 @@ function AlbumWorkspace({
                     }
                   />
                 ) : null}
+                </div>
                 {preview ? (
-                  <button className="studio-entry-card" onClick={() => open3d(preview)} aria-label="Open 3D studio">
+                  <button className="studio-entry-card" onClick={open3dFromPreview} aria-label="Open 3D studio">
                     <span className="studio-entry-icon">
                       <Cube />
                     </span>
@@ -2324,15 +2331,19 @@ function AlbumWorkspace({
                   </button>
                 ) : null}
                 {preview ? (
-                  <button
-                    className="album-generate primary-action"
-                    onClick={() => setGenerationConfirmOpen(true)}
-                    disabled={generating}
-                  >
-                    {generating ? <><span className="spinner" /> Creating your design…</> : <><Sparkle /> Generate · {AI_COSTS.imageEdit} credits</>}
-                  </button>
+                  <div className="album-sticky-action">
+                    <button
+                      className="album-generate primary-action"
+                      onClick={() => setGenerationConfirmOpen(true)}
+                      disabled={generating}
+                    >
+                      {generating ? <><span className="spinner" /> Creating your design…</> : <><Sparkle /> Generate · {AI_COSTS.imageEdit} credits</>}
+                    </button>
+                    <small>Uses credits · you’ll confirm before spending</small>
+                  </div>
                 ) : null}
-                <p className="integration-error" role="alert">{generationError}</p>
+                {generationError ? <p className="integration-error" role="alert">{generationError}</p> : null}
+                {!preview && tab === "create" ? <p className="create-empty-hint">Upload a photo or try an example to generate your first design.</p> : null}
               </>
             ) : !preview ? (
               <div className="objects-empty">
@@ -2363,7 +2374,7 @@ function AlbumWorkspace({
             </div> : null}
             {preview ? (
               <button
-                className="album-save"
+                className="album-save secondary-action"
                 disabled={saved || saving}
                 onClick={async () => {
                   setSaving(true);
@@ -2432,10 +2443,10 @@ function AlbumWorkspace({
         </aside>
       </div>
       <CreditConfirmation open={generationConfirmOpen} cost={AI_COSTS.imageEdit} title="Generate your design?" description="Create a new version of this photo. Your original stays available for comparison." action="Generate" onCancel={() => setGenerationConfirmOpen(false)} onConfirm={() => void generateDesign()} />
-      {threeDSource ? <WorkspaceDialog open={threeDOpen} onClose={() => { if (!threeDBusy) setThreeDOpen(false); }} title="3D studio" wide>
-        <ThreeDWorkspace key={threeDSource} initialImage={threeDSource} onBusyChange={setThreeDBusy} />
+      <WorkspaceDialog open={threeDOpen} onClose={() => { if (!threeDBusy) setThreeDOpen(false); }} title="3D studio" wide>
+        <ThreeDWorkspace key={`${threeDSource?.kind || "empty"}:${threeDSource?.image || ""}`} initialSource={threeDSource} onBusyChange={setThreeDBusy} />
         {threeDBusy ? <p className="three-d-stay" role="status">Keep this studio open until the model finishes. Your request is already running.</p> : null}
-      </WorkspaceDialog> : null}
+      </WorkspaceDialog>
     </section>
   );
 }
@@ -2746,7 +2757,7 @@ const inspirationReferences: InspirationReference[] = [
     title: "Candlelit table",
     room: "Dining room",
     style: "Mediterranean",
-    image: "/inspiration/inspo-10.webp",
+    image: "/inspiration/discover/11-oak-dining-room.png",
     prompt:
       "Design a Mediterranean-influenced dining room with mineral walls, warm wood, crafted ceramics, linen and intimate evening lighting.",
   },
@@ -3042,6 +3053,7 @@ function DiscoverPage({
                 fill
                 sizes="(max-width: 800px) 100vw, 58vw"
                 priority
+                unoptimized
               />
             </div>
             <div className="reference-details">
@@ -3082,9 +3094,7 @@ function DiscoverPage({
                   aria-label="Save this inspiration"
                 >
                   <Heart
-                    weight={
-                      savedTitles.includes(selected.title) ? "fill" : "regular"
-                    }
+                    fill={savedTitles.includes(selected.title) ? "currentColor" : "none"}
                   />{" "}
                   <span>
                     {savedTitles.includes(selected.title)
@@ -3123,6 +3133,11 @@ function SavedPage({
   const [selectedReference, setSelectedReference] =
     useState<InspirationReference | null>(null);
   const [shareMessage, setShareMessage] = useState("");
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const formatSavedDate = (value?: string) => {
+    if (!value) return "Saved recently";
+    try { return new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); } catch { return "Saved recently"; }
+  };
   const moveSavedTab = (
     event: React.KeyboardEvent<HTMLButtonElement>,
     next: "designs" | "inspiration",
@@ -3203,22 +3218,19 @@ function SavedPage({
           aria-label="Saved designs"
         >
           {designs.map((design, index) => (
-            <button
-              className={`saved-tile saved-tile-${index % 4}`}
-              key={design.id}
-              onClick={() => {
-                setSelected(design);
-                setShareMessage("");
-              }}
-            >
-              <Image
-                src={design.image}
-                alt={design.title}
-                fill
-                sizes="(max-width: 600px) 50vw, (max-width: 1000px) 33vw, 25vw"
-              />
-              <span>{design.title}</span>
-            </button>
+            <article className={`saved-card saved-tile-${index % 4}`} key={design.id}>
+              <button className="saved-card-image" onClick={() => { setSelected(design); setShareMessage(""); }} aria-label={`Open ${design.title}`}>
+                <Image src={design.image} alt={design.title} fill sizes="(max-width: 600px) 50vw, (max-width: 1000px) 33vw, 25vw" unoptimized={design.image.startsWith("data:") || design.image.startsWith("http")} />
+              </button>
+              <div className="saved-card-meta">
+                <div className="saved-card-info"><b>{design.title}</b><small>Design · {design.mode} · {formatSavedDate(design.savedAt)}</small></div>
+                <button className="saved-card-open" onClick={() => { setSelected(design); setShareMessage(""); }}>Open</button>
+                <div className="saved-card-menu-wrap">
+                  <button className="saved-card-more" aria-label={`More actions for ${design.title}`} aria-haspopup="menu" aria-expanded={menuOpen === design.id} onClick={() => setMenuOpen((v) => (v === design.id ? null : design.id))}><DotsThree /></button>
+                  {menuOpen === design.id ? <div className="saved-overflow-menu" role="menu"><button role="menuitem" onClick={() => { setMenuOpen(null); share(design); }}><ShareNetwork /> Share</button><button role="menuitem" onClick={() => { setMenuOpen(null); download(design); }}><DownloadSimple /> Download</button><button role="menuitem" onClick={() => { setMenuOpen(null); onUnsave(design.id); }}><TrashSimple /> Remove</button></div> : null}
+                </div>
+              </div>
+            </article>
           ))}
         </div>
       ) : tab === "inspiration" && references.length ? (
@@ -3230,22 +3242,19 @@ function SavedPage({
           aria-label="Saved inspiration"
         >
           {references.map((reference, index) => (
-            <button
-              className={`saved-tile saved-tile-${index % 4}`}
-              key={reference.title}
-              onClick={() => {
-                setSelectedReference(reference);
-                setShareMessage("");
-              }}
-            >
-              <Image
-                src={reference.image}
-                alt={reference.title}
-                fill
-                sizes="(max-width: 600px) 50vw, (max-width: 1000px) 33vw, 25vw"
-              />
-              <span>{reference.title}</span>
-            </button>
+            <article className={`saved-card saved-tile-${index % 4}`} key={reference.title}>
+              <button className="saved-card-image" onClick={() => { setSelectedReference(reference); setShareMessage(""); }} aria-label={`Open ${reference.title}`}>
+                <Image src={reference.image} alt={reference.title} fill sizes="(max-width: 600px) 50vw, (max-width: 1000px) 33vw, 25vw" unoptimized />
+              </button>
+              <div className="saved-card-meta">
+                <div className="saved-card-info"><b>{reference.title}</b><small>Inspiration · {reference.style} · {reference.room}</small></div>
+                <button className="saved-card-open" onClick={() => { setSelectedReference(reference); setShareMessage(""); }}>Open</button>
+                <div className="saved-card-menu-wrap">
+                  <button className="saved-card-more" aria-label={`More actions for ${reference.title}`} aria-haspopup="menu" aria-expanded={menuOpen === reference.title} onClick={() => setMenuOpen((v) => (v === reference.title ? null : reference.title))}><DotsThree /></button>
+                  {menuOpen === reference.title ? <div className="saved-overflow-menu" role="menu"><button role="menuitem" onClick={() => { setMenuOpen(null); onUseReference(reference); }}><Sparkle /> Use direction</button><button role="menuitem" onClick={() => { setMenuOpen(null); share({ id: reference.title, title: reference.title, image: reference.image, mode: "Interior", savedAt: "" }); }}><ShareNetwork /> Share</button><button role="menuitem" onClick={() => { setMenuOpen(null); download({ id: reference.title, title: reference.title, image: reference.image, mode: "Interior", savedAt: "" }); }}><DownloadSimple /> Download</button><button role="menuitem" onClick={() => { setMenuOpen(null); onUnsaveReference(reference.title); }}><TrashSimple /> Remove</button></div> : null}
+                </div>
+              </div>
+            </article>
           ))}
         </div>
       ) : (
@@ -3322,7 +3331,7 @@ function SavedPage({
                     setSelected(null);
                   }}
                 >
-                  <Heart weight="fill" /> Unsave
+                  <Heart fill="currentColor" /> Unsave
                 </button>
                 <button onClick={() => share(selected)}>
                   <ShareNetwork /> Share
@@ -3386,7 +3395,7 @@ function SavedPage({
                     closeSaved();
                   }}
                 >
-                  <Heart weight="fill" /> Unsave
+                  <Heart fill="currentColor" /> Unsave
                 </button>
                 <button
                   onClick={() =>
@@ -3824,13 +3833,16 @@ function DesignStudio({
   );
 }
 
-function ThreeDWorkspace({ initialImage = null, onBusyChange }: { initialImage?: string | null; onBusyChange?: (busy: boolean) => void } = {}) {
+function ThreeDWorkspace({ initialSource = null, onBusyChange }: { initialSource?: ThreeDSource | null; onBusyChange?: (busy: boolean) => void } = {}) {
   const { user } = useUser();
   const trackingKey = user?.id ? `housora:tripo:${user.id}` : null;
   const recentModels = useQuery(api.models.list, {});
+  const createModelShare = useMutation(api.models.createShare);
+  const revokeModelShare = useMutation(api.models.revokeShare);
   const [modelSaved, setModelSaved] = useState(false);
   const [image, setImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(initialImage);
+  const [source, setSource] = useState<ThreeDSource | null>(initialSource);
+  const [imagePreview, setImagePreview] = useState<string | null>(initialSource?.image || null);
   const [taskId, setTaskId] = useState<string | null>(null);
   const [trackingToken, setTrackingToken] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "uploading" | "queued" | "running" | "success" | "failed">("idle");
@@ -3839,6 +3851,7 @@ function ThreeDWorkspace({ initialImage = null, onBusyChange }: { initialImage?:
   const [modelPoster, setModelPoster] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [shareToken, setShareToken] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const submitting = useRef(false);
   const [pollAttempt, setPollAttempt] = useState(0);
@@ -3923,7 +3936,9 @@ function ThreeDWorkspace({ initialImage = null, onBusyChange }: { initialImage?:
     }
     if (imagePreview?.startsWith("blob:")) URL.revokeObjectURL(imagePreview);
     setImage(file);
-    setImagePreview(URL.createObjectURL(file));
+    const preview = URL.createObjectURL(file);
+    setImagePreview(preview);
+    setSource({ image: preview, kind: "furniture-upload" });
     setModelUrl(null);
     setTaskId(null);
     setTrackingToken(null);
@@ -3933,7 +3948,8 @@ function ThreeDWorkspace({ initialImage = null, onBusyChange }: { initialImage?:
   };
 
   const generateModel = async () => {
-    if (!imagePreview || submitting.current || status === "uploading" || status === "queued" || status === "running") return;
+    const validation = isValidThreeDSource(source);
+    if (!validation.valid || !imagePreview || submitting.current || status === "uploading" || status === "queued" || status === "running") { setError(validation.reason || "Choose a furniture image first."); return; }
     submitting.current = true;
     setStatus("uploading");
     setError("");
@@ -3945,6 +3961,8 @@ function ThreeDWorkspace({ initialImage = null, onBusyChange }: { initialImage?:
       form.append("image", blob, "furniture.jpg");
       form.append("confirmed", "true");
       form.append("requestId", safeUUID());
+      form.append("sourceKind", source!.kind);
+      if (source!.objectBox) form.append("sourceBox", JSON.stringify(source!.objectBox));
       const response = await fetch("/api/tripo/generate", { method: "POST", body: form });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not start 3D generation.");
@@ -3964,6 +3982,7 @@ function ThreeDWorkspace({ initialImage = null, onBusyChange }: { initialImage?:
   };
 
   const busy = status === "uploading" || status === "queued" || status === "running";
+  const sourceValidation = isValidThreeDSource(source);
   useEffect(() => { onBusyChange?.(busy); }, [busy, onBusyChange]);
   return (
     <section className="three-d-workspace tripo-workspace">
@@ -4015,7 +4034,7 @@ function ThreeDWorkspace({ initialImage = null, onBusyChange }: { initialImage?:
           />
           <span className="eyebrow">Image to 3D</span>
           <h3>{modelUrl ? "Your model is ready" : "Create an AR-ready object"}</h3>
-          <p>{modelUrl ? "Drag to rotate, scroll to zoom, or open this page on your phone and select View in your room." : "For accurate placement, use a front three-quarter product photo and avoid objects that are cut off."}</p>
+          <p>{modelUrl ? "Drag to rotate, scroll to zoom, or open this page on your phone and select View in your room." : sourceValidation.valid ? "For accurate placement, use a front three-quarter product photo and avoid objects that are cut off." : guidanceForInvalid()}</p>
           <ol className="tripo-steps">
             <li className={imagePreview ? "complete" : "active"}><span>1</span><b>Choose furniture</b></li>
             <li className={busy ? "active" : modelUrl ? "complete" : ""}><span>2</span><b>Generate with Tripo</b></li>
@@ -4028,7 +4047,7 @@ function ThreeDWorkspace({ initialImage = null, onBusyChange }: { initialImage?:
               <UploadSimple /> {image ? "Replace image" : "Choose image"}
             </button>
             {!modelUrl ? (
-              <button className="primary-action" onClick={() => setConfirmOpen(true)} disabled={!imagePreview || busy}>
+              <button className="primary-action" onClick={() => setConfirmOpen(true)} disabled={!sourceValidation.valid || busy} title={sourceValidation.reason}>
                 {busy ? <><span className="spinner" /> Generating…</> : <><Cube /> Generate 3D · {AI_COSTS.model3d} credits</>}
               </button>
             ) : (
@@ -4038,22 +4057,26 @@ function ThreeDWorkspace({ initialImage = null, onBusyChange }: { initialImage?:
                 </a>
                 <button
                   onClick={async () => {
-                    const arUrl = `${window.location.origin}/ar?src=${encodeURIComponent(modelUrl)}${modelPoster ? `&poster=${encodeURIComponent(modelPoster)}` : ""}`;
                     try {
+                      if (!taskId || !modelSaved) throw new Error("Wait until the model is saved before sharing.");
+                      const token = shareToken || await createModelShare({ taskId });
+                      setShareToken(token);
+                      const arUrl = `${window.location.origin}/ar?token=${encodeURIComponent(token)}${modelPoster ? `&poster=${encodeURIComponent(modelPoster)}` : ""}`;
                       await navigator.clipboard.writeText(arUrl);
-                      setError("AR link copied. Anyone with this link can view the model. Open it on a compatible phone.");
-                    } catch {
-                      setError("Couldn't copy the link. Allow clipboard access in your browser and try again.");
+                      setError("Secure AR link copied. You can revoke it at any time.");
+                    } catch (reason) {
+                      setError(reason instanceof Error ? reason.message : "Couldn't create the secure AR link.");
                     }
                   }}
                 >
-                  <ShareNetwork /> Copy AR browser link
+                  <ShareNetwork /> {shareToken ? "Copy secure AR link" : "Create secure AR link"}
                 </button>
+                {shareToken ? <button onClick={async () => { try { await revokeModelShare({ token: shareToken }); setShareToken(null); setError("AR share link revoked."); } catch { setError("The share link could not be revoked. Try again."); } }}>Revoke AR link</button> : null}
               </>
             )}
           </div>
           <small className="tripo-expiry-note">{modelSaved ? "Saved to your account. Anyone you send the AR link to can view this model." : "Unsaved provider links are temporary. Download your model if saving fails."} AR requires a compatible phone; generated dimensions are approximate.</small>
-          {recentModels?.length ? <div className="tripo-recent-models"><h3>Saved models</h3>{recentModels.filter(model => model.url).map((model, index) => <button key={model.taskId} disabled={busy} onClick={() => { setTaskId(null); setModelUrl(model.url); setModelPoster(null); setModelSaved(true); setStatus("success"); setError(""); }}>Open model {recentModels.length - index} · {new Date(model.createdAt).toLocaleDateString()}</button>)}</div> : null}
+          {recentModels?.length ? <div className="tripo-recent-models"><h3>Saved models</h3>{recentModels.filter(model => model.url).map((model, index) => <button key={model.taskId} disabled={busy} onClick={() => { setTaskId(model.taskId); setModelUrl(model.url); setModelPoster(null); setModelSaved(true); setShareToken(null); setStatus("success"); setError(""); }}>Open model {recentModels.length - index} · {new Date(model.createdAt).toLocaleDateString()}</button>)}</div> : null}
         </aside>
       </div>
       <CreditConfirmation open={confirmOpen} cost={AI_COSTS.model3d} title="Create this 3D model?"

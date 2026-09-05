@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Loader2, Smartphone, TriangleAlert } from "lucide-react";
 
 export function ModelViewer({ src, poster }: { src: string; poster?: string | null }) {
   const [ready, setReady] = useState(false);
@@ -37,13 +38,13 @@ export function ModelViewer({ src, poster }: { src: string; poster?: string | nu
     };
   }, []);
 
-  if (error) return <div className="model-viewer-loading" role="alert">{error}</div>;
+  if (error) return <div className="model-viewer-loading" role="alert"><TriangleAlert aria-hidden />{error}</div>;
   if (!ready) {
-    return <div className="model-viewer-loading"><span className="spinner" /> Loading 3D viewer…</div>;
+    return <div className="model-viewer-loading" role="status"><Loader2 className="spin" aria-hidden />Loading 3D viewer…</div>;
   }
 
   return (
-    <><model-viewer
+    <div className="model-viewer-shell"><model-viewer
       ref={viewer}
       src={src}
       poster={poster || undefined}
@@ -64,9 +65,9 @@ export function ModelViewer({ src, poster }: { src: string; poster?: string | nu
       style={{ width: "100%", height: "100%" }}
     >
       <button className="ar-launch-button" slot="ar-button">
-        View in your room
+        <Smartphone aria-hidden size={17} /> View in your room
       </button>
       {!modelLoaded ? <p className="ar-status" slot="progress-bar" role="status">Preparing the model…</p> : null}
-    </model-viewer>{arMessage ? <p role="alert">{arMessage}</p> : null}</>
+    </model-viewer><p className="model-viewer-notice">Approximate dimensions — not true to scale. Confirm measurements before purchasing or placing furniture.</p>{arMessage ? <p className="model-viewer-notice" role="alert">{arMessage}</p> : null}</div>
   );
 }
