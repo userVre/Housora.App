@@ -7455,7 +7455,7 @@ html {
 .credit-confirm-body dl { gap: 10px; }
 
 /* 3D Studio — fix truncated card + spacing + scroll */
-.workspace-dialog-wide { width: min(1080px, calc(100vw - 24px)); max-height: min(84vh, 860px); display: flex; flex-direction: column; overflow: hidden; }
+.workspace-dialog-wide { width: min(1080px, calc(100vw - 24px)); max-width: 1080px; max-height: min(84vh, 860px); display: flex; flex-direction: column; overflow: hidden; }
 .workspace-dialog-wide .tripo-workspace { flex: 1; min-height: 0; overflow: auto; padding: 20px 22px 22px; }
 .tripo-grid { grid-template-columns: 1.08fr 0.92fr; gap: 18px; align-items: start; min-height: auto; }
 .tripo-stage { min-height: 460px; border-radius: 14px; overflow: hidden; background: #0f0f0e; display: grid; place-items: center; }
