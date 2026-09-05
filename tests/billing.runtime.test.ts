@@ -29,6 +29,17 @@ test("renewal resets monthly allowance without stacking unused credits", async (
   await t.mutation(api.credits.fulfillWhopServer, { ...payment, eventId: "renewal", paymentId: "pay-renewal" });
   expect((await user.query(api.credits.getMyBalance, {})).subscription).toBe(120);
 });
+test("scheduled cancellation keeps paid access until membership deactivation", async () => {
+  const { t, user } = setup();
+  const payment = { serverKey, ownerId: "buyer", eventType: "payment.succeeded", offerKey: "creator_monthly", membershipId: "membership", eventId: "activation", paymentId: "pay-activation" };
+  await t.mutation(api.credits.fulfillWhopServer, payment);
+  await t.mutation(api.credits.fulfillWhopServer, { serverKey, ownerId: "buyer", membershipId: "membership", eventId: "cancel-scheduled", eventType: "membership.cancel_at_period_end_changed" });
+  expect((await user.query(api.credits.getMyBalance, {})).subscription).toBe(120);
+  await t.mutation(api.credits.fulfillWhopServer, { serverKey, membershipId: "membership", eventId: "deactivated", eventType: "membership.deactivated" });
+  const ended = await user.query(api.credits.getMyBalance, {});
+  expect(ended.subscription).toBe(0);
+  expect(ended.status).toBe("inactive");
+});
 test("duplicate credit requests and refunds have one effect", async () => {
   const { t, user } = setup();
   const usage = { serverKey, ownerId: "buyer", eventId: "usage:buyer:one", amount: 4, description: "Edit" };
