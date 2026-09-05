@@ -12,6 +12,14 @@ export const maxDuration = 60;
 const TRIPO_BASE = "https://api.tripo3d.ai/v2/openapi";
 const acceptedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 
+function tripoApiKey() {
+  const raw = process.env.TRIPO_API_KEY?.trim();
+  if (!raw) return null;
+  // Accept values copied from dashboards as either the bare token or a full
+  // `Bearer <token>` header, and tolerate a single pair of wrapping quotes.
+  return raw.replace(/^Bearer\s+/i, "").replace(/^(['"])(.*)\1$/, "$2").trim() || null;
+}
+
 function serverKey() {
   const value = process.env.HOUSORA_SERVER_KEY || process.env.WHOP_WEBHOOK_SECRET;
   if (!value) throw new Error("Internal server authentication is not configured.");
@@ -21,7 +29,7 @@ function serverKey() {
 export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Sign in to generate 3D models." }, { status: 401 });
-  const key = process.env.TRIPO_API_KEY;
+  const key = tripoApiKey();
   if (!key)
     return NextResponse.json(
       {
@@ -97,8 +105,14 @@ export async function POST(request: Request) {
     if (!uploadResponse.ok || upload?.code !== 0 || !imageToken) {
       await refundCredits(userId, usage, "3D upload failed");
       usage = null;
+      const authenticationFailed = uploadResponse.status === 401
+        || /auth|unauthori[sz]ed|invalid api key/i.test(String(upload?.message || ""));
       return NextResponse.json(
-        { error: upload?.message || "Tripo could not upload the image." },
+        {
+          error: authenticationFailed
+            ? "3D service authentication failed. Update TRIPO_API_KEY in Vercel with the bare Tripo API token, then redeploy. No credits were charged."
+            : upload?.message || "Tripo could not upload the image.",
+        },
         { status: uploadResponse.ok ? 502 : uploadResponse.status },
       );
     }

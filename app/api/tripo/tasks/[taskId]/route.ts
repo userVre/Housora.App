@@ -14,7 +14,11 @@ export async function GET(
 ) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Sign in to view this 3D task." }, { status: 401 });
-  const key = process.env.TRIPO_API_KEY;
+  const key = process.env.TRIPO_API_KEY
+    ?.trim()
+    .replace(/^Bearer\s+/i, "")
+    .replace(/^(['"])(.*)\1$/, "$2")
+    .trim();
   if (!key)
     return NextResponse.json(
       {
