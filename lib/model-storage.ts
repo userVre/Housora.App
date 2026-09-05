@@ -3,7 +3,7 @@ import { api } from "../convex/_generated/api";
 
 // Only call with a model URL returned by the authenticated Tripo task API.
 export async function persistModel(ownerId: string, taskId: string, providerUrl: string) {
-  const serverKey = process.env.WHOP_WEBHOOK_SECRET;
+  const serverKey = process.env.HOUSORA_SERVER_KEY || process.env.WHOP_WEBHOOK_SECRET;
   const url = process.env.NEXT_PUBLIC_CONVEX_URL;
   if (!serverKey || !url) throw new Error("Model storage is not configured");
   const client = new ConvexHttpClient(url);

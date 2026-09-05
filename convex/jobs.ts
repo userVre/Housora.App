@@ -12,7 +12,7 @@ async function owner(ctx: any) {
 }
 
 function requireServerKey(key: string) {
-  const expected = process.env.WHOP_WEBHOOK_SECRET;
+  const expected = process.env.HOUSORA_SERVER_KEY || process.env.WHOP_WEBHOOK_SECRET;
   if (!expected || key !== expected) throw new Error("Unauthorized server call.");
 }
 

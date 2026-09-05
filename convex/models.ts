@@ -2,7 +2,8 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { cryptoToken, requireOwner } from "./helpers";
 function server(key: string) {
-  if (!process.env.WHOP_WEBHOOK_SECRET || key !== process.env.WHOP_WEBHOOK_SECRET) throw new Error("Unauthorized");
+  const expected = process.env.HOUSORA_SERVER_KEY || process.env.WHOP_WEBHOOK_SECRET;
+  if (!expected || key !== expected) throw new Error("Unauthorized");
 }
 export const uploadUrlServer = mutation({
   args: { serverKey: v.string() },

@@ -7,7 +7,8 @@ import { usePathname } from "next/navigation";
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  if (pathname === "/privacy" || pathname === "/terms" || pathname === "/ar" || pathname.startsWith("/share/")) return children;
+  const publicPages = new Set(["/privacy", "/terms", "/refunds", "/cookies", "/support", "/ar"]);
+  if (publicPages.has(pathname) || pathname.startsWith("/share/")) return children;
   return (
     <>
       <Show when="signed-out">

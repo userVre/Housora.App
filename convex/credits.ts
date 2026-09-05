@@ -29,7 +29,11 @@ async function createFreeAccount(ctx: any, ownerId: string, now: number) {
   return await ctx.db.get(id);
 }
 async function refreshSubscription(ctx: any, account: any, now: number) {
-  if (account.status !== "active" || !account.monthlyAllowance || !account.periodEndsAt || now < account.periodEndsAt || (account.accessEndsAt && now >= account.accessEndsAt)) return account;
+  // Monthly allowances are renewed only by a verified Whop payment event. A
+  // clock-based refresh here would grant credits after a failed or missed
+  // renewal. Annual subscriptions are already paid for the access window, so
+  // they can safely receive their included allowance in monthly installments.
+  if (account.billingInterval !== "yearly" || account.status !== "active" || !account.monthlyAllowance || !account.periodEndsAt || now < account.periodEndsAt || (account.accessEndsAt && now >= account.accessEndsAt)) return account;
   const periods = Math.max(1, Math.floor((now - account.periodEndsAt) / MONTH) + 1);
   const periodStartedAt = account.periodStartedAt + periods * MONTH;
   const periodEndsAt = account.periodEndsAt + periods * MONTH;
@@ -63,8 +67,9 @@ export const getMyBalance = query({
       const subscription = welcomeExists ? 0 : FREE_CREDITS;
       return { plan: "free", status: "active", subscription, purchased, total: subscription + purchased };
     }
-    const subscription = account.status === "active" ? account.subscriptionCredits : 0;
-    return { plan: account.plan, status: account.status, subscription, purchased, total: subscription + purchased, monthlyAllowance: account.monthlyAllowance, periodEndsAt: account.periodEndsAt, accessEndsAt: account.accessEndsAt };
+    const accessActive = account.status === "active" && (!account.accessEndsAt || account.accessEndsAt > now);
+    const subscription = accessActive ? account.subscriptionCredits : 0;
+    return { plan: account.plan, status: accessActive ? account.status : "inactive", subscription, purchased, total: subscription + purchased, monthlyAllowance: account.monthlyAllowance, periodEndsAt: account.periodEndsAt, accessEndsAt: account.accessEndsAt };
   },
 });
 export const getMyHistory = query({
@@ -75,7 +80,7 @@ export const getMyHistory = query({
   },
 });
 function requireServerKey(serverKey: string) {
-  const expected = process.env.WHOP_WEBHOOK_SECRET;
+  const expected = process.env.HOUSORA_SERVER_KEY || process.env.WHOP_WEBHOOK_SECRET;
   if (!expected || serverKey !== expected) throw new Error("Unauthorized fulfillment request.");
 }
 function isDemonstrablyInvalidGrant(grant: any): boolean {
@@ -169,7 +174,7 @@ export const refundUsageEventServer = mutation({
   },
 });
 export const fulfillWhopServer = mutation({
-  args: { serverKey: v.string(), eventId: v.string(), eventType: v.string(), ownerId: v.optional(v.string()), offerKey: v.optional(v.string()), paymentId: v.optional(v.string()), membershipId: v.optional(v.string()) },
+  args: { serverKey: v.string(), eventId: v.string(), eventType: v.string(), ownerId: v.optional(v.string()), offerKey: v.optional(v.string()), paymentId: v.optional(v.string()), membershipId: v.optional(v.string()), accessEndsAt: v.optional(v.number()) },
   handler: async (ctx, args) => {
     requireServerKey(args.serverKey);
     const seen = await ctx.db.query("webhookEvents").withIndex("by_provider_and_eventId", (q) => q.eq("provider", "whop").eq("eventId", args.eventId)).unique(); if (seen) return { duplicate: true };
@@ -186,10 +191,10 @@ export const fulfillWhopServer = mutation({
     }
     if (args.eventType !== "payment.succeeded") return { duplicate: false }; if (!args.offerKey) return { duplicate: false, ignored: true };
     if (args.paymentId) { const priorGrant = await ctx.db.query("creditGrants").withIndex("by_payment", q => q.eq("paymentId", args.paymentId)).first(); if (priorGrant || account.lastPaymentId === args.paymentId) return { duplicate: true }; }
-    const subscription: Record<string, { allowance: number; accessDays: number }> = { creator_monthly: { allowance: 120, accessDays: 35 }, creator_yearly: { allowance: 120, accessDays: 370 }, studio_monthly: { allowance: 400, accessDays: 35 }, studio_yearly: { allowance: 400, accessDays: 370 } };
+    const subscription: Record<string, { allowance: number; accessDays: number; billingInterval: "monthly" | "yearly" }> = { creator_monthly: { allowance: 120, accessDays: 35, billingInterval: "monthly" }, creator_yearly: { allowance: 120, accessDays: 370, billingInterval: "yearly" }, studio_monthly: { allowance: 400, accessDays: 35, billingInterval: "monthly" }, studio_yearly: { allowance: 400, accessDays: 370, billingInterval: "yearly" } };
     const packs: Record<string, number> = { credits_50: 50, credits_150: 150, credits_400: 400 };
     const plan = subscription[args.offerKey];
-    if (plan) { await ctx.db.patch(account._id, { plan: args.offerKey, status: "active", subscriptionCredits: plan.allowance, monthlyAllowance: plan.allowance, periodStartedAt: now, periodEndsAt: now + MONTH, accessEndsAt: now + plan.accessDays * DAY, whopMembershipId: args.membershipId, lastPaymentId: args.paymentId, updatedAt: now }); await ctx.db.insert("creditTransactions", { ownerId, eventId: args.eventId, type: "subscription_grant", description: `${args.offerKey} plan credits`, subscriptionDelta: plan.allowance - account.subscriptionCredits, purchasedDelta: 0, createdAt: now }); return { duplicate: false }; }
+    if (plan) { await ctx.db.patch(account._id, { plan: args.offerKey, status: "active", subscriptionCredits: plan.allowance, monthlyAllowance: plan.allowance, billingInterval: plan.billingInterval, periodStartedAt: now, periodEndsAt: now + MONTH, accessEndsAt: args.accessEndsAt || now + plan.accessDays * DAY, whopMembershipId: args.membershipId, lastPaymentId: args.paymentId, updatedAt: now }); await ctx.db.insert("creditTransactions", { ownerId, eventId: args.eventId, type: "subscription_grant", description: `${args.offerKey} plan credits`, subscriptionDelta: plan.allowance - account.subscriptionCredits, purchasedDelta: 0, createdAt: now }); return { duplicate: false }; }
     const packAmount = packs[args.offerKey]; if (packAmount) { await ctx.db.insert("creditGrants", { ownerId, sourceEventId: args.eventId, paymentId: args.paymentId, kind: args.offerKey, amount: packAmount, remaining: packAmount, expiresAt: now + 365 * DAY, status: "active", createdAt: now }); await ctx.db.insert("creditTransactions", { ownerId, eventId: args.eventId, type: "credit_pack", description: `${packAmount} purchased credits`, subscriptionDelta: 0, purchasedDelta: packAmount, createdAt: now }); } return { duplicate: false };
   },
 });

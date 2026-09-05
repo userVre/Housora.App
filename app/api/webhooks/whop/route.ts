@@ -16,6 +16,12 @@ function text(value: unknown) {
   return typeof value === "string" ? value : undefined;
 }
 
+function timestamp(value: unknown) {
+  if (typeof value !== "string" && typeof value !== "number") return undefined;
+  const parsed = typeof value === "number" ? (value < 10_000_000_000 ? value * 1000 : value) : Date.parse(value);
+  return Number.isFinite(parsed) && parsed > Date.now() - 24 * 60 * 60 * 1000 ? parsed : undefined;
+}
+
 function offerFromPlan(planId?: string) {
   if (!planId) return undefined;
   return (Object.keys(WHOP_OFFERS) as WhopOfferKey[]).find(
@@ -43,6 +49,7 @@ export async function POST(request: NextRequest) {
     const plan = object(data.plan);
     const paymentId = text(data.payment_id) || text(payment.id) || (event.type === "payment.succeeded" ? text(data.id) : undefined);
     const membershipId = text(data.membership_id) || text(membership.id) || (event.type.startsWith("membership.") ? text(data.id) : undefined);
+    const accessEndsAt = timestamp(data.current_period_end) || timestamp(membership.current_period_end) || timestamp(data.expires_at) || timestamp(membership.expires_at);
     const planId = text(data.plan_id) || text(plan.id);
     const ownerId = text(metadata.clerk_user_id) || text(object(payment.metadata).clerk_user_id) || text(object(membership.metadata).clerk_user_id);
     const offerKey = text(metadata.offer_key) || text(object(payment.metadata).offer_key) || text(object(membership.metadata).offer_key) || offerFromPlan(planId);
@@ -50,14 +57,16 @@ export async function POST(request: NextRequest) {
     if (!eventId) return NextResponse.json({ error: "Webhook event ID is missing." }, { status: 400 });
 
     const client = new ConvexHttpClient(convexUrl);
+    const serverKey = process.env.HOUSORA_SERVER_KEY || secret;
     await client.mutation(api.credits.fulfillWhopServer, {
-      serverKey: secret,
+      serverKey,
       eventId,
       eventType: event.type,
       ownerId,
       offerKey,
       paymentId,
       membershipId,
+      accessEndsAt,
     });
     return NextResponse.json({ received: true });
   } catch (error) {

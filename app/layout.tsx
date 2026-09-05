@@ -6,11 +6,13 @@ import { ConvexClientProvider } from "./convex-client-provider";
 import { PostHogProvider } from "../components/posthog-provider";
 import "./globals.css";
 
+const siteIndexable = process.env.NEXT_PUBLIC_SITE_INDEXABLE === "true";
+
 export const metadata: Metadata = {
   title: "Housora — From space to approved design",
   description:
     "AI interior design workspace for concepts, client approvals, products, specifications and budgets.",
-  robots: { index: false, follow: false },
+  robots: { index: siteIndexable, follow: siteIndexable },
 };
 
 export const viewport: Viewport = {

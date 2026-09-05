@@ -8,8 +8,8 @@ function client() {
 }
 
 function serverKey() {
-  const value = process.env.WHOP_WEBHOOK_SECRET;
-  if (!value) throw new Error("WHOP_WEBHOOK_SECRET is not configured.");
+  const value = process.env.HOUSORA_SERVER_KEY || process.env.WHOP_WEBHOOK_SECRET;
+  if (!value) throw new Error("Internal server authentication is not configured.");
   return value;
 }
 

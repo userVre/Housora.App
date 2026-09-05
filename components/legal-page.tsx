@@ -1,17 +1,34 @@
 import Link from "next/link";
 import { getLegalConfig } from "../lib/legal-config";
 
-export function LegalPage({ kind }: { kind: "privacy" | "terms" }) {
+export function LegalPage({ kind }: { kind: "privacy" | "terms" | "refunds" | "cookies" }) {
   const privacy = kind === "privacy";
+  const refunds = kind === "refunds";
+  const cookies = kind === "cookies";
   const legal = getLegalConfig();
   return <main className="legal-page"><header><Link href="/">Housora</Link><span>Last updated August 29, 2026</span></header><article>
-    <span className="eyebrow">Legal</span><h1>{privacy ? "Privacy Policy" : "Terms of Service"}</h1>
-    <p className="legal-lead">{privacy ? "This policy explains what Housora collects, why it is used, who processes it, and the choices available to you." : "These terms govern access to Housora’s AI design, image, segmentation, 3D, AR, storage, subscription, and credit services."}</p>
+    <span className="eyebrow">{legal.reviewed ? "Legal" : "Legal draft"}</span><h1>{privacy ? "Privacy Policy" : refunds ? "Refund Policy" : cookies ? "Cookie Policy" : "Terms of Service"}</h1>
+    <p className="legal-lead">{privacy ? "This policy explains what Housora collects, why it is used, who processes it, and the choices available to you." : refunds ? "This draft explains how subscriptions, credit packs, failed jobs and refunds are handled." : cookies ? "This draft explains the essential storage and optional analytics technologies used by Housora." : "These terms govern access to Housora’s AI design, image, segmentation, 3D, AR, storage, subscription, and credit services."}</p>
+    {!legal.reviewed ? <div className="legal-config-warning" role="note"><strong>Draft policy — legal review required.</strong><p>This page is a transparent product draft, not legal advice or legal approval. Complete the operator details and have these policies reviewed before public launch.</p></div> : null}
     {!legal.ready ? <div className="legal-config-warning" role="alert"><strong>Operator details are not yet configured.</strong><p>This deployment is not ready for public launch. Missing: {legal.missing.join(", ")}.</p></div> : null}
-    {privacy ? <PrivacyContent /> : <TermsContent />}
+    {privacy ? <PrivacyContent /> : refunds ? <RefundContent supportEmail={legal.supportEmail} /> : cookies ? <CookieContent privacyEmail={legal.privacyEmail} /> : <TermsContent />}
     {legal.ready ? <Section title="Operator and contact"><p>{legal.legalName}<br />{legal.legalAddress}</p><p>Support: <a href={`mailto:${legal.supportEmail}`}>{legal.supportEmail}</a><br />Privacy: <a href={`mailto:${legal.privacyEmail}`}>{legal.privacyEmail}</a></p><p>Governing jurisdiction: {legal.jurisdiction}{legal.salesGeo ? `. Sales availability: ${legal.salesGeo}.` : "."}</p></Section> : null}
-  </article><footer><Link href="/privacy">Privacy Policy</Link><Link href="/terms">Terms of Service</Link><Link href="/">Back to Housora</Link></footer></main>;
+  </article><footer><Link href="/privacy">Privacy Policy</Link><Link href="/terms">Terms of Service</Link><Link href="/refunds">Refunds</Link><Link href="/cookies">Cookies</Link>{legal.supportEmail ? <a href={`mailto:${legal.supportEmail}`}>Support</a> : <Link href="/support">Support</Link>}<Link href="/">Back to Housora</Link></footer></main>;
 }
+
+function RefundContent({ supportEmail }: { supportEmail?: string }) { return <>
+  <Section title="1. Subscriptions"><p>Subscription charges are processed by Whop. Cancel before the next renewal through the billing provider. Cancellation normally stops future renewals while access remains available for the paid period, subject to applicable consumer law.</p></Section>
+  <Section title="2. Credit packs"><p>Credit packs are digital usage credits. They are added only after confirmed payment. Duplicate, reversed, disputed or refunded payments can remove the associated unused credits. Credits have no cash value and cannot be transferred.</p></Section>
+  <Section title="3. Failed AI jobs"><p>If an eligible provider request fails before producing a result, Housora attempts to reconcile the reserved credits automatically. A displayed balance may take a short time to update. {supportEmail ? <>Contact <a href={`mailto:${supportEmail}`}>{supportEmail}</a></> : <>Use the <Link href="/support">support page</Link></>} with the project and request ID if it does not.</p></Section>
+  <Section title="4. Requests and limitations"><p>Refund decisions depend on the checkout terms, provider costs, fraud controls and mandatory law. Contact support with your account email, order identifier and reason. Never send card details or API keys by email.</p></Section>
+  </>; }
+
+function CookieContent({ privacyEmail }: { privacyEmail?: string }) { return <>
+  <Section title="1. Essential storage"><p>Housora and its providers may use cookies or local storage required for authentication, security, preferences, routing and checkout continuity. These technologies are necessary for the service and cannot be disabled without affecting functionality.</p></Section>
+  <Section title="2. Optional analytics"><p>Optional product analytics are off unless enabled in Settings. When enabled, Housora may use PostHog to understand feature usage. Uploaded images and prompts are excluded from session replay.</p></Section>
+  <Section title="3. Your choices"><p>You can control optional analytics in Settings and use your browser controls to clear storage. Blocking essential storage may sign you out or prevent checkout and project loading.</p></Section>
+  <Section title="4. Contact"><p>{privacyEmail ? <>Questions about privacy or cookies can be sent to <a href={`mailto:${privacyEmail}`}>{privacyEmail}</a>.</> : <>Questions about privacy or cookies can be sent through the <Link href="/support">support page</Link>.</>}</p></Section>
+  </>; }
 
 function PrivacyContent() { return <>
   <Section title="1. Information we collect"><p>We process account information supplied through Clerk; projects, prompts, uploaded and generated images, detected objects, 3D files and saved designs; billing status and transaction identifiers supplied by Whop; preferences and support communications; and essential technical logs needed for security and reliability.</p><p>Optional PostHog product analytics are collected only when enabled in Settings. Session replay is disabled. Passwords and complete payment-card details are handled by their respective providers and are not stored by Housora.</p></Section>

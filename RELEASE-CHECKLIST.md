@@ -1,5 +1,18 @@
 # Housora implementation and release checks — 2026-09-04
 
+## Code-side hardening completed on 2026-09-05
+
+- Tripo request recovery records now require an internal server secret for both reads and writes; an automated regression test rejects invalid callers.
+- `HOUSORA_SERVER_KEY` separates internal Next.js-to-Convex calls from the Whop webhook signing secret. The Whop secret remains a temporary migration fallback only.
+- Monthly plan credits no longer refresh from elapsed time. They reset only after a verified `payment.succeeded` renewal. Annual plans can still release their already-paid allowance monthly while access remains valid.
+- Expired subscription credits are neither shown nor spendable. Whop membership period timestamps are used when the webhook provides them.
+- `/api/health` now checks the Whop company, API key, webhook secret, internal server authentication, and all seven subscription/credit-pack IDs separately.
+- Refund, cookie, privacy, terms, support, AR, and tokenized share pages are publicly readable without signing in. Search indexing stays opt-in through `NEXT_PUBLIC_SITE_INDEXABLE`.
+- Legal readiness now requires both complete operator values and `HOUSORA_LEGAL_REVIEWED=true`; the review warning disappears only after that explicit confirmation.
+- Production dependency audit: zero known production vulnerabilities at the time of this check.
+
+These changes still require coordinated Convex/Vercel deployment and the owner-controlled checks listed below.
+
 ## Evidence, not a launch approval
 
 The working tree contains earlier uncommitted changes plus this implementation. Nothing was committed, pushed, or deployed in this run. Local results do not establish that the deployed website has these fixes.

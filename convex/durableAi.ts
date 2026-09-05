@@ -5,6 +5,11 @@ import { v } from "convex/values";
 import { compositeObjectEdit } from "../lib/composite-object-edit";
 
 const identity = { requestId: v.string(), ownerId: v.string(), usageEventId: v.string() };
+function serverKey() {
+  const value = process.env.HOUSORA_SERVER_KEY || process.env.WHOP_WEBHOOK_SECRET;
+  if (!value) throw new Error("Internal server authentication is not configured.");
+  return value;
+}
 async function bytes(url: string) {
   const response = await fetch(url, { signal: AbortSignal.timeout(30_000), redirect: "error" });
   if (!response.ok) throw new Error("Image download failed.");
@@ -26,7 +31,7 @@ export const execute = internalAction({
         const data = await response.json();
         if (!response.ok || data.auto_detect !== true || !Array.isArray(data.objects)) throw new Error("Detection failed. Please try again.");
         result = { objects: data.objects, refunded: data.objects.length === 0 };
-        if (!data.objects.length) await ctx.runMutation(api.credits.refundUsageEventServer, { serverKey: process.env.WHOP_WEBHOOK_SECRET!, ownerId: args.ownerId, usageEventId: args.usageEventId, description: "No objects detected" });
+        if (!data.objects.length) await ctx.runMutation(api.credits.refundUsageEventServer, { serverKey: serverKey(), ownerId: args.ownerId, usageEventId: args.usageEventId, description: "No objects detected" });
       } else {
         const key = process.env.GROK_IMAGE_KEY || process.env.XAI_API_KEY;
         if (!key) throw new Error("Image editing is not configured in the background worker.");
@@ -45,14 +50,14 @@ export const execute = internalAction({
       try {
         if (args.type === "segment" && Array.isArray(result.objects) && result.objects.length) {
           const cacheId = await ctx.storage.store(new Blob([JSON.stringify(result.objects)], { type: "application/json" }));
-          await ctx.runMutation(api.jobs.saveSegmentationCacheServer, { serverKey: process.env.WHOP_WEBHOOK_SECRET!, ownerId: args.ownerId, imageHash: args.inputHash, mode: args.mode || "Interior", objects: { payloadUrl: await ctx.storage.getUrl(cacheId), storageId: cacheId } });
+          await ctx.runMutation(api.jobs.saveSegmentationCacheServer, { serverKey: serverKey(), ownerId: args.ownerId, imageHash: args.inputHash, mode: args.mode || "Interior", objects: { payloadUrl: await ctx.storage.getUrl(cacheId), storageId: cacheId } });
         } else if (args.type === "edit" && typeof result.image === "string") {
-          await ctx.runMutation(api.jobs.saveGenerationCacheServer, { serverKey: process.env.WHOP_WEBHOOK_SECRET!, ownerId: args.ownerId, inputHash: args.inputHash, resultImage: result.image, prompt: args.prompt || "", modelVersion: "grok-imagine-image-2.0", aspectRatio: args.aspectRatio });
+          await ctx.runMutation(api.jobs.saveGenerationCacheServer, { serverKey: serverKey(), ownerId: args.ownerId, inputHash: args.inputHash, resultImage: result.image, prompt: args.prompt || "", modelVersion: "grok-imagine-image-2.0", aspectRatio: args.aspectRatio });
         }
       } catch { /* Successful work remains available even if its optional cache fails. */ }
     } catch {
       await ctx.runMutation(internal.jobs.failInternal, { requestId: args.requestId, error: "The task could not complete. Its credits are being returned; no automatic paid retry was submitted." });
-      await ctx.runMutation(api.credits.refundUsageEventServer, { serverKey: process.env.WHOP_WEBHOOK_SECRET!, ownerId: args.ownerId, usageEventId: args.usageEventId, description: "Background task failed" });
+      await ctx.runMutation(api.credits.refundUsageEventServer, { serverKey: serverKey(), ownerId: args.ownerId, usageEventId: args.usageEventId, description: "Background task failed" });
     }
   },
 });
@@ -61,12 +66,12 @@ export const execute = internalAction({
 export const expire = internalAction({
   args: identity,
   handler: async (ctx, args) => {
-    const job = await ctx.runQuery(api.jobs.getServer, { serverKey: process.env.WHOP_WEBHOOK_SECRET!, ownerId: args.ownerId, requestId: args.requestId });
+    const job = await ctx.runQuery(api.jobs.getServer, { serverKey: serverKey(), ownerId: args.ownerId, requestId: args.requestId });
     if (!job || job.status === "success") return;
     if (job.status !== "failed") {
       await ctx.runMutation(internal.jobs.failInternal, { requestId: args.requestId, error: "This task timed out. No automatic paid retry was submitted." });
     }
-    const updated = await ctx.runQuery(api.jobs.getServer, { serverKey: process.env.WHOP_WEBHOOK_SECRET!, ownerId: args.ownerId, requestId: args.requestId });
-    if (updated?.status === "failed") await ctx.runMutation(api.credits.refundUsageEventServer, { serverKey: process.env.WHOP_WEBHOOK_SECRET!, ownerId: args.ownerId, usageEventId: args.usageEventId, description: "Background task failed or timed out" });
+    const updated = await ctx.runQuery(api.jobs.getServer, { serverKey: serverKey(), ownerId: args.ownerId, requestId: args.requestId });
+    if (updated?.status === "failed") await ctx.runMutation(api.credits.refundUsageEventServer, { serverKey: serverKey(), ownerId: args.ownerId, usageEventId: args.usageEventId, description: "Background task failed or timed out" });
   },
 });

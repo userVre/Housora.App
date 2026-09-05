@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getLegalConfig } from "../../../lib/legal-config";
+import { getWhopPlanId, WHOP_OFFERS, type WhopOfferKey } from "../../../lib/whop";
 
 export const runtime = "nodejs";
 
@@ -10,6 +11,13 @@ function has(name: string) {
 
 export async function GET() {
   const legal = getLegalConfig();
+  const whopOffers = Object.keys(WHOP_OFFERS) as WhopOfferKey[];
+  const missingWhopOffers = whopOffers.filter((offer) => {
+    try { return !getWhopPlanId(offer); } catch { return true; }
+  });
+  const whopApiReady = has("WHOP_API_KEY") && has("WHOP_COMPANY_ID");
+  const whopWebhookReady = has("WHOP_WEBHOOK_SECRET");
+  const internalServerReady = has("HOUSORA_SERVER_KEY") || whopWebhookReady;
   const checks = {
     // generation
     GROK_IMAGE_KEY: has("GROK_IMAGE_KEY"),
@@ -33,15 +41,21 @@ export async function GET() {
     // core
     CLERK: has("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY") && has("CLERK_SECRET_KEY"),
     CONVEX: has("NEXT_PUBLIC_CONVEX_URL"),
-    WHOP: has("WHOP_API_KEY"),
+    WHOP_API: whopApiReady,
+    WHOP_WEBHOOK: whopWebhookReady,
+    WHOP_OFFERS: missingWhopOffers.length === 0,
+    INTERNAL_SERVER_AUTH: internalServerReady,
   };
 
-  const allCritical = checks.generationReady && checks.segmentationReady && checks.tripoReady && checks.CLERK && checks.CONVEX && checks.WHOP && legal.ready;
+  const billingReady = whopApiReady && whopWebhookReady && missingWhopOffers.length === 0 && internalServerReady;
+  const allCritical = checks.generationReady && checks.segmentationReady && checks.tripoReady && checks.CLERK && checks.CONVEX && billingReady && legal.ready;
   return NextResponse.json({
     ok: allCritical,
     ready: allCritical,
     legalReady: legal.ready,
     legal: { missing: legal.missing },
+    billingReady,
+    billing: { missingOffers: missingWhopOffers },
     timestamp: new Date().toISOString(),
     env: checks,
     hint: !allCritical

@@ -1,5 +1,6 @@
 const required = ["HOUSORA_LEGAL_NAME", "HOUSORA_LEGAL_ADDRESS", "HOUSORA_SUPPORT_EMAIL", "HOUSORA_PRIVACY_EMAIL", "HOUSORA_JURISDICTION"];
 const missing = required.filter(name => !process.env[name]?.trim());
+if (process.env.HOUSORA_LEGAL_REVIEWED !== "true") missing.push("HOUSORA_LEGAL_REVIEWED=true");
 const staleTerms = ["fal.ai", "OpenRouter", "Microsoft model infrastructure", "masked session replay"];
 const { readFile } = await import("node:fs/promises");
 const sources = await Promise.all(["components/legal-page.tsx", "PRIVACY_POLICY.md", "TERMS_OF_SERVICE.md"].map(path => readFile(new URL(`../${path}`, import.meta.url), "utf8")));

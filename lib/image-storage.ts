@@ -3,7 +3,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api";
 
 export async function storeProjectImage(ownerId: string, source: Buffer) {
-  const serverKey = process.env.WHOP_WEBHOOK_SECRET;
+  const serverKey = process.env.HOUSORA_SERVER_KEY || process.env.WHOP_WEBHOOK_SECRET;
   const endpoint = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONVEX_URL;
   if (!serverKey || !endpoint) throw new Error("Image storage is not configured.");
   if (source.length > 20_000_000) throw new Error("Image is too large.");

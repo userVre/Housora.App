@@ -8,8 +8,8 @@ function convex() {
   return new ConvexHttpClient(url);
 }
 function serverKey() {
-  const v = process.env.WHOP_WEBHOOK_SECRET;
-  if (!v) throw new Error("WHOP_WEBHOOK_SECRET missing");
+  const v = process.env.HOUSORA_SERVER_KEY || process.env.WHOP_WEBHOOK_SECRET;
+  if (!v) throw new Error("Internal server authentication is not configured");
   return v;
 }
 

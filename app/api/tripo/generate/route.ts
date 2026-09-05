@@ -12,6 +12,12 @@ export const maxDuration = 60;
 const TRIPO_BASE = "https://api.tripo3d.ai/v2/openapi";
 const acceptedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 
+function serverKey() {
+  const value = process.env.HOUSORA_SERVER_KEY || process.env.WHOP_WEBHOOK_SECRET;
+  if (!value) throw new Error("Internal server authentication is not configured.");
+  return value;
+}
+
 export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Sign in to generate 3D models." }, { status: 401 });
@@ -64,7 +70,7 @@ export async function POST(request: Request) {
         const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONVEX_URL;
         if (convexUrl) {
           const client = new ConvexHttpClient(convexUrl);
-          const existing: any = await client.query(api.tripoRequests.getByRequestServer, { ownerId: userId, requestId: requestId as string });
+          const existing: any = await client.query(api.tripoRequests.getByRequestServer, { serverKey: serverKey(), ownerId: userId, requestId: requestId as string });
           if (existing?.taskId) {
             return NextResponse.json({
               taskId: existing.taskId,
@@ -126,7 +132,7 @@ export async function POST(request: Request) {
       const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONVEX_URL;
       if (convexUrl) {
         const client = new ConvexHttpClient(convexUrl);
-        await client.mutation(api.tripoRequests.saveServer, { ownerId: userId, requestId: requestId as string, taskId, usageEventId: usage.eventId });
+        await client.mutation(api.tripoRequests.saveServer, { serverKey: serverKey(), ownerId: userId, requestId: requestId as string, taskId, usageEventId: usage.eventId });
       }
     } catch (e) {
       console.warn("tripoRequests save failed", e);

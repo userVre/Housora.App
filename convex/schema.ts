@@ -29,6 +29,7 @@ export default defineSchema({
     status: v.string(),
     subscriptionCredits: v.number(),
     monthlyAllowance: v.number(),
+    billingInterval: v.optional(v.union(v.literal("monthly"), v.literal("yearly"))),
     periodStartedAt: v.number(),
     periodEndsAt: v.optional(v.number()),
     accessEndsAt: v.optional(v.number()),
