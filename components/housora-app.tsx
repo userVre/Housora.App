@@ -510,10 +510,10 @@ type DemoDialog =
 export function HousoraApp({
   page = "projects",
 }: {
-  page?: WorkspacePage | "gallery" | "favorites";
+  page?: WorkspacePage | "gallery" | "favorites" | "saved";
 }) {
   const normalized: WorkspacePage =
-    page === "gallery" ? "projects" : page === "favorites" ? "library" : page;
+    page === "gallery" ? "projects" : page === "favorites" || page === "saved" ? "library" : page;
   const [activePage, setActivePage] = useState<WorkspacePage>(normalized);
   const [railOpen, setRailOpen] = useState(false);
   const [dialog, setDialog] = useState<DemoDialog>(null);
@@ -562,7 +562,8 @@ export function HousoraApp({
   const [notice, setNotice] = useState("");
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const requestedView = params.get("view") as WorkspacePage | null;
+    const rawRequestedView = params.get("view");
+    const requestedView = rawRequestedView === "saved" ? "library" : rawRequestedView as WorkspacePage | null;
     if (
       requestedView &&
       ["projects", "discover", "library", "album", "pricing", "settings"].includes(requestedView)
@@ -570,9 +571,10 @@ export function HousoraApp({
       setActivePage(requestedView);
     }
     const restoreView = () => {
-      const view = new URLSearchParams(window.location.search).get(
+      const rawView = new URLSearchParams(window.location.search).get(
         "view",
-      ) as WorkspacePage | null;
+      );
+      const view = rawView === "saved" ? "library" : rawView as WorkspacePage | null;
       setActivePage(
         view && ["projects", "discover", "library", "album", "pricing", "settings"].includes(view)
           ? view
@@ -2924,6 +2926,7 @@ function DiscoverPage({
   };
   return (
     <div className="discover-page inspiration-page">
+      <h1 className="visually-hidden">Discover design directions</h1>
       <div className="inspiration-tools simple-discover-tools">
         <label className="inspiration-search">
           <MagnifyingGlass />
