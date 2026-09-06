@@ -7970,6 +7970,8 @@ html, body { overflow-x: hidden; max-width: 100vw; }
 
 /* Canonical end-of-file layout/accessibility guardrails. These intentionally
    come after legacy feature overrides so one editor layout wins. */
+.export-service-notice { margin-bottom: 12px; }
+.export-unavailable-action { cursor: not-allowed; }
 .album-workspace-body { grid-template-columns: minmax(0, 1fr) minmax(340px, 420px) !important; }
 .album-canvas, .album-control-panel, .album-panel-content, .album-panel-content > * { min-width: 0; }
 .album-tabs button { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

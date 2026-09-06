@@ -857,8 +857,8 @@ export function HousoraApp({
         </button>
         <button
           className="mobile-account-button"
-          onClick={() => openUserProfile()}
-          aria-label="Open account settings"
+          onClick={() => navigate("settings")}
+          aria-label="Open Housora settings"
         >
           {profileInitials}
         </button>
@@ -2197,7 +2197,7 @@ function AlbumWorkspace({
   const spaceLabel = mode === "Interior" ? "Room type" : mode === "Exterior" ? "Building type" : "Garden area";
   const detectedCountHint = preview ? null : "Upload a photo to unlock object editing";
   const saveStateLabel = saving ? "Saving…" : saveError ? "Save failed" : saved ? "Saved to Projects" : preview ? "Not saved yet" : "No image yet";
-  const saveStateDetail = saving ? "Persisting your design…" : saveError ? saveError : saved ? "Saved to Projects and available in Saved. Favorites are separate." : preview ? "Your design is not yet persisted. Use Save to keep it." : "";
+  const saveStateDetail = saving ? "Saving your design…" : saveError ? saveError : saved ? "Saved to Projects and added to Saved designs." : preview ? "Save this version before leaving if you want to keep it." : "";
   return (
     <section className="album-workspace" aria-label="Project editor">
       <header className="album-workspace-bar">
@@ -2289,7 +2289,7 @@ function AlbumWorkspace({
             <button role="tab" aria-selected={editorMode==="threed"} onClick={() => setEditorMode("threed")} style={{ minHeight: 44, border: 0, borderRadius: 8, background: editorMode==="threed" ? "#f4f0e8" : "transparent", color: editorMode==="threed" ? "#11120f" : "#aaa99f", fontWeight: 700, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Cube size={14}/> 3D models</button>
             <button role="tab" aria-selected={editorMode==="ar"} onClick={() => setEditorMode("ar")} style={{ minHeight: 44, border: 0, borderRadius: 8, background: editorMode==="ar" ? "#f4f0e8" : "transparent", color: editorMode==="ar" ? "#11120f" : "#aaa99f", fontWeight: 700, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Smartphone size={14}/> View in AR</button>
           </div>
-          <p id="edit-disabled-reason" className="visually-hidden">Edit objects is disabled until you upload an image. Room-type selection in Redesign is free and never charges.</p>
+          {!preview ? <p id="edit-disabled-reason" className="visually-hidden">Upload a photo to edit objects. Choosing a room type is free.</p> : null}
           <div className="album-panel-content" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 16, display: "grid", alignContent: "start", gap: 16 }}>
             {editorMode === "redesign" ? (
               <>
@@ -2317,7 +2317,7 @@ function AlbumWorkspace({
                     <span style={{ display: "flex", alignItems: "center", gap: 6 }}>{saving ? <span className="spinner" style={{ width: 12, height: 12 }}/> : saved ? <Check size={12}/> : null}{saveStateLabel}</span>
                     {preview ? <button onClick={async () => { setSaving(true); setSaveError(""); try { await persistImage(preview); } catch (e) { setSaveError(e instanceof Error ? e.message : "Could not save."); } finally { setSaving(false); }}} disabled={saving || saved} style={{ border: "1px solid #34362f", background: saved ? "#2a2a26" : "#1f1f1d", color: "#f4f0e8", borderRadius: 6, padding: "6px 10px", fontSize: 11, opacity: saving || saved ? 0.7 : 1 }}>{saving ? "Saving…" : saved ? "Saved" : "Save to Projects"}</button> : null}
                   </div>
-                  {saveStateDetail ? <small style={{ color: saveError ? "#d89585" : "#777970", lineHeight: 1.4 }}>{saveStateDetail} {saved ? "" : "Favorites are separate — heart a design to add it to Saved, without persisting a new version."}</small> : null}
+                  {saveStateDetail ? <small style={{ color: saveError ? "#d89585" : "#aaa99f", lineHeight: 1.4 }}>{saveStateDetail}</small> : null}
                 </div>
               </>
             ) : null}
@@ -2356,7 +2356,7 @@ function AlbumWorkspace({
                     </button>
                   ))}
                 </div>
-                <small style={{ color: "var(--night-muted)", fontSize: 11, lineHeight: 1.4 }}>Tap a version to <strong>preview</strong> it. Previewing does not restore or save. Use <strong>Save to Projects</strong> above to persist the previewed version. Undo/Redo are consolidated here and in the canvas toolbar.</small>
+                <small style={{ color: "var(--night-muted)", fontSize: 11, lineHeight: 1.4 }}>Select a version to preview it. To keep an older version, select it, restore it, then save.</small>
                 {historyIndex !== history.length - 1 ? <button onClick={() => { setPreview(history[historyIndex]); setSaved(false); }} style={{ minHeight: 36, border: "1px solid #34362f", borderRadius: 8, background: "#1f1f1d", color: "#f4f0e8", fontSize: 12 }}>Restore this preview as current</button> : null}
               </div>
             ) : null}
@@ -2390,7 +2390,7 @@ function StyleField({ label, value, values, onChange, mode }: { label: string; v
   return (
     <fieldset style={{ border: "1px solid var(--night-line)", borderRadius: 10, padding: 10, background: "#181915" }}>
       <legend style={{ padding: "0 6px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#8f9187", fontWeight: 700 }}>{label}</legend>
-      <small style={{ display: "block", color: "#777970", fontSize: 11, marginBottom: 8 }}>Wrapping style options — styled for readability, not clipped circles. Requires space beyond simple inference.</small>
+      <small style={{ display: "block", color: "#aaa99f", fontSize: 11, marginBottom: 8 }}>Choose a style, or let Housora suggest one for your space.</small>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(118px, 1fr))", gap: 8 }}>
         {values.map(item => (
           <button key={item} type="button" onClick={() => onChange(item)} aria-pressed={value===item} style={{ border: value===item ? "2px solid #f4f0e8" : "1px solid #34362f", borderRadius: 10, overflow: "hidden", background: value===item ? "#23241f" : "#1f1f1d", color: "#f4f0e8", textAlign: "left", padding: 0 }}>
@@ -2471,8 +2471,8 @@ function ThreeDMode({ editorMode, preview, selectedObject, threeDSource, setThre
   return (
     <div style={{ display: "grid", gap: 14 }}>
       <div style={{ border: "1px solid #34362f", borderRadius: 10, padding: 12, background: "#1a1b17" }}>
-        <h3 style={{ margin: 0, fontSize: 13, fontFamily: "var(--font-display)" }}>3D models — full workspace mode</h3>
-        <p style={{ margin: "6px 0 0", color: "#aaa99f", fontSize: 12, lineHeight: 1.5 }}>Choose one clearly visible piece of furniture. Instructions are short: upload, or pick a detected object, or reopen an existing model.</p>
+        <h3 style={{ margin: 0, fontSize: 13, fontFamily: "var(--font-display)" }}>Create a 3D furniture model</h3>
+        <p style={{ margin: "6px 0 0", color: "#aaa99f", fontSize: 12, lineHeight: 1.5 }}>Upload a clear furniture photo, use an object detected in your room, or reopen a saved model.</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px,1fr))", gap: 8, marginTop: 10 }}>
           <button onClick={() => fileRef.current?.click()} style={{ minHeight: 64, border: "1px solid #34362f", borderRadius: 10, background: threeDSource?.kind==="furniture-upload" ? "#23241f" : "#1f1f1d", color: "#f4f0e8", display: "grid", placeItems: "center", gap: 4, padding: 10, textAlign: "center" }}>
             <UploadSimple size={18}/><b style={{ fontSize: 12 }}>Upload furniture</b><small style={{ fontSize: 10, color: "#8f9187" }}>One object, plain background</small>
@@ -2484,7 +2484,7 @@ function ThreeDMode({ editorMode, preview, selectedObject, threeDSource, setThre
             <Cube size={18}/><b style={{ fontSize: 12 }}>Existing models</b><small style={{ fontSize: 10, color: "#8f9187" }}>Reopen saved models below</small>
           </button>
         </div>
-        {threeDSource ? <small style={{ display: "block", marginTop: 8, color: "#a9ba9d", fontSize: 11 }}>Selected: {threeDSource.kind==="sam-crop" ? `${threeDSource.objectLabel} (detected)` : "Uploaded furniture"} — Generate is accessible below.</small> : <small style={{ display: "block", marginTop: 8, color: "#8f9187", fontSize: 11 }}>Pick a source above — Generate stays accessible.</small>}
+        {threeDSource ? <small style={{ display: "block", marginTop: 8, color: "#a9ba9d", fontSize: 11 }}>Selected: {threeDSource.kind==="sam-crop" ? `${threeDSource.objectLabel} (detected)` : "Uploaded furniture"}. Review it below, then generate when ready.</small> : <small style={{ display: "block", marginTop: 8, color: "#aaa99f", fontSize: 11 }}>Choose a furniture source to continue.</small>}
       </div>
       <div id="existing-models-anchor">
         <ThreeDWorkspace key={`${threeDSource?.kind || "empty"}:${threeDSource?.image || ""}:${editorMode}`} initialSource={threeDSource} onBusyChange={setBusy} onModelReady={handleCreatedModel} />
@@ -2495,17 +2495,20 @@ function ThreeDMode({ editorMode, preview, selectedObject, threeDSource, setThre
   );
 }
 function ArMode({ modelUrl, poster, hasModel, onCreate }: { modelUrl: string | null; poster: string | null; hasModel: boolean; onCreate: () => void }) {
-  if (!hasModel || !modelUrl) {
+  const recentModels = useQuery(api.models.list, {});
+  const savedModelUrl = recentModels?.find((model) => Boolean(model.url))?.url ?? null;
+  const activeModelUrl = modelUrl || savedModelUrl;
+  if (!hasModel && !activeModelUrl) {
     return (
       <div style={{ display: "grid", gap: 14, textAlign: "center", padding: "18px 12px", border: "1px dashed #3a3c36", borderRadius: 12, background: "#1a1b17" }}>
         <span style={{ width: 48, height: 48, borderRadius: 12, background: "#23241f", display: "grid", placeItems: "center", margin: "0 auto", color: "#aaa99f" }}><Smartphone size={22}/></span>
-        <h3 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 400 }}>No 3D model yet — View in AR is discoverable</h3>
+        <h3 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 400 }}>Create a 3D model to use AR</h3>
         <p style={{ margin: 0, color: "#aaa99f", fontSize: 12, lineHeight: 1.6 }}>Create a furniture model in 3D models (upload or choose a detected object), then return here to preview it in your room. No public links are created automatically.</p>
         <button onClick={onCreate} style={{ minHeight: 44, border: 0, borderRadius: 999, background: "#f4f0e8", color: "#11120f", fontWeight: 700, padding: "0 18px", justifySelf: "center" }}><Cube size={14}/> Go to 3D models</button>
         <div style={{ textAlign: "left", borderTop: "1px solid #2a2b27", paddingTop: 12, display: "grid", gap: 6 }}>
           <small style={{ fontWeight: 700, color: "#f4f0e8" }}>Device requirements</small>
           <small style={{ color: "#8f9187", lineHeight: 1.5 }}>AR needs a compatible phone with camera access: iOS with AR Quick Look (Safari) or Android with Scene Viewer / WebXR (Chrome). If AR is unavailable, the 3D preview still works. No external account needed.</small>
-          <small style={{ color: "#777970" }}>Existing capabilities are preserved — you will manually create a secure share link after a model is ready. Never shared automatically.</small>
+          <small style={{ color: "#aaa99f" }}>Models stay private until you choose to create and share a link.</small>
         </div>
       </div>
     );
@@ -2513,7 +2516,7 @@ function ArMode({ modelUrl, poster, hasModel, onCreate }: { modelUrl: string | n
   return (
     <div style={{ display: "grid", gap: 12 }}>
       <div style={{ border: "1px solid #34362f", borderRadius: 12, overflow: "hidden", background: "#11120f", minHeight: 360 }}>
-        <ModelViewer src={modelUrl} poster={poster} />
+        <ModelViewer src={activeModelUrl!} poster={poster} />
       </div>
       <div style={{ border: "1px solid #34362f", borderRadius: 10, padding: 12, background: "#1a1b17", display: "grid", gap: 8 }}>
         <b style={{ fontSize: 13 }}>View in your room — device check</b>
@@ -3426,7 +3429,7 @@ function SavedPage({
                   {!hasErr ? (
                     <Image src={reference.image} alt={reference.title} fill sizes="(max-width: 600px) 50vw, (max-width: 1000px) 33vw, 25vw" unoptimized onError={() => setImageErrors((m) => ({ ...m, [reference.title]: true }))} />
                   ) : (
-                    <span className="card-image-error" role="img" aria-label="Image failed to load"><ImagesSquare /><small>Image unavailable</small><button className="card-retry" onClick={(e) => { e.stopPropagation(); setImageErrors((m) => ({ ...m, [reference.title]: false })); }} aria-label={`Retry ${reference.title}`}>Retry</button></span>
+                    <span className="card-image-error" role="img" aria-label="Image failed to load"><ImagesSquare /><small>Image unavailable</small><span className="card-retry" role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setImageErrors((m) => ({ ...m, [reference.title]: false })); }} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setImageErrors((m) => ({ ...m, [reference.title]: false })); } }} aria-label={`Retry ${reference.title}`}>Retry</span></span>
                   )}
                 </button>
                 <div className="saved-card-meta">
@@ -3448,7 +3451,7 @@ function SavedPage({
           ) : hasModels ? (
             recentModels.map((m: any, i: number) => (
               <article key={m.taskId} className={`saved-card saved-tile-${i % 4}`}>
-                <a className="saved-card-image" href={m.url} target="_blank" rel="noreferrer" aria-label={`Open 3D model ${i + 1}`}><img src={m.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} /><span className="card-badge">3D · GLB</span></a>
+                <a className="saved-card-image" href={m.url} target="_blank" rel="noreferrer" aria-label={`Open 3D model ${i + 1}`}><img src={m.url} alt={`3D model preview ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} /><span className="card-badge">3D · GLB</span></a>
                 <div className="saved-card-meta"><div className="saved-card-info"><b>3D model {recentModels.length - i}</b><small>Generated · {new Date(m.createdAt).toLocaleDateString()}</small></div><a className="saved-card-open" href={m.url} download target="_blank" rel="noreferrer">Download</a></div>
               </article>
             ))
@@ -4297,190 +4300,6 @@ function ThreeDWorkspace({ initialSource = null, onBusyChange, onModelReady }: {
   );
 }
 
-function LegacyThreeDWorkspace() {
-  const [view, setView] = useState<"3D" | "Plan">("3D");
-  const [selected, setSelected] = useState("Sofa");
-  const [notice, setNotice] = useState("Select an item to move or replace it.");
-  const items = ["Sofa", "Coffee table", "Rug", "Armchair", "Floor lamp"];
-  return (
-    <section className="three-d-workspace">
-      <header className="three-d-heading">
-        <div>
-          <span className="eyebrow">
-            <Cube /> Layout studio
-          </span>
-          <h2>Plan it before you render it.</h2>
-          <p>
-            Test furniture placement, clearances and proportions in a simple 3D
-            room—not a complicated CAD tool.
-          </p>
-        </div>
-        <div
-          className="layout-view-toggle"
-          role="tablist"
-          aria-label="Layout view"
-        >
-          <button
-            role="tab"
-            aria-selected={view === "3D"}
-            onClick={() => setView("3D")}
-          >
-            3D view
-          </button>
-          <button
-            role="tab"
-            aria-selected={view === "Plan"}
-            onClick={() => setView("Plan")}
-          >
-            Floor plan
-          </button>
-        </div>
-      </header>
-      <div
-        className={
-          view === "3D" ? "layout-stage is-3d" : "layout-stage is-plan"
-        }
-      >
-        <div className="layout-room">
-          <i className="room-wall back" />
-          <i className="room-wall side" />
-          <i className="room-floor" />
-          <button
-            className={
-              selected === "Sofa"
-                ? "layout-object sofa selected"
-                : "layout-object sofa"
-            }
-            onClick={() => {
-              setSelected("Sofa");
-              setNotice(
-                "Sofa selected · 286 × 96 cm · Keep 85 cm clear behind.",
-              );
-            }}
-          >
-            <span>Sofa</span>
-          </button>
-          <button
-            className={
-              selected === "Coffee table"
-                ? "layout-object table selected"
-                : "layout-object table"
-            }
-            onClick={() => {
-              setSelected("Coffee table");
-              setNotice(
-                "Coffee table selected · 100 cm Ø · 45 cm clearance recommended.",
-              );
-            }}
-          >
-            <span>Table</span>
-          </button>
-          <button
-            className={
-              selected === "Rug"
-                ? "layout-object rug selected"
-                : "layout-object rug"
-            }
-            onClick={() => {
-              setSelected("Rug");
-              setNotice(
-                "Rug selected · 240 × 340 cm · Front sofa legs sit on rug.",
-              );
-            }}
-          >
-            <span>Rug</span>
-          </button>
-          <button
-            className={
-              selected === "Armchair"
-                ? "layout-object armchair selected"
-                : "layout-object armchair"
-            }
-            onClick={() => {
-              setSelected("Armchair");
-              setNotice(
-                "Armchair selected · Rotate it toward the conversation area.",
-              );
-            }}
-          >
-            <span>Chair</span>
-          </button>
-          <button
-            className={
-              selected === "Floor lamp"
-                ? "layout-object lamp selected"
-                : "layout-object lamp"
-            }
-            onClick={() => {
-              setSelected("Floor lamp");
-              setNotice(
-                "Floor lamp selected · Place beside the reading corner.",
-              );
-            }}
-          >
-            <span>Lamp</span>
-          </button>
-          <em className="layout-window">Window</em>
-          <em className="layout-door">Door</em>
-        </div>
-        <span className="layout-dimension width">4.8 m</span>
-        <span className="layout-dimension depth">3.6 m</span>
-        <span className="layout-camera">
-          {view === "3D"
-            ? "Perspective camera · eye height"
-            : "Scaled plan · 1:50"}
-        </span>
-      </div>
-      <aside className="layout-panel">
-        <div>
-          <span className="eyebrow">Room setup</span>
-          <b>Living room · 4.8 × 3.6 m</b>
-          <small>Ceiling height 2.72 m</small>
-        </div>
-        <div className="layout-library">
-          <span>Furniture in this layout</span>
-          {items.map((item) => (
-            <button
-              key={item}
-              className={selected === item ? "selected" : ""}
-              onClick={() => {
-                setSelected(item);
-                setNotice(
-                  `${item} selected · Drag controls will be connected to the 3D engine.`,
-                );
-              }}
-            >
-              <i>{item.slice(0, 2)}</i>
-              {item}
-              <Check />
-            </button>
-          ))}
-        </div>
-        <p className="layout-notice" aria-live="polite">
-          {notice}
-        </p>
-        <div className="layout-actions">
-          <button
-            onClick={() =>
-              setNotice(
-                "AI tested three furniture arrangements. This layout has the clearest circulation.",
-              )
-            }
-          >
-            <Sparkle /> Suggest layout
-          </button>
-          <button
-            className="primary-action"
-            onClick={() => setNotice("3D layout saved to Concept 03.")}
-          >
-            <Check /> Save layout
-          </button>
-        </div>
-      </aside>
-    </section>
-  );
-}
-
 function ExportWorkspace() {
   return (
     <section className="export-workspace">
@@ -4491,11 +4310,11 @@ function ExportWorkspace() {
           Export the concept, selected materials, layout notes and reference
           prompt in one concise design package.
         </p>
-        <div className="service-notice" role="status" style={{ marginBottom: 12 }}>
+        <div className="service-notice export-service-notice" role="status">
           <b>PDF export not available yet</b>
           <p>We are finalizing verified exports. The current design can be downloaded as an image from the editor. No credits were charged.</p>
         </div>
-        <button className="primary-action" disabled aria-disabled="true" title="PDF export is not release-ready">
+        <button className="primary-action export-unavailable-action" disabled aria-disabled="true" title="PDF export is not release-ready">
           <FilePdf />
           Download design package — coming soon
         </button>
