@@ -229,20 +229,21 @@ export function SettingsPage({ onPricing }: { onPricing: () => void }) {
                 </Field>
               </div>
               <p id="tz-help" className="settings-hint">Auto-detected from your browser: <b style={{ color: "#efede6" }}>{browserTz}</b>. No need to set it manually. If your device time is incorrect, correct it in your system settings.</p>
-              <p className="settings-hint settings-hint--muted">Stored: studio name, language, currency, measurements, timezone. These preferences are saved and will be used where supported. In this release they do not yet change prices, formats, or project units — saved for future rollout.</p>
+              <p className="settings-hint settings-hint--muted">These preferences are saved for your workspace.</p>
             </SettingsSection>
           ) : null}
           {!isLoading && tab === "AI defaults" ? (
             <SettingsSection icon={<Sparkle aria-hidden size={18} />} title="AI defaults" description="Choose how Housora starts each new project.">
               <Select label="Default design mode" value={form.defaultMode} values={["Interior", "Exterior", "Garden"]} onChange={(v) => set("defaultMode", v)} />
               <Toggle
-                label="Confirm before high-cost actions"
-                hint={`Housora always asks before spending credits. Creating a 3D model costs ${AI_COSTS.model3d} credits; image generations and edits cost ${AI_COSTS.imageEdit}; detecting objects costs ${AI_COSTS.detection}. Confirmations are required regardless of this toggle in the current release.`}
-                checked={form.confirmHighCost}
-                onChange={(v) => set("confirmHighCost", v)}
+                label="Confirm high-cost actions (required)"
+                hint={`Housora always asks before spending credits. A 3D model costs ${AI_COSTS.model3d} credits; image generations and edits cost ${AI_COSTS.imageEdit}; detection costs ${AI_COSTS.detection}.`}
+                checked
+                onChange={() => undefined}
+                disabled
               />
               <p className="settings-hint">This preference is saved. Today, every paid action still shows a confirmation with live balance, cost, and remaining credits before any charge. Turning this off does not skip confirmations — no spending consent is weakened.</p>
-              <p className="settings-hint settings-hint--muted">Saved but not yet applied: default design mode. New projects currently start with Interior as a sensible default; your choice will be applied when project defaults are connected.</p>
+              <p className="settings-hint settings-hint--muted">Your choice will be used when starting a new project.</p>
             </SettingsSection>
           ) : null}
           {!isLoading && tab === "Team" ? (
@@ -252,7 +253,6 @@ export function SettingsPage({ onPricing }: { onPricing: () => void }) {
                 <h3>Team invites unavailable</h3>
                 <p>Housora currently runs as a personal workspace. Email invites, roles, and shared project permissions are not yet available. No invitations can be sent from this screen today. Project sharing links for viewers exist at the project level where supported.</p>
               </div>
-              <p className="settings-hint settings-hint--muted">No provider names or service-status tables belong here — availability is checked inside each tool when you use it, not from Settings.</p>
             </SettingsSection>
           ) : null}
           {!isLoading && tab === "Notifications" ? (
@@ -261,7 +261,7 @@ export function SettingsPage({ onPricing }: { onPricing: () => void }) {
               <Toggle label="Low-credit alerts" hint="Save preference for balance warnings. No alerts are delivered yet." checked={form.creditNotifications} onChange={(v) => set("creditNotifications", v)} />
               <Toggle label="Collaboration updates" hint="Save preference for invites, comments, and approvals. No notifications are delivered yet." checked={form.collaborationNotifications} onChange={(v) => set("collaborationNotifications", v)} />
               <p className="settings-hint">Preferences are stored now and will take effect only after delivery is connected. Until then, you won’t receive emails or push notifications for these items.</p>
-              <p className="settings-hint settings-hint--muted">Stored & inactive until delivery is enabled: generation, low-credit, and collaboration preferences.</p>
+              <p className="settings-hint settings-hint--muted">You can change these preferences at any time.</p>
             </SettingsSection>
           ) : null}
           {!isLoading && tab === "Billing" ? (
@@ -280,9 +280,9 @@ export function SettingsPage({ onPricing }: { onPricing: () => void }) {
           {!isLoading && tab === "Privacy & data" ? (
             <SettingsSection icon={<ShieldCheck aria-hidden size={18} />} title="Privacy and data" description="Optional analytics remain off unless you enable them.">
               <Toggle label="Product analytics" hint="Share interaction events that help improve Housora. Prompts, uploaded images, and photo content are excluded." checked={form.analyticsConsent} onChange={(v) => { set("analyticsConsent", v); if (!v) set("replayConsent", false); }} />
-              <Toggle label="Session replay" hint="Record masked session replays to improve usability. Requires product analytics to be enabled." checked={form.replayConsent} onChange={(v) => set("replayConsent", v)} disabled={!form.analyticsConsent} />
+              <Toggle label="Session replay" hint="Session replay is currently unavailable. No recordings are created." checked={false} onChange={() => undefined} disabled />
               {!form.analyticsConsent ? <p className="settings-hint">Enable Product analytics first — session replay cannot remain on when analytics is off.</p> : null}
-              <p className="settings-hint settings-hint--muted">Stored: analytics and replay choices are saved and applied on next load. In the current release, session replay remains fully disabled for privacy (no recordings even if toggled on). Preference is retained for future use.</p>
+              <p className="settings-hint settings-hint--muted">Analytics are optional. Session replay is currently unavailable.</p>
               <div className="settings-legal">
                 <Link href="/privacy">Privacy Policy</Link>
                 <Link href="/terms">Terms of Service</Link>

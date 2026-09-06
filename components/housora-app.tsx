@@ -3463,8 +3463,7 @@ function SavedPage({
             <div className="saved-empty small-empty">
               <span><Cube /></span>
               <h2>No 3D models yet</h2>
-              <p>3D assets you generate in the studio appear here. The backend currently exposes generated GLB models via <code>api.models.list</code>; no separate furniture library is populated — generate a model from any furniture image to see it here. We don’t fake a catalog.</p>
-              <small style={{ color: "#8f9187" }}>If you expected a shared library, the backend does not yet provide one — this is documented, not mocked.</small>
+              <p>Your generated 3D models will appear here after you create one in the studio.</p>
             </div>
           )}
         </div>

@@ -87,6 +87,12 @@
   font-size: 19px;
   line-height: 1.2;
 }
+.settings-section--compact h2,
+.settings-section--compact h3 {
+  text-shadow: none;
+  -webkit-font-smoothing: antialiased;
+  font-synthesis: none;
+}
 .settings-section--compact p {
   margin: 0;
   color: #9fa198;
