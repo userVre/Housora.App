@@ -50,6 +50,8 @@ import {
   UserPlus,
   Users,
   X,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ModelViewer } from "./model-viewer";
@@ -61,6 +63,42 @@ import { prepareImage } from "../lib/prepare-image";
 import { readAiResponse } from "../lib/await-ai-response";
 import { RecentAiTasks } from "./recent-ai-tasks";
 import { guidanceForInvalid, isValidThreeDSource, type ThreeDSource } from "../lib/threeD-validation";
+
+function getInitials(name: string): string {
+  const normalized = name.trim();
+  if (!normalized) return "HS";
+  const parts = normalized.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return normalized.slice(0, 2).toUpperCase();
+}
+
+function Avatar({
+  src,
+  alt,
+  initials,
+  size = 36,
+}: {
+  src?: string | null;
+  alt: string;
+  initials: string;
+  size?: number;
+}) {
+  const [failed, setFailed] = useState(false);
+  const showImage = Boolean(src) && !failed;
+  if (showImage && src) {
+    return (
+      <span className="avatar avatar-image" aria-hidden="true" style={{ width: size, height: size }}>
+        <img src={src} alt="" width={size} height={size} onError={() => setFailed(true)} referrerPolicy="no-referrer" />
+        <span className="visually-hidden">{alt}</span>
+      </span>
+    );
+  }
+  return (
+    <span className="avatar avatar-initials" aria-hidden="true" style={{ width: size, height: size }}>
+      {initials}
+    </span>
+  );
+}
 
 function safeUUID() {
   try {
@@ -518,6 +556,7 @@ export function HousoraApp({
   const [railOpen, setRailOpen] = useState(false);
   const [dialog, setDialog] = useState<DemoDialog>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [editorCollapsed, setEditorCollapsed] = useState(false);
   const { user } = useUser();
   const { signOut, openUserProfile } = useClerk();
   const designRows = useQuery(api.savedDesigns.list, {});
@@ -548,7 +587,9 @@ export function HousoraApp({
   }));
   const profileName = user?.fullName || user?.username || "Housora designer";
   const profileEmail = user?.primaryEmailAddress?.emailAddress || "Signed in";
-  const profileInitials = `${user?.firstName?.[0] || ""}${user?.lastName?.[0] || ""}` || profileName.slice(0, 2).toUpperCase();
+  const profileInitials = getInitials(`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || profileName);
+  const isEditor = activePage === "album";
+  const shellCollapsed = isEditor && editorCollapsed;
   const [projectDraft, setProjectDraft] = useState<ProjectDraft | null>(null);
   useEffect(() => {
     if (activePage !== "album" || !designRows) return;
@@ -684,53 +725,64 @@ export function HousoraApp({
     navigate("album", design.id);
   };
   const openStudio = () => navigate("studio");
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem("housora:editorCollapsed");
+      if (stored === "1") setEditorCollapsed(true);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("housora:editorCollapsed", editorCollapsed ? "1" : "0");
+    } catch {}
+  }, [editorCollapsed]);
+  useEffect(() => {
+    if (!profileOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (!t.closest(".rail-account") && !t.closest(".profile-menu")) setProfileOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setProfileOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [profileOpen]);
 
   return (
-    <div className="product-shell">
+    <div className={`product-shell${shellCollapsed ? " shell-collapsed" : ""}${isEditor ? " is-editor" : ""}`}>
       <a className="skip-link" href="#main-content">
         Skip to main content
       </a>
-      <aside className={railOpen ? "product-rail is-open" : "product-rail"}>
+      <aside className={`${railOpen ? "product-rail is-open" : "product-rail"}${shellCollapsed ? " is-collapsed" : ""}`} aria-label="Primary" data-collapsed={shellCollapsed ? "true" : "false"}>
         <div className="product-brand">
-          <Link href="/">Housora</Link>
-          <button
-            onClick={() => setRailOpen(false)}
-            aria-label="Close navigation"
-          >
-            <X />
-          </button>
+          <Link href="/" aria-label="Housora home">Housora</Link>
+          <div className="product-brand-actions">
+            {isEditor ? (
+              <button className="rail-collapse-toggle" onClick={() => setEditorCollapsed(v => !v)} aria-label={shellCollapsed ? "Expand navigation" : "Collapse navigation"} aria-pressed={shellCollapsed} title={shellCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
+                {shellCollapsed ? <PanelLeftOpen aria-hidden /> : <PanelLeftClose aria-hidden />}
+              </button>
+            ) : null}
+            <button className="rail-close-mobile" onClick={() => setRailOpen(false)} aria-label="Close navigation">
+              <X />
+            </button>
+          </div>
         </div>
         <nav aria-label="Workspace navigation">
-          <NavButton
-            active={activePage === "projects" || activePage === "album"}
-            icon={<FolderOpen />}
-            label="Projects"
-            onClick={() => navigate("projects")}
-          />
-          <NavButton
-            active={activePage === "discover"}
-            icon={<MagnifyingGlass />}
-            label="Discover"
-            onClick={() => navigate("discover")}
-          />
-          <NavButton
-            active={activePage === "library"}
-            icon={<Heart />}
-            label="Saved"
-            onClick={() => navigate("library")}
-          />
-          <NavButton
-            active={activePage === "pricing"}
-            icon={<CreditCard />}
-            label="Pricing"
-            onClick={() => navigate("pricing")}
-          />
+          <NavButton active={activePage === "projects" || activePage === "album"} icon={<FolderOpen />} label="Projects" collapsed={shellCollapsed} onClick={() => navigate("projects")} />
+          <NavButton active={activePage === "discover"} icon={<MagnifyingGlass />} label="Discover" collapsed={shellCollapsed} onClick={() => navigate("discover")} />
+          <NavButton active={activePage === "library"} icon={<Heart />} label="Saved" collapsed={shellCollapsed} onClick={() => navigate("library")} />
+          <NavButton active={activePage === "pricing"} icon={<CreditCard />} label="Pricing" collapsed={shellCollapsed} onClick={() => navigate("pricing")} />
         </nav>
         <div className="rail-account">
           {profileOpen ? (
-            <div className="profile-menu" role="menu">
+            <div className="profile-menu" role="menu" aria-label="Account menu">
               <div className="profile-menu-head">
-                <span>{profileInitials}</span>
+                <Avatar src={user?.imageUrl ?? null} alt={profileName} initials={profileInitials} size={32} />
                 <div>
                   <b>{profileName}</b>
                   <small>{profileEmail}</small>
@@ -775,18 +827,13 @@ export function HousoraApp({
               </button>
             </div>
           ) : null}
-          <button
-            className="profile-button"
-            onClick={() => setProfileOpen(!profileOpen)}
-            aria-haspopup="menu"
-            aria-expanded={profileOpen}
-          >
-            <span>{user?.imageUrl ? <Image src={user.imageUrl} alt="" width={40} height={40} /> : profileInitials}</span>
-            <span>
+          <button className="profile-button" onClick={() => setProfileOpen(!profileOpen)} aria-haspopup="menu" aria-expanded={profileOpen} aria-label={shellCollapsed ? `${profileName} — open account menu` : undefined} title={shellCollapsed ? profileName : undefined}>
+            <Avatar src={user?.imageUrl ?? null} alt={profileName} initials={profileInitials} size={36} />
+            <span className="profile-meta">
               <b>{profileName}</b>
               <small>{creditBalance ? `${creditBalance.plan.replaceAll("_", " ")} · ${creditBalance.total} credits` : "Loading workspace…"}</small>
             </span>
-            <CaretDown className={profileOpen ? "rotate" : ""} />
+            <CaretDown className={profileOpen ? "rotate" : ""} aria-hidden />
           </button>
         </div>
       </aside>
@@ -933,21 +980,19 @@ function NavButton({
   active,
   icon,
   label,
+  collapsed = false,
   onClick,
 }: {
   active: boolean;
   icon: React.ReactNode;
   label: string;
+  collapsed?: boolean;
   onClick: () => void;
 }) {
   return (
-    <button
-      className={active ? "active" : ""}
-      onClick={onClick}
-      aria-current={active ? "page" : undefined}
-    >
+    <button className={active ? "active" : ""} onClick={onClick} aria-current={active ? "page" : undefined} aria-label={label} title={collapsed ? label : undefined}>
       {icon}
-      <span>{label}</span>
+      <span className={collapsed ? "nav-label-collapsed" : undefined}>{label}</span>
     </button>
   );
 }

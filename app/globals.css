@@ -4,6 +4,7 @@
 @import "./object-tools.css";
 @import "./pricing.css";
 @import "./threeD-ar.css";
+@import "./shell.css";
 
 :root {
   --ink: #171713;
@@ -7934,3 +7935,14 @@ html, body { overflow-x: hidden; max-width: 100vw; }
   .auth-card .eyebrow,.auth-card h1,.auth-card > p,.auth-actions,
   .real-object-list > button,.recent-ai-tasks li,.version-history-strip > button { animation:none !important; filter:none !important; transform:none !important; }
 }
+/* PROMPT 6 shell overrides — editor-only collapse wins */
+@media (max-width:1180px) and (min-width:1001px){
+  .product-shell:not(.shell-collapsed) .product-rail{ width: var(--rail-width) !important; padding-inline:14px !important; }
+  .product-shell:not(.shell-collapsed) .product-main{ margin-left: var(--rail-width) !important; }
+  .product-shell:not(.shell-collapsed) .product-brand{ justify-content: space-between !important; padding: 0 8px !important; }
+  .product-shell:not(.shell-collapsed) .product-brand>a{ font-size:20px !important; }
+  .product-shell:not(.shell-collapsed) .product-rail nav button{ justify-content:flex-start !important; padding:0 12px !important; font-size:12px !important; }
+  .product-shell:not(.shell-collapsed) .profile-button{ justify-content:flex-start !important; padding:0 16px !important; }
+}
+.product-shell.shell-collapsed .product-main{ margin-left: var(--rail-collapsed) !important; }
+.product-shell.shell-collapsed .product-rail.is-collapsed{ width: var(--rail-collapsed) !important; }
