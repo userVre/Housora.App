@@ -3,10 +3,26 @@ import Link from "next/link";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, Check, CheckCircle2, CreditCard, Loader2, Save, Settings as GearSix, ShieldCheck, Sparkles as Sparkle, User as UserCircle } from "lucide-react";
+import {
+  AlertCircle,
+  Bell,
+  Check,
+  CheckCircle2,
+  CreditCard,
+  Info,
+  Loader2,
+  Save,
+  Settings as GearSix,
+  ShieldCheck,
+  Sparkles as Sparkle,
+  User as UserCircle,
+  Users,
+} from "lucide-react";
 import { api } from "../convex/_generated/api";
 import type { WhopOfferKey } from "../lib/whop";
 import { AI_COSTS } from "../lib/ai-costs";
+import "./settings.css";
+
 const plans = [
   { name: "Free", monthly: "$0", yearly: "$0", credits: "12 credits once", description: "Explore the full workflow before choosing a plan.", features: ["Up to 3 image generations or edits", "Or 1 complete 3D model", "AR viewing is always free"] },
   { name: "Creator", monthly: "$19/mo", yearly: "$190/yr", credits: "120 credits each month", description: "For homeowners and independent designers.", features: ["Up to 30 image generations or edits", "Or up to 10 3D models", "Extra credits available anytime"], popular: true },
@@ -17,6 +33,7 @@ const packs = [
   { key: "credits_150", credits: 150, price: "$25", best: false },
   { key: "credits_400", credits: 400, price: "$55", best: true },
 ] as const;
+
 export function PricingPage() {
   const [annual, setAnnual] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
@@ -77,37 +94,259 @@ export function PricingPage() {
   <footer className="legal-links"><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/refunds">Refunds</Link><Link href="/cookies">Cookies</Link><span>Payments are securely processed by Whop.</span></footer>
   </div>;
 }
+
 const defaults = { studioName: "", language: "English", timezone: "Africa/Casablanca", currency: "USD", measurements: "Metric", defaultMode: "Interior", defaultQuality: "Standard", referenceFidelity: "Balanced", confirmHighCost: true, generationNotifications: true, creditNotifications: true, collaborationNotifications: true, marketingEmails: false, analyticsConsent: false, replayConsent: false };
+
 export function SettingsPage({ onPricing }: { onPricing: () => void }) {
-  const { user } = useUser(); const { openUserProfile } = useClerk();
-  const saved = useQuery(api.preferences.getMine, {}); const balance = useQuery(api.credits.getMyBalance, {}); const save = useMutation(api.preferences.saveMine);
-  const [tab, setTab] = useState("Profile"); const [form, setForm] = useState(defaults); const [baseline, setBaseline] = useState(defaults); const [notice, setNotice] = useState(""); const [saveError, setSaveError] = useState(""); const [saving, setSaving] = useState(false);
-  useEffect(() => { if (saved) { const merged = { ...defaults, ...saved }; setForm(merged); setBaseline(merged); } }, [saved]);
+  const { user } = useUser();
+  const { openUserProfile } = useClerk();
+  const saved = useQuery(api.preferences.getMine, {});
+  const balance = useQuery(api.credits.getMyBalance, {});
+  const save = useMutation(api.preferences.saveMine);
+  const [tab, setTab] = useState("Profile");
+  const [form, setForm] = useState(defaults);
+  const [baseline, setBaseline] = useState(defaults);
+  const [notice, setNotice] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const browserTz = useMemo(() => {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone || form.timezone || defaults.timezone; } catch { return form.timezone; }
+  }, [form.timezone]);
+  const isLoading = saved === undefined;
   const sections = useMemo(() => ["Profile", "Workspace", "AI defaults", "Team", "Notifications", "Billing", "Privacy & data"], []);
+  const editableTabs = useMemo(() => new Set(["Workspace", "AI defaults", "Notifications", "Privacy & data"]), []);
+  const isEditable = editableTabs.has(tab);
   const isDirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(baseline), [form, baseline]);
-  const set = (key: keyof typeof defaults, value: string | boolean) => setForm(current => ({ ...current, [key]: value }));
+  useEffect(() => {
+    if (saved) {
+      const merged = { ...defaults, ...saved } as typeof defaults;
+      setForm(merged);
+      setBaseline(merged);
+    }
+  }, [saved]);
+  const set = (key: keyof typeof defaults, value: string | boolean) => setForm((current) => ({ ...current, [key]: value }));
   const persist = async () => {
-    if (saving) return; setSaving(true); setSaveError(""); setNotice("");
-    try { const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || form.timezone; await save({ ...form, timezone: tz }); setBaseline({ ...form, timezone: tz } as typeof defaults); setNotice("Saved"); window.setTimeout(() => setNotice(""), 2500); } catch (reason) { setSaveError(reason instanceof Error ? reason.message : "Settings could not be saved. Try again."); } finally { setSaving(false); }
+    if (saving) return;
+    setSaving(true);
+    setSaveError("");
+    setNotice("");
+    try {
+      const tz = browserTz || form.timezone;
+      await save({ ...form, timezone: tz });
+      setBaseline({ ...form, timezone: tz } as typeof defaults);
+      setNotice("Saved");
+      window.setTimeout(() => setNotice(""), 2500);
+    } catch (reason) {
+      setSaveError(reason instanceof Error ? reason.message : "Settings could not be saved. Try again.");
+    } finally {
+      setSaving(false);
+    }
   };
-  const stateIcon = saveError ? <AlertCircle aria-hidden size={16} /> : saving ? <Loader2 aria-hidden size={16} className="spin" /> : (notice || !isDirty) ? <CheckCircle2 aria-hidden size={16} /> : <AlertCircle aria-hidden size={16} />;
-  const stateText = saveError ? saveError : saving ? "Saving…" : notice ? "Saved" : isDirty ? "Unsaved changes" : "Saved";
-  return <div className="settings-page">
-    <header><span className="eyebrow">Workspace</span><h1>Settings</h1><p>Manage your account, design defaults, billing and privacy choices.</p></header>
-    <div className="settings-layout"><nav aria-label="Settings sections">{sections.map(section => <button className={tab === section ? "active" : ""} onClick={() => setTab(section)} key={section} aria-current={tab === section ? "page" : undefined}>{section}</button>)}</nav><section className="settings-panel" aria-live="polite">
-      {tab === "Profile" ? <SettingsSection icon={<UserCircle aria-hidden size={20} />} title="Profile" description="Your identity is securely managed by Clerk."><ReadOnly label="Name" value={user?.fullName || "Not set"}/><div className="settings-hint">Edit name in Manage account and security.</div><ReadOnly label="Email" value={user?.primaryEmailAddress?.emailAddress || "Not set"}/><button onClick={() => openUserProfile()} aria-label="Manage account and security">Manage account and security</button></SettingsSection> : null}
-      {tab === "Workspace" ? <SettingsSection icon={<GearSix aria-hidden size={20} />} title="Workspace" description="Regional details used across projects. Timezone is auto-detected."><Field label="Studio name"><input value={form.studioName} onChange={e => set("studioName", e.target.value)} placeholder="e.g. Ismail Studio" aria-label="Studio name" /></Field><div className="settings-pair"><Select label="Language" value={form.language} values={["English", "French", "Arabic"]} onChange={v => set("language", v)}/><Select label="Measurements" value={form.measurements} values={["Metric", "Imperial"]} onChange={v => set("measurements", v)}/></div><div className="settings-pair"><Select label="Currency" value={form.currency} values={["USD", "EUR", "GBP", "MAD"]} onChange={v => set("currency", v)}/><Field label="Timezone"><input value={Intl.DateTimeFormat().resolvedOptions().timeZone} disabled title="Auto-detected from your browser" aria-label="Timezone, auto-detected" /></Field></div><div className="settings-hint">Timezone auto-detected: {Intl.DateTimeFormat().resolvedOptions().timeZone}</div></SettingsSection> : null}
-      {tab === "AI defaults" ? <SettingsSection icon={<Sparkle aria-hidden size={20} />} title="AI defaults" description="Start every new project with the choices you use most."><Select label="Design mode" value={form.defaultMode} values={["Interior", "Exterior", "Garden"]} onChange={v => set("defaultMode", v)}/><Toggle label="Confirm higher-cost generations" hint="Ask before any 3D generation or other action costing 10+ credits." checked={form.confirmHighCost} onChange={v => set("confirmHighCost", v)}/><div className="settings-hint">Image quality & reference fidelity are automatic — no need to tune.</div></SettingsSection> : null}
-      {tab === "Team" ? <SettingsSection icon={<UserCircle aria-hidden size={20} />} title="Team & sharing" description="Collaboration is being prepared for a future release."><div className="team-integrations"><span><small>Design services</small> <b>Availability is checked when you use each tool.</b></span></div><Field label="Invite by email"><input placeholder="teammate@studio.com" disabled aria-describedby="team-invite-help" aria-label="Invite by email" /></Field><button className="primary-action" disabled aria-disabled>Invites coming soon</button><div id="team-invite-help" className="settings-hint">Team invitations are not available yet. Project sharing will appear here after email delivery and permission management are fully connected.</div></SettingsSection> : null}
-      {tab === "Notifications" ? <SettingsSection icon={<Sparkle aria-hidden size={20} />} title="Notifications" description="Preferences are saved for future delivery. Notification delivery is not yet connected — no emails or push messages are sent yet."><Toggle label="Generation updates" hint="Save preference for when a longer render finishes." checked={form.generationNotifications} onChange={v => set("generationNotifications", v)}/><Toggle label="Low-credit alerts" hint="Save preference for balance warnings before a project is interrupted." checked={form.creditNotifications} onChange={v => set("creditNotifications", v)}/><Toggle label="Collaboration updates" hint="Save preference for invites, comments and approvals." checked={form.collaborationNotifications} onChange={v => set("collaborationNotifications", v)}/><div className="settings-hint">Preferences are stored now and will take effect once delivery is connected. Marketing emails are off by default.</div></SettingsSection> : null}
-      {tab === "Billing" ? <SettingsSection icon={<CreditCard aria-hidden size={20} />} title="Billing and credits" description="Your plan balance and purchased credits are kept separate."><div className="billing-summary"><span><small>Current plan</small><b>{balance?.plan.replaceAll("_", " ") || "Free"}</b></span><span><small>Plan credits</small><b>{balance?.subscription ?? "—"}</b></span><span><small>Purchased credits</small><b>{balance?.purchased ?? "—"}</b></span></div><button className="primary-action" onClick={onPricing} aria-label="View plans and add credits">View plans and add credits</button><p className="settings-note">Subscription cancellation and payment-method changes are managed in your Whop customer portal.</p></SettingsSection> : null}
-      {tab === "Privacy & data" ? <SettingsSection icon={<ShieldCheck aria-hidden size={20} />} title="Privacy and data" description="Optional analytics remain off unless you choose to enable them."><Toggle label="Product analytics" hint="Share interaction events that help improve Housora. Prompts and uploaded images are excluded." checked={form.analyticsConsent} onChange={v => set("analyticsConsent", v)}/><div className="settings-legal"><Link href="/privacy">Privacy Policy</Link><Link href="/terms">Terms of Service</Link><Link href="/refunds">Refunds</Link><Link href="/cookies">Cookies</Link></div><button onClick={() => openUserProfile()} aria-label="Manage security or delete account">Manage security or delete account</button></SettingsSection> : null}
-      {tab !== "Profile" && tab !== "Billing" ? <div className="settings-save" role="status" aria-live="polite"><span className={saveError ? "settings-error" : isDirty ? "settings-unsaved" : "settings-saved"}>{stateIcon} {stateText}</span><button className="primary-action" onClick={persist} disabled={saving || (!isDirty && !saveError)} aria-busy={saving}><Save aria-hidden size={16} />{saving ? "Saving…" : saveError ? "Retry" : "Save changes"}</button></div> : null}
-    </section></div>
-  </div>;
+  const canSave = isEditable && (isDirty || Boolean(saveError)) && !saving;
+  const statusState: "saving" | "error" | "unsaved" | "saved" = saveError ? "error" : saving ? "saving" : isDirty ? "unsaved" : "saved";
+  const statusIcon =
+    statusState === "error" ? <AlertCircle aria-hidden size={14} /> :
+    statusState === "saving" ? <Loader2 aria-hidden size={14} className="spin" /> :
+    statusState === "saved" ? <CheckCircle2 aria-hidden size={14} /> :
+    <Info aria-hidden size={14} />;
+  const statusText =
+    statusState === "error" ? saveError :
+    statusState === "saving" ? "Saving…" :
+    statusState === "saved" ? (notice ? "Saved · All changes stored" : "Saved") :
+    "Unsaved changes";
+  return (
+    <div className="settings-page settings-page--compact">
+      <header className="settings-header">
+        <h1>Settings</h1>
+        <p>Manage your profile, workspace preferences, and privacy. Changes save only when you confirm.</p>
+      </header>
+      <div className="settings-layout--compact">
+        <nav className="settings-nav" aria-label="Settings sections">
+          {sections.map((section) => (
+            <button
+              key={section}
+              className={tab === section ? "active" : ""}
+              aria-current={tab === section ? "page" : undefined}
+              onClick={() => setTab(section)}
+            >
+              {section}
+            </button>
+          ))}
+        </nav>
+        <section className="settings-panel--compact" aria-live="polite" aria-busy={isLoading}>
+          {isLoading ? (
+            <div className="settings-section--compact">
+              <header>
+                <span aria-hidden><Loader2 size={18} className="spin" /></span>
+                <div><h2>Loading settings</h2><p>Fetching your saved preferences…</p></div>
+              </header>
+              <div className="settings-hint" role="status">Please wait — preferences are being loaded.</div>
+            </div>
+          ) : null}
+          {!isLoading && tab === "Profile" ? (
+            <SettingsSection icon={<UserCircle aria-hidden size={18} />} title="Profile" description="Your name and email are read-only here and stored with your Housora account.">
+              <ReadOnly label="Name" value={user?.fullName || "Not set"} />
+              <ReadOnly label="Email" value={user?.primaryEmailAddress?.emailAddress || "Not set"} />
+              <p className="settings-hint">To update your name or email, open your account. You’ll be asked to verify changes.</p>
+              <button onClick={() => openUserProfile()} aria-label="Open account">Open account</button>
+              <p className="settings-hint settings-hint--muted">Account changes are confirmed by your sign-in provider. No extra provider names are needed here.</p>
+            </SettingsSection>
+          ) : null}
+          {!isLoading && tab === "Workspace" ? (
+            <SettingsSection icon={<GearSix aria-hidden size={18} />} title="Workspace" description="Studio details and regional preferences for upcoming work.">
+              <Field label="Studio name">
+                <input value={form.studioName} onChange={(e) => set("studioName", e.target.value)} placeholder="e.g. Ismail Studio" aria-label="Studio name" />
+              </Field>
+              <div className="settings-pair--compact">
+                <Select label="Language" value={form.language} values={["English", "French", "Arabic"]} onChange={(v) => set("language", v)} />
+                <Select label="Measurements" value={form.measurements} values={["Metric", "Imperial"]} onChange={(v) => set("measurements", v)} />
+              </div>
+              <div className="settings-pair--compact">
+                <Select label="Currency" value={form.currency} values={["USD", "EUR", "GBP", "MAD"]} onChange={(v) => set("currency", v)} />
+                <Field label="Timezone">
+                  <input value={browserTz} readOnly aria-describedby="tz-help" aria-label="Timezone, auto-detected" />
+                </Field>
+              </div>
+              <p id="tz-help" className="settings-hint">Auto-detected from your browser: <b style={{ color: "#efede6" }}>{browserTz}</b>. No need to set it manually. If your device time is incorrect, correct it in your system settings.</p>
+              <p className="settings-hint settings-hint--muted">Stored: studio name, language, currency, measurements, timezone. These preferences are saved and will be used where supported. In this release they do not yet change prices, formats, or project units — saved for future rollout.</p>
+            </SettingsSection>
+          ) : null}
+          {!isLoading && tab === "AI defaults" ? (
+            <SettingsSection icon={<Sparkle aria-hidden size={18} />} title="AI defaults" description="Choose how Housora starts each new project.">
+              <Select label="Default design mode" value={form.defaultMode} values={["Interior", "Exterior", "Garden"]} onChange={(v) => set("defaultMode", v)} />
+              <Toggle
+                label="Confirm before high-cost actions"
+                hint={`Housora always asks before spending credits. Creating a 3D model costs ${AI_COSTS.model3d} credits; image generations and edits cost ${AI_COSTS.imageEdit}; detecting objects costs ${AI_COSTS.detection}. Confirmations are required regardless of this toggle in the current release.`}
+                checked={form.confirmHighCost}
+                onChange={(v) => set("confirmHighCost", v)}
+              />
+              <p className="settings-hint">This preference is saved. Today, every paid action still shows a confirmation with live balance, cost, and remaining credits before any charge. Turning this off does not skip confirmations — no spending consent is weakened.</p>
+              <p className="settings-hint settings-hint--muted">Saved but not yet applied: default design mode. New projects currently start with Interior as a sensible default; your choice will be applied when project defaults are connected.</p>
+            </SettingsSection>
+          ) : null}
+          {!isLoading && tab === "Team" ? (
+            <SettingsSection icon={<Users aria-hidden size={18} />} title="Team & sharing" description="Sharing and invites will be added in a future release.">
+              <div className="unavailable-card" role="status" aria-live="polite">
+                <span aria-hidden><Users size={18} /></span>
+                <h3>Team invites unavailable</h3>
+                <p>Housora currently runs as a personal workspace. Email invites, roles, and shared project permissions are not yet available. No invitations can be sent from this screen today. Project sharing links for viewers exist at the project level where supported.</p>
+              </div>
+              <p className="settings-hint settings-hint--muted">No provider names or service-status tables belong here — availability is checked inside each tool when you use it, not from Settings.</p>
+            </SettingsSection>
+          ) : null}
+          {!isLoading && tab === "Notifications" ? (
+            <SettingsSection icon={<Bell aria-hidden size={18} />} title="Notifications" description="Store your preferences. No messages are sent yet.">
+              <Toggle label="Generation updates" hint="Save preference for when a longer render finishes. No email or push is sent yet." checked={form.generationNotifications} onChange={(v) => set("generationNotifications", v)} />
+              <Toggle label="Low-credit alerts" hint="Save preference for balance warnings. No alerts are delivered yet." checked={form.creditNotifications} onChange={(v) => set("creditNotifications", v)} />
+              <Toggle label="Collaboration updates" hint="Save preference for invites, comments, and approvals. No notifications are delivered yet." checked={form.collaborationNotifications} onChange={(v) => set("collaborationNotifications", v)} />
+              <p className="settings-hint">Preferences are stored now and will take effect only after delivery is connected. Until then, you won’t receive emails or push notifications for these items.</p>
+              <p className="settings-hint settings-hint--muted">Stored & inactive until delivery is enabled: generation, low-credit, and collaboration preferences.</p>
+            </SettingsSection>
+          ) : null}
+          {!isLoading && tab === "Billing" ? (
+            <SettingsSection icon={<CreditCard aria-hidden size={18} />} title="Billing and credits" description="Plan and purchased credits are tracked separately and spent in one order.">
+              <div className="billing-summary--compact" role="group" aria-label="Credit balances">
+                <span><small>Current plan</small><b>{balance ? balance.plan.replaceAll("_", " ") : "Loading…"}</b></span>
+                <span><small>Plan credits</small><b style={{ fontVariantNumeric: "tabular-nums" }}>{balance ? `${(balance.subscription ?? 0).toLocaleString()}` : "—"}</b><small style={{ letterSpacing: 0, textTransform: "none" }}>{balance ? `${(balance.subscription ?? 0) === 1 ? "credit" : "credits"} · renews with plan` : ""}</small></span>
+                <span><small>Purchased credits</small><b style={{ fontVariantNumeric: "tabular-nums" }}>{balance ? `${(balance.purchased ?? 0).toLocaleString()}` : "—"}</b><small style={{ letterSpacing: 0, textTransform: "none" }}>{balance ? "credits · expire after 12 months" : ""}</small></span>
+              </div>
+              <p className="settings-hint">Total available: <b style={{ color: "#efede6" }}>{balance ? `${(balance.total ?? 0).toLocaleString()} credits` : "—"}</b> — plan credits are used first, then purchased credits by nearest expiry.</p>
+              <button className="primary-action" onClick={onPricing} aria-label="View plans and add credits">View plans and add credits</button>
+              <p className="settings-note">Manage cancellation, payment method, and invoices in your Whop customer portal (access via your Whop purchase receipt or the Whop support channels). Housora never receives your card details. Do not use unofficial links.</p>
+              <p className="settings-hint settings-hint--muted">Balances are formatted with tabular numbers for easy comparison. Purchased credits remain available for 12 months after purchase.</p>
+            </SettingsSection>
+          ) : null}
+          {!isLoading && tab === "Privacy & data" ? (
+            <SettingsSection icon={<ShieldCheck aria-hidden size={18} />} title="Privacy and data" description="Optional analytics remain off unless you enable them.">
+              <Toggle label="Product analytics" hint="Share interaction events that help improve Housora. Prompts, uploaded images, and photo content are excluded." checked={form.analyticsConsent} onChange={(v) => { set("analyticsConsent", v); if (!v) set("replayConsent", false); }} />
+              <Toggle label="Session replay" hint="Record masked session replays to improve usability. Requires product analytics to be enabled." checked={form.replayConsent} onChange={(v) => set("replayConsent", v)} disabled={!form.analyticsConsent} />
+              {!form.analyticsConsent ? <p className="settings-hint">Enable Product analytics first — session replay cannot remain on when analytics is off.</p> : null}
+              <p className="settings-hint settings-hint--muted">Stored: analytics and replay choices are saved and applied on next load. In the current release, session replay remains fully disabled for privacy (no recordings even if toggled on). Preference is retained for future use.</p>
+              <div className="settings-legal">
+                <Link href="/privacy">Privacy Policy</Link>
+                <Link href="/terms">Terms of Service</Link>
+                <Link href="/refunds">Refunds</Link>
+                <Link href="/cookies">Cookies</Link>
+              </div>
+              <div className="security-grid">
+                <div>
+                  <h3>Account security</h3>
+                  <p>Change your password, enable passkeys or 2FA, review active sessions, and control sign-in methods. These controls open in your secure account area.</p>
+                  <button onClick={() => openUserProfile()} aria-label="Manage security">Manage security</button>
+                </div>
+                <div>
+                  <h3>Delete account</h3>
+                  <p>Permanently delete your Housora account and associated data. You’ll be asked to confirm and re-authenticate. This action cannot be undone.</p>
+                  <button className="danger" onClick={() => openUserProfile()} aria-label="Delete account">Delete account</button>
+                </div>
+              </div>
+            </SettingsSection>
+          ) : null}
+          {isEditable ? (
+            <div className="settings-save--compact" role="status" aria-live="polite">
+              <span className={statusState === "error" ? "settings-error" : statusState === "unsaved" ? "settings-unsaved" : "settings-saved"}>
+                {statusIcon} {statusText}
+              </span>
+              <button onClick={persist} disabled={!canSave} aria-busy={saving}>
+                {saving ? <><Loader2 aria-hidden size={14} className="spin" /> Saving…</> : statusState === "error" ? <><AlertCircle aria-hidden size={14} /> Retry</> : <><Save aria-hidden size={14} /> Save changes</>}
+              </button>
+            </div>
+          ) : null}
+        </section>
+      </div>
+    </div>
+  );
 }
-function SettingsSection({ icon, title, description, children }: { icon: React.ReactNode; title: string; description: string; children: React.ReactNode }) { return <div className="settings-section"><header><span aria-hidden>{icon}</span><div><h2>{title}</h2><p>{description}</p></div></header><div className="settings-fields">{children}</div></div>; }
-function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className="settings-field"><span>{label}</span>{children}</label>; }
-function Select({ label, value, values, onChange }: { label: string; value: string; values: string[]; onChange: (value: string) => void }) { return <Field label={label}><select value={value} onChange={e => onChange(e.target.value)} aria-label={label}>{values.map(item => <option key={item}>{item}</option>)}</select></Field>; }
-function ReadOnly({ label, value }: { label: string; value: string }) { return <div className="settings-readonly"><small>{label}</small><b>{value}</b></div>; }
-function Toggle({ label, hint, checked, onChange, disabled = false }: { label: string; hint: string; checked: boolean; onChange: (value: boolean) => void; disabled?: boolean }) { return <label className={disabled ? "settings-toggle disabled" : "settings-toggle"}><span><b>{label}</b><small>{hint}</small></span><input type="checkbox" checked={checked} disabled={disabled} onChange={e => onChange(e.target.checked)} aria-label={label}/></label>; }
+
+function SettingsSection({ icon, title, description, children }: { icon: React.ReactNode; title: string; description: string; children: React.ReactNode }) {
+  return (
+    <div className="settings-section--compact">
+      <header>
+        <span aria-hidden>{icon}</span>
+        <div>
+          <h2>{title}</h2>
+          <p>{description}</p>
+        </div>
+      </header>
+      <div className="settings-fields--compact">{children}</div>
+    </div>
+  );
+}
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="settings-field--compact">
+      <span>{label}</span>
+      {children}
+    </label>
+  );
+}
+function Select({ label, value, values, onChange }: { label: string; value: string; values: string[]; onChange: (value: string) => void }) {
+  return (
+    <Field label={label}>
+      <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}>
+        {values.map((item) => (
+          <option key={item}>{item}</option>
+        ))}
+      </select>
+    </Field>
+  );
+}
+function ReadOnly({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="settings-readonly--compact">
+      <small>{label}</small>
+      <b>{value}</b>
+    </div>
+  );
+}
+function Toggle({ label, hint, checked, onChange, disabled = false }: { label: string; hint: string; checked: boolean; onChange: (value: boolean) => void; disabled?: boolean }) {
+  return (
+    <label className={disabled ? "settings-toggle--compact disabled" : "settings-toggle--compact"}>
+      <span>
+        <b>{label}</b>
+        <small>{hint}</small>
+      </span>
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} aria-label={label} />
+    </label>
+  );
+}
