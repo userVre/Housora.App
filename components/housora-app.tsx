@@ -1,5 +1,7 @@
 "use client";
 
+import "../app/projects.css";
+import "../app/saved.css";
 import Image from "next/image";
 import Link from "next/link";
 import { useClerk, useUser } from "@clerk/nextjs";
@@ -1819,18 +1821,30 @@ function ProjectsPage({
   onNew: () => void;
   onOpen: (design: SavedDesign) => void;
 }) {
+  const formatDate = (value?: string) => {
+    if (!value) return "Saved recently";
+    try {
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return "Saved recently";
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    } catch {
+      return "Saved recently";
+    }
+  };
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const hasProjects = designs.length > 0;
   return (
     <section className="visual-projects clean-projects" aria-labelledby="projects-title">
       <header className="visual-projects-header">
         <div>
-          <span className="eyebrow">Your design space</span>
+          <span className="eyebrow">Working documents</span>
           <div className="project-title-row">
             <h1 id="projects-title">Your projects</h1>
           </div>
           <p>
-            {designs.length
-              ? `Continue a saved project or begin a new room.`
-              : "Start with your photo or try an example. Your work will be saved here."}
+            {hasProjects
+              ? "Projects are your working documents — editable rooms with history, versions, and 3D. Saved holds your bookmarked designs and inspiration."
+              : "Projects are your working documents. Start from a photo — your first design becomes a project you can reopen, version, and refine."}
           </p>
         </div>
         <button className="primary-action" onClick={onNew} aria-label="Create new project">
@@ -1840,39 +1854,83 @@ function ProjectsPage({
 
       <div className="project-library-toolbar clean-project-toolbar">
         <div className="project-tabs">
-          <span>{designs.length ? `Saved projects · ${designs.length}` : "Start a project"}</span>
+          <span>{hasProjects ? `Projects · ${designs.length}` : "No projects yet"}</span>
         </div>
+        <small className="project-toolbar-hint" aria-hidden="true">Click a card to open in editor — 3D & Edit are inside the workspace</small>
       </div>
 
-      <div className={`album-grid ${designs.length ? "" : "album-grid-empty"}`}>
-        <button className="new-album-card" onClick={onNew} aria-label="Create new empty project">
-          <span>
-            <Plus />
-          </span>
-          <b>New project</b>
-          <small>Upload a photo or try an example</small>
-        </button>
-        {designs.map((design) => (
-          <button className="album-card" key={design.id} onClick={() => onOpen(design)} aria-label={`Open ${design.title}`}>
+      {hasProjects ? (
+        <div className="album-grid">
+          {designs.map((design) => {
+            const hasError = imageErrors[design.id];
+            return (
+              <button
+                className="album-card"
+                key={design.id}
+                onClick={() => onOpen(design)}
+                aria-label={`Open ${design.title}`}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onOpen(design);
+                  }
+                }}
+              >
+                <span>
+                  {!hasError ? (
+                    <Image
+                      src={design.image}
+                      alt=""
+                      fill
+                      sizes="(max-width: 700px) 50vw, 240px"
+                      unoptimized={design.image.startsWith("data:") || design.image.startsWith("http")}
+                      onError={() => setImageErrors((m) => ({ ...m, [design.id]: true }))}
+                    />
+                  ) : (
+                    <span className="card-image-error" role="img" aria-label="Image failed to load">
+                      <ImagesSquare />
+                      <small>Image unavailable</small>
+                      <button
+                        className="card-retry"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setImageErrors((m) => ({ ...m, [design.id]: false }));
+                        }}
+                        aria-label={`Retry loading ${design.title}`}
+                      >
+                        Retry
+                      </button>
+                    </span>
+                  )}
+                  <i className="card-badge">{design.mode}</i>
+                </span>
+                <b>{design.title}</b>
+                <small>
+                  {design.mode} · {formatDate(design.savedAt)}
+                </small>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="album-grid album-grid-empty">
+          <button className="new-album-card" onClick={onNew} aria-label="Create new empty project">
             <span>
-              <Image src={design.image} alt="" fill sizes="(max-width: 700px) 50vw, 240px" />
-              <i className="card-badge">{design.mode}</i>
+              <Plus />
             </span>
-            <b>{design.title}</b>
-            <small>
-              {design.mode} · Saved design
-            </small>
+            <b>New project</b>
+            <small>Upload a photo or try an example</small>
           </button>
-        ))}
-      </div>
-
-      {designs.length === 0 ? (
-        <div className="projects-empty-hint">
-          <p>
-            Start with a photo or an example. Save your design to reopen it here later.
-          </p>
         </div>
-      ) : null}
+      )}
+
+      <div className="projects-empty-hint">
+        <p>
+          {hasProjects
+            ? "Projects stay as working documents. Bookmark inspiration or finished designs in Saved — nothing is moved or reclassified without your action."
+            : "Start with a photo or an example. Your saved work appears here as a project you can reopen — bookmarks stay in Saved."}
+        </p>
+      </div>
     </section>
   );
 }
@@ -1888,17 +1946,13 @@ function AlbumWorkspace({
   onOpenStudio: () => void;
   initialDraft?: ProjectDraft | null;
 }) {
-  const [mode, setMode] = useState<DesignMode>(
-    initialDraft?.mode ?? "Interior",
-  );
+  const [mode, setMode] = useState<DesignMode>(initialDraft?.mode ?? "Interior");
   const [space, setSpace] = useState("Auto-detect");
   const [style, setStyle] = useState("Auto style");
   const [prompt, setPrompt] = useState(initialDraft?.prompt ?? "");
-  const [preview, setPreview] = useState<string | null>(
-    initialDraft?.image ?? null,
-  );
-  const [tab, setTab] = useState<"create" | "edit">(initialDraft?.detectedObjects ? "edit" : "create");
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [preview, setPreview] = useState<string | null>(initialDraft?.image ?? null);
+  type EditorMode = "redesign" | "objects" | "threed" | "ar";
+  const [editorMode, setEditorMode] = useState<EditorMode>("redesign");
   const [detailChoices, setDetailChoices] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1912,7 +1966,8 @@ function AlbumWorkspace({
   const [activeTool, setActiveTool] = useState("select");
   const [selectedObject, setSelectedObject] = useState<DetectedObject | null>(null);
   const [previewRatio, setPreviewRatio] = useState(1.5);
-  // 2. Version history + undo/redo per image/project — persisted to savedDesigns for reload
+  const [zoom, setZoom] = useState(1);
+  const [fit, setFit] = useState(true);
   const [history, setHistory] = useState<string[]>(() => (initialDraft?.image ? [initialDraft.image] : []));
   const [historyIndex, setHistoryIndex] = useState(0);
   const [designId] = useState(() => initialDraft?.id || safeUUID());
@@ -1942,6 +1997,7 @@ function AlbumWorkspace({
       setHistoryIndex(updated.length - 1);
       return updated;
     });
+    setSaved(false);
   };
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
@@ -1977,15 +2033,16 @@ function AlbumWorkspace({
     return () => window.removeEventListener("keydown", onKey);
   }, [historyIndex, history]);
   const [threeDSource, setThreeDSource] = useState<ThreeDSource | null>(null);
-  const [threeDOpen, setThreeDOpen] = useState(false);
   const [threeDBusy, setThreeDBusy] = useState(false);
+  const [modelUrlForAr, setModelUrlForAr] = useState<string | null>(null);
+  const [modelPosterForAr, setModelPosterForAr] = useState<string | null>(null);
   const open3d = (object: DetectedObject) => {
-    if (!threeDBusy) setThreeDSource({ image: object.thumbnail, kind: "sam-crop", objectLabel: object.label, objectBox: object.box });
-    setThreeDOpen(true);
+    setThreeDSource({ image: object.thumbnail, kind: "sam-crop", objectLabel: object.label, objectBox: object.box });
+    setEditorMode("threed");
   };
   const open3dFromPreview = () => {
-    if (!threeDBusy) setThreeDSource(null);
-    setThreeDOpen(true);
+    // do not set source – let user choose upload or detected object in 3D mode
+    setEditorMode("threed");
   };
   const [compareOriginal, setCompareOriginal] = useState(false);
   const [selectionPoint, setSelectionPoint] = useState<{ x: number; y: number } | null>(null);
@@ -1994,6 +2051,7 @@ function AlbumWorkspace({
   const originalPreview = useRef<string | null>(initialDraft?.image ?? null);
   const canvasRef = useRef<HTMLElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const threedUploadRef = useRef<HTMLInputElement>(null);
   const exportImage = async (share: boolean) => {
     if (!preview) return;
     setExportStatus("");
@@ -2005,6 +2063,7 @@ function AlbumWorkspace({
       const file = new File([blob], `housora-design.${extension}`, { type: blob.type });
       if (share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ title: initialDraft?.title ?? "Housora design", files: [file] });
+        setExportStatus("Shared successfully.");
       } else {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
@@ -2012,11 +2071,13 @@ function AlbumWorkspace({
         link.download = file.name;
         link.click();
         window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-        setExportStatus(share ? "Sharing isn't supported here. Image downloaded so you can send it." : "Image downloaded.");
+        setExportStatus(share ? "Sharing is not supported on this device. Image downloaded." : "Image downloaded.");
       }
+      window.setTimeout(() => setExportStatus(""), 3500);
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return;
-      setExportStatus("Couldn't export this image. Please try again.");
+      setExportStatus("Could not export this image. Please try again.");
+      window.setTimeout(() => setExportStatus(""), 3500);
     }
   };
   const upload = (file?: File) => {
@@ -2037,10 +2098,10 @@ function AlbumWorkspace({
       pushHistory(img);
       originalPreview.current = String(reader.result);
       setSelectedObject(null);
-      setTab("create");
+      setEditorMode("redesign");
       setCompareOriginal(false);
-      setSaved(false);
       setSaveError("");
+      setZoom(1); setFit(true);
     };
     reader.onerror = () => setUploadError("This image could not be opened. Try another photo.");
     reader.readAsDataURL(file);
@@ -2050,8 +2111,9 @@ function AlbumWorkspace({
     setPreview(img);
     pushHistory(img);
     originalPreview.current = img;
-    setTab("create");
+    setEditorMode("redesign");
     setSaved(false);
+    setZoom(1); setFit(true);
   };
   const buildGenerationPrompt = () => {
     const isAutoSpace = !space || space === "Auto-detect";
@@ -2065,7 +2127,6 @@ function AlbumWorkspace({
       .filter(([, value]) => !isAutoValue(value))
       .map(([label, value]) => `${label}: ${value}`)
       .join("; ");
-
     const userDirection = prompt.trim() || modeData[mode].prompt;
     const baseTask = `Redesign this ${modeLabel}${spaceFragment}${styleFragment}.`;
     const preservation = mode === "Interior"
@@ -2073,10 +2134,8 @@ function AlbumWorkspace({
       : mode === "Exterior"
         ? "Preserve the original architecture, camera position, perspective, openings and structural massing exactly. Only update materials, palette, landscaping and lighting."
         : "Preserve the original camera position, perspective, boundaries and structural layout exactly. Only update planting, surfaces, furniture and lighting.";
-
     return [baseTask, userDirection, selectedDetails ? `Design details — ${selectedDetails}.` : "", preservation, "Photorealistic, high-detail, professional design visualization, natural light, 8k."].filter(Boolean).join(" ");
   };
-
   const generateDesign = async () => {
     if (!preview || generationLock.current) return;
     generationLock.current = true;
@@ -2086,7 +2145,6 @@ function AlbumWorkspace({
     try {
       const finalPrompt = buildGenerationPrompt();
       if (!versionContext) await persistImage(preview, prompt);
-      // Use prepareImage for consistent compression and size limit compliance
       const rawImage = preview.startsWith("data:") ? preview : await asDataUrl(preview);
       const image = rawImage.startsWith("data:") ? await prepareImage(rawImage).catch(() => rawImage) : rawImage;
       const response = await fetch("/api/ai/edit", {
@@ -2112,9 +2170,8 @@ function AlbumWorkspace({
       setPreview(result.image);
       pushHistory(result.image);
       setSelectedObject(null);
-      setTab("create");
+      setEditorMode("redesign");
       setCompareOriginal(false);
-      setSaved(false);
       try {
         if (result.storageWarning) throw new Error(result.storageWarning);
         await persistImage(result.image, finalPrompt);
@@ -2135,22 +2192,19 @@ function AlbumWorkspace({
     setSpace("Auto-detect");
     setStyle("Auto style");
     setDetailChoices({});
-    setDetailsOpen(false);
   };
-  const spaceLabel =
-    mode === "Interior"
-      ? "Room type"
-      : mode === "Exterior"
-        ? "Building type"
-        : "Garden area";
+  const spaceLabel = mode === "Interior" ? "Room type" : mode === "Exterior" ? "Building type" : "Garden area";
+  const detectedCountHint = preview ? null : "Upload a photo to unlock object editing";
+  const saveStateLabel = saving ? "Saving…" : saveError ? "Save failed" : saved ? "Saved to Projects" : preview ? "Not saved yet" : "No image yet";
+  const saveStateDetail = saving ? "Persisting your design…" : saveError ? saveError : saved ? "Saved to Projects and available in Saved. Favorites are separate." : preview ? "Your design is not yet persisted. Use Save to keep it." : "";
   return (
-    <section className="album-workspace" aria-label="New project workspace">
+    <section className="album-workspace" aria-label="Project editor">
       <header className="album-workspace-bar">
         <div className="album-bar-left">
           <button className="album-back" onClick={onBack} aria-label="Back to Projects">
             <ArrowLeft /> Back to Projects
           </button>
-          <span className="album-project-title">{initialDraft?.title ?? "New project"}</span>
+          <span className="album-project-title" title={initialDraft?.title ?? "New project"}>{initialDraft?.title ?? "New project"}</span>
         </div>
         <div className="album-bar-right">
           {preview ? (
@@ -2164,335 +2218,309 @@ function AlbumWorkspace({
               <button className="icon-secondary" aria-label="Share design" title="Share design" onClick={() => void exportImage(true)}>
                 <ShareNetwork />
               </button>
-              <button className="album-3d-button primary-3d" onClick={() => selectedObject ? open3d(selectedObject) : open3dFromPreview()} aria-label="Open 3D Studio" title="Open 3D Studio — create AR-ready models">
-                <Cube /> 3D Studio
-              </button>
             </div>
           ) : null}
         </div>
       </header>
-      <input
-        ref={fileRef}
-        className="visually-hidden"
-        type="file"
-        accept="image/png,image/jpeg,image/webp"
-        aria-label="Upload a space photo"
-        onChange={(event) => {
-          upload(event.target.files?.[0]);
-          event.currentTarget.value = "";
-        }}
-      />
-      <p className="visually-hidden" role="alert" aria-live="assertive">
-        {uploadError}
-      </p>
+      <input ref={fileRef} className="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Upload a space photo" onChange={(event) => { upload(event.target.files?.[0]); event.currentTarget.value = ""; }} />
+      <p className="visually-hidden" role="alert" aria-live="assertive">{uploadError}</p>
       <div className="album-workspace-body">
-        <main
-          ref={canvasRef}
-          className="album-canvas"
-          onDrop={(event) => {
-            event.preventDefault();
-            upload(event.dataTransfer.files[0]);
-          }}
-          onDragOver={(event) => event.preventDefault()}
-        >
+        <main ref={canvasRef} className="album-canvas" onDrop={(event) => { event.preventDefault(); upload(event.dataTransfer.files[0]); }} onDragOver={(event) => event.preventDefault()}>
           {preview ? (
-            <div className={`album-preview tool-${activeTool}`} style={{ width: `min(100%, calc((100dvh - 230px) * ${previewRatio}))`, aspectRatio: previewRatio }} onClick={(event) => {
+            <div className={`album-preview tool-${activeTool}`} style={{ width: fit ? `min(100%, calc((100dvh - 230px) * ${previewRatio}))` : undefined, aspectRatio: previewRatio, transform: fit ? undefined : `scale(${zoom})`, transformOrigin: "center center" }} onClick={(event) => {
               if (activeTool !== "area" && activeTool !== "draw") return;
               const bounds = event.currentTarget.getBoundingClientRect();
               setSelectionPoint({ x: ((event.clientX - bounds.left) / bounds.width) * 100, y: ((event.clientY - bounds.top) / bounds.height) * 100 });
             }}>
-              <Image
-                src={compareOriginal && originalPreview.current ? originalPreview.current : preview}
-                alt="Current project space"
-                width={1536}
-                height={1024}
-                onLoad={event => setPreviewRatio(event.currentTarget.naturalWidth / event.currentTarget.naturalHeight)}
-                priority
-                unoptimized={preview.startsWith("data:") || preview.startsWith("http")}
-              />
-              <span>
-                {compareOriginal ? "Original space" : `${mode} · ${space}`}
-              </span>
+              <Image src={compareOriginal && originalPreview.current ? originalPreview.current : preview} alt="Current project space" width={1536} height={1024} onLoad={event => setPreviewRatio(event.currentTarget.naturalWidth / event.currentTarget.naturalHeight)} priority unoptimized={preview.startsWith("data:") || preview.startsWith("http")} style={{ width: "100%", height: "auto", display: "block", objectFit: "contain" }} />
+              <span>{compareOriginal ? "Original space" : `${mode} · ${space}`}</span>
               {selectionPoint ? <i className={activeTool === "draw" ? "canvas-draw-mark" : "canvas-area-mark"} style={{ left: `${selectionPoint.x}%`, top: `${selectionPoint.y}%` }} aria-label="Selected edit area" /> : null}
               {canvasNotes.map((note, index) => <em key={`${note.kind}-${index}`} className={`canvas-annotation ${note.kind}`}>{note.kind === "comment" ? <ChatCircle /> : <TextT />}{note.text}</em>)}
-              {selectedObject && !compareOriginal && tab === "edit" ? <div className="detected-object-box" style={{ left: `${selectedObject.box[0] * 100}%`, top: `${selectedObject.box[1] * 100}%`, width: `${(selectedObject.box[2] - selectedObject.box[0]) * 100}%`, height: `${(selectedObject.box[3] - selectedObject.box[1]) * 100}%` }}><b>{selectedObject.label}</b></div> : null}
+              {selectedObject && !compareOriginal && editorMode === "objects" ? <div className="detected-object-box" style={{ left: `${selectedObject.box[0] * 100}%`, top: `${selectedObject.box[1] * 100}%`, width: `${(selectedObject.box[2] - selectedObject.box[0]) * 100}%`, height: `${(selectedObject.box[3] - selectedObject.box[1]) * 100}%` }}><b>{selectedObject.label}</b></div> : null}
             </div>
           ) : (
             <div className="album-empty">
               <div>
                 <span className="eyebrow">Your space, reimagined</span>
                 <h1>Start with your space</h1>
-                <p>
-                  Upload a photo or try an example. Choose your style next.
-                </p>
+                <p>Upload a photo or try an example. Redesign, edit objects, and create 3D models from the same image.</p>
               </div>
               <div className="album-start-actions">
-                <button onClick={() => fileRef.current?.click()}>
+                <button onClick={() => fileRef.current?.click()} autoFocus>
                   <UploadSimple />
-                  <b>Upload your space</b>
-                  <small>JPG, PNG, or WEBP</small>
+                  <b>Upload room</b>
+                  <small>JPG, PNG, or WEBP · up to 10 MB</small>
                 </button>
                 <button onClick={startTemplate}>
                   <SquaresFour />
-                  <b>Try an example</b>
+                  <b>Try example</b>
                   <small>Explore without uploading</small>
                 </button>
               </div>
-              {uploadError ? (
-                <p className="album-upload-error" role="alert">
-                  {uploadError}
-                </p>
-              ) : null}
+              {uploadError ? <p className="album-upload-error" role="alert">{uploadError}</p> : null}
+              <p style={{ color: "var(--night-muted)", fontSize: 12, marginTop: 8 }}>No credits are used until you generate or detect objects. Room-type selection is free.</p>
             </div>
           )}
           {preview ? <div className="canvas-tool-dock" role="toolbar" aria-label="Canvas tools">
-            <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo last change"><ArrowCounterClockwise /></button>
-            <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)" aria-label="Redo last change"><ArrowRight /></button>
+            <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo"><ArrowCounterClockwise /></button>
+            <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><ArrowRight /></button>
             <span aria-hidden="true" />
-            <button className={activeTool === "select" && tab === "edit" ? "active" : ""} onClick={() => { setTab("edit"); setActiveTool("select"); }} title="Select an object to edit" aria-label="Select an object to edit"><CursorClick /></button>
-            <button className={compareOriginal ? "active" : ""} onClick={() => setCompareOriginal(value => !value)} title="Compare with original" aria-label="Compare with original" aria-pressed={compareOriginal}><ImagesSquare /></button>
+            <button onClick={() => { setFit(true); setZoom(1); }} title={fit ? "Fitted view" : "Fit to view"} aria-label="Fit to view" className={fit ? "active" : ""}><CornersOut /></button>
+            <button onClick={() => { setFit(false); setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2))); }} disabled={fit && zoom===1 ? false : zoom<=0.5} aria-label="Zoom out">−</button>
+            <span style={{ minWidth: 44, textAlign: "center", fontSize: 11, color: "#ddd" }}>{fit ? "Fit" : `${Math.round(zoom*100)}%`}</span>
+            <button onClick={() => { setFit(false); setZoom(z => Math.min(2.5, +(z + 0.25).toFixed(2))); }} aria-label="Zoom in">+</button>
             <span aria-hidden="true" />
+            <button className={compareOriginal ? "active" : ""} onClick={() => setCompareOriginal(v => !v)} title="Compare with original" aria-pressed={compareOriginal} aria-label="Compare with original"><ImagesSquare /></button>
             <button onClick={() => void canvasRef.current?.requestFullscreen()} title="View fullscreen" aria-label="View fullscreen"><CornersOut /></button>
+            <span aria-hidden="true" />
+            <button onClick={() => void exportImage(false)} title="Download" aria-label="Download"><DownloadSimple /></button>
           </div> : null}
-          {preview && tab === "edit" && (activeTool === "text" || activeTool === "comment") ? <form className="canvas-note-composer" onSubmit={(event) => { event.preventDefault(); if (!noteDraft.trim()) return; setCanvasNotes(items => [...items, { kind: activeTool, text: noteDraft.trim() }]); setNoteDraft(""); setActiveTool("select"); }}>
+          {exportStatus ? <div role="status" aria-live="polite" style={{ position: "absolute", bottom: 64, left: "50%", transform: "translateX(-50%)", background: "rgba(24,24,22,0.96)", color: "#f4f0e8", border: "1px solid #34362f", borderRadius: 10, padding: "8px 12px", fontSize: 12, zIndex: 5 }}>{exportStatus}</div> : null}
+          {preview && editorMode === "objects" && (activeTool === "text" || activeTool === "comment") ? <form className="canvas-note-composer" onSubmit={(event) => { event.preventDefault(); if (!noteDraft.trim()) return; setCanvasNotes(items => [...items, { kind: activeTool, text: noteDraft.trim() }]); setNoteDraft(""); setActiveTool("select"); }}>
             <input autoFocus value={noteDraft} onChange={event => setNoteDraft(event.target.value)} placeholder={activeTool === "comment" ? "Add feedback for this design" : "Add a label to the canvas"} />
             <button type="submit">Add</button>
           </form> : null}
         </main>
         <aside className="album-control-panel">
-          <div
-            className="album-tabs"
-            role="tablist"
-            aria-label="Project controls"
-          >
-            <button
-              role="tab"
-              aria-selected={tab === "create"}
-              onClick={() => setTab("create")}
-            >
-              Create
-            </button>
-            <button
-              role="tab"
-              aria-selected={tab === "edit"}
-              onClick={() => setTab("edit")}
-              disabled={!preview}
-              title={!preview ? "Upload an image to enable editing" : undefined}
-              aria-describedby={!preview ? "edit-disabled-reason" : undefined}
-            >
-              Edit
-            </button>
+          <div className="editor-mode-tabs" role="tablist" aria-label="Editor modes" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4, padding: 6, borderBottom: "1px solid #30302d", background: "#11120f" }}>
+            <button role="tab" aria-selected={editorMode==="redesign"} onClick={() => setEditorMode("redesign")} style={{ minHeight: 44, border: 0, borderRadius: 8, background: editorMode==="redesign" ? "#f4f0e8" : "transparent", color: editorMode==="redesign" ? "#11120f" : "#aaa99f", fontWeight: 700, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Sparkle size={14}/> Redesign</button>
+            <button role="tab" aria-selected={editorMode==="objects"} onClick={() => setEditorMode("objects")} disabled={!preview} title={!preview ? "Upload an image first" : undefined} style={{ minHeight: 44, border: 0, borderRadius: 8, background: editorMode==="objects" ? "#f4f0e8" : "transparent", color: !preview ? "#5a5b55" : editorMode==="objects" ? "#11120f" : "#aaa99f", fontWeight: 700, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: !preview ? 0.6 : 1 }}><Selection size={14}/> Edit objects</button>
+            <button role="tab" aria-selected={editorMode==="threed"} onClick={() => setEditorMode("threed")} style={{ minHeight: 44, border: 0, borderRadius: 8, background: editorMode==="threed" ? "#f4f0e8" : "transparent", color: editorMode==="threed" ? "#11120f" : "#aaa99f", fontWeight: 700, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Cube size={14}/> 3D models</button>
+            <button role="tab" aria-selected={editorMode==="ar"} onClick={() => setEditorMode("ar")} style={{ minHeight: 44, border: 0, borderRadius: 8, background: editorMode==="ar" ? "#f4f0e8" : "transparent", color: editorMode==="ar" ? "#11120f" : "#aaa99f", fontWeight: 700, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Smartphone size={14}/> View in AR</button>
           </div>
-          {!preview && tab === "create" ? <p id="edit-disabled-reason" className="edit-disabled-reason">Edit is disabled until you upload an image — it will scan objects you can change.</p> : null}
-          <div className="album-panel-content">
-            {exportStatus ? <p role="status">{exportStatus}</p> : null}
-            {tab === "create" ? (
+          <p id="edit-disabled-reason" className="visually-hidden">Edit objects is disabled until you upload an image. Room-type selection in Redesign is free and never charges.</p>
+          <div className="album-panel-content" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 16, display: "grid", alignContent: "start", gap: 16 }}>
+            {editorMode === "redesign" ? (
               <>
-                <p className="album-help">
-                  {preview
-                    ? "Shape the atmosphere. You can refine every detail after generation."
-                    : "Upload your space to get started — design direction is ready when you are."}
-                </p>
+                {!preview ? <div style={{ border: "1px dashed #3a3c36", borderRadius: 10, padding: 10, background: "#1a1b17", fontSize: 12, color: "#a8a9a0" }}><strong style={{ color: "#f4f0e8" }}>Start with a photo</strong><br/>Upload your room or try an example. Redesign controls are ready below and will generate once you have an image. No wall of disabled controls.</div> : null}
+                <p className="album-help">{preview ? "Shape the atmosphere. Redesign is optional — you can also edit objects or create 3D directly." : "Choose a direction. Room-type inference is free — object detection is a separate paid step in Edit objects."}</p>
                 <div className={`create-secondary-group ${!preview ? "is-secondary" : ""}`}>
-                <div className="album-mode-switch" aria-label="Project type">
-                  {(["Interior", "Exterior", "Garden"] as DesignMode[]).map(
-                    (item) => (
-                      <button
-                        key={item}
-                        className={mode === item ? "selected" : ""}
-                        onClick={() => changeMode(item)}
-                        aria-pressed={mode === item}
-                      >
-                        {item}
-                      </button>
-                    ),
-                  )}
-                </div>
-                <VisualSelect
-                  label={spaceLabel}
-                  value={space}
-                  values={modeData[mode].spaces}
-                  onChange={setSpace}
-                  mode={mode}
-                  kind="space"
-                />
-                <VisualSelect
-                  label="Design style"
-                  value={style}
-                  values={modeData[mode].styles}
-                  onChange={setStyle}
-                  mode={mode}
-                  kind="style"
-                />
-                <label className="prompt-field album-prompt">
-                  <span>
-                    Describe the direction <small>Optional</small>
-                  </span>
-                  <textarea
-                    value={prompt}
-                    onChange={(event) => setPrompt(event.target.value)}
-                    placeholder={modeData[mode].prompt}
-                  />
-                </label>
-                <button
-                  className="album-details-toggle"
-                  onClick={() => setDetailsOpen((open) => !open)}
-                  aria-expanded={detailsOpen}
-                >
-                  <Sparkle />
-                  <span>
-                    <b>More options</b>
-                    <small>
-                      {mode === "Interior"
-                        ? "Finishes, doors & windows"
-                        : mode === "Exterior"
-                          ? "Facade, roof & landscape"
-                          : "Planting, paving & boundaries"}
-                    </small>
-                  </span>
-                  <CaretDown className={detailsOpen ? "rotate" : ""} />
-                </button>
-                {detailsOpen ? (
-                  <DirectionDetails
-                    key={mode}
-                    mode={mode}
-                    choices={detailChoices}
-                    onChange={(label, value) =>
-                      setDetailChoices((current) => ({ ...current, [label]: value }))
-                    }
-                  />
-                ) : null}
-                </div>
-                {preview ? (
-                  <button className="studio-entry-card" onClick={open3dFromPreview} aria-label="Open 3D studio">
-                    <span className="studio-entry-icon">
-                      <Cube />
-                    </span>
-                    <span className="studio-entry-copy">
-                      <b>3D studio — Create AR-ready object</b>
-                      <small>Select a piece of furniture, create its model, then preview it in AR on a compatible phone.</small>
-                    </span>
-                    <ArrowRight />
-                  </button>
-                ) : null}
-                {preview ? (
-                  <div className="album-sticky-action">
-                    <button
-                      className="album-generate primary-action"
-                      onClick={() => setGenerationConfirmOpen(true)}
-                      disabled={generating}
-                    >
-                      {generating ? <><span className="spinner" /> Creating your design…</> : <><Sparkle /> Generate · {AI_COSTS.imageEdit} credits</>}
-                    </button>
-                    <small>Uses credits · you’ll confirm before spending</small>
+                  <div className="album-mode-switch" aria-label="Project type">
+                    {(["Interior", "Exterior", "Garden"] as DesignMode[]).map((item) => (
+                      <button key={item} className={mode === item ? "selected" : ""} onClick={() => changeMode(item)} aria-pressed={mode === item}>{item}</button>
+                    ))}
                   </div>
-                ) : null}
+                  <RedesignField label={spaceLabel} value={space} values={modeData[mode].spaces} onChange={setSpace} hint="Free · automatic room-type inference. Change if needed." />
+                  <StyleField label="Design style" value={style} values={modeData[mode].styles} onChange={setStyle} mode={mode} />
+                  <label className="prompt-field album-prompt">
+                    <span>Describe the direction <small>Optional</small></span>
+                    <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder={modeData[mode].prompt} rows={3} style={{ resize: "vertical", minHeight: 84 }} />
+                  </label>
+                  <AdvancedGroups mode={mode} choices={detailChoices} onChange={(label, value) => setDetailChoices(c => ({ ...c, [label]: value }))} onResetGroup={(keys) => setDetailChoices(c => { const n={...c}; keys.forEach(k=>delete n[k]); return n; })} />
+                </div>
                 {generationError ? <p className="integration-error" role="alert">{generationError}</p> : null}
-                {!preview && tab === "create" ? <p className="create-empty-hint">Upload a photo or try an example to generate your first design.</p> : null}
+                <div className="album-sticky-action" style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #191918 20%), #191918", borderTop: "1px solid #2a2b27", margin: "8px -16px -16px", padding: "12px 16px", display: "grid", gap: 8 }}>
+                  <button className="primary-action" onClick={() => setGenerationConfirmOpen(true)} disabled={generating || !preview} style={{ width: "100%", justifyContent: "center", minHeight: 46, opacity: !preview ? 0.5 : 1 }} title={!preview ? "Upload a photo to generate" : undefined}>{generating ? <><span className="spinner"/> Creating your design…</> : <><Sparkle size={14}/> Generate · {AI_COSTS.imageEdit} credits</>}</button>
+                  <small style={{ textAlign: "center", color: "#8f9187", fontSize: 11 }}>{preview ? "Uses credits · you will confirm before spending" : "Upload a photo or try an example to enable Generate"}</small>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between", fontSize: 11, color: saveError ? "#d89585" : saved ? "#a9ba9d" : "#8f9187" }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 6 }}>{saving ? <span className="spinner" style={{ width: 12, height: 12 }}/> : saved ? <Check size={12}/> : null}{saveStateLabel}</span>
+                    {preview ? <button onClick={async () => { setSaving(true); setSaveError(""); try { await persistImage(preview); } catch (e) { setSaveError(e instanceof Error ? e.message : "Could not save."); } finally { setSaving(false); }}} disabled={saving || saved} style={{ border: "1px solid #34362f", background: saved ? "#2a2a26" : "#1f1f1d", color: "#f4f0e8", borderRadius: 6, padding: "6px 10px", fontSize: 11, opacity: saving || saved ? 0.7 : 1 }}>{saving ? "Saving…" : saved ? "Saved" : "Save to Projects"}</button> : null}
+                  </div>
+                  {saveStateDetail ? <small style={{ color: saveError ? "#d89585" : "#777970", lineHeight: 1.4 }}>{saveStateDetail} {saved ? "" : "Favorites are separate — heart a design to add it to Saved, without persisting a new version."}</small> : null}
+                </div>
               </>
-            ) : !preview ? (
-              <div className="objects-empty">
-                <SquaresFour />
-                <h3>Upload a photo first</h3>
-                <p>
-                  After upload, Housora will identify editable objects in the
-                  space.
-                </p>
-                <button onClick={() => fileRef.current?.click()}>
-                  <UploadSimple /> Upload a photo
-                </button>
-              </div>
             ) : null}
-            {preview ? <div hidden={tab !== "edit"}>
-              <DetectedObjects key={`${mode}:${preview}`} hasImage active={tab === "edit" && !threeDOpen}
-                initialObjects={preview === initialDraft?.image ? initialDraft.detectedObjects : undefined}
-                mode={mode} image={preview} onUpload={() => fileRef.current?.click()}
-                onSelect={setSelectedObject} onCreate3d={open3d}
-                onImageChange={async (image, storageWarning) => {
-                  setPreview(image);
-                  pushHistory(image);
-                  setSelectedObject(null);
-                  setSaved(false);
-                  if (storageWarning) { setSaveError(storageWarning); return; }
-                  try { if (!versionContext) await persistImage(preview); await persistImage(image, "Object edit"); } catch { setSaveError("Your edit is ready, but saving failed. Save again or download before leaving."); }
-                }} />
-            </div> : null}
-            {preview ? (
-              <button
-                className="album-save secondary-action"
-                disabled={saved || saving}
-                onClick={async () => {
-                  setSaving(true);
-                  setSaveError("");
-                  try {
-                    await persistImage(preview);
-                    setSaved(true);
-                  } catch (reason) {
-                    setSaveError(
-                      reason instanceof Error
-                        ? reason.message
-                        : "The design could not be saved. Try again.",
-                    );
-                  } finally {
-                    setSaving(false);
-                  }
-                }}
-              >
-                {saving ? (
-                  <>
-                    <span className="spinner" /> Saving design…
-                  </>
-                ) : saved ? (
-                  <>
-                    <Check /> Saved to Projects & Saved
-                  </>
-                ) : (
-                  <>
-                    <Heart /> Save this design
-                  </>
-                )}
-              </button>
+            {editorMode === "objects" ? (
+              !preview ? (
+                <div className="objects-empty" style={{ minHeight: 320, display: "grid", placeItems: "center", textAlign: "center", gap: 10, padding: 20, border: "1px dashed #3a3c36", borderRadius: 12, background: "#1a1b17" }}>
+                  <SquaresFour size={28} style={{ color: "#8d9b81" }}/>
+                  <h3 style={{ margin: 0, fontSize: 14 }}>Upload a photo first</h3>
+                  <p style={{ color: "#8f9187", fontSize: 12, maxWidth: 280 }}>After upload, scan for furniture and surfaces. Detection is paid (1 credit) and only runs when you confirm — switching tabs never charges.</p>
+                  <button onClick={() => fileRef.current?.click()} style={{ minHeight: 44, padding: "0 16px", border: "1px solid #34362f", borderRadius: 8, background: "#f4f0e8", color: "#11120f", fontWeight: 700 }}><UploadSimple size={14}/> Upload a photo</button>
+                  <small style={{ color: "#777970" }}>Room-type inference in Redesign is free. Paid detection happens here only.</small>
+                </div>
+              ) : (
+                <DetectedObjects key={`${mode}:${preview}`} hasImage active={editorMode === "objects"} initialObjects={preview === initialDraft?.image ? initialDraft.detectedObjects : undefined} mode={mode} image={preview} onUpload={() => fileRef.current?.click()} onSelect={setSelectedObject} onCreate3d={open3d} onImageChange={async (image, storageWarning) => { setPreview(image); pushHistory(image); setSelectedObject(null); if (storageWarning) { setSaveError(storageWarning); return; } try { if (!versionContext) await persistImage(preview); await persistImage(image, "Object edit"); } catch { setSaveError("Your edit is ready, but saving failed. Save again or download before leaving."); } }} />
+              )
             ) : null}
-            {preview && history.length > 0 ? (
-              <div className="version-history-panel" aria-label="Version history">
-                <div className="version-history-head">
-                  <span><ClockCounterClockwise size={14} /> {history.length} versions</span>
+            {editorMode === "threed" ? (
+              <ThreeDMode editorMode={editorMode} preview={preview} selectedObject={selectedObject} threeDSource={threeDSource} setThreeDSource={setThreeDSource} setModelUrlForAr={setModelUrlForAr} setModelPosterForAr={setModelPosterForAr} fileRef={threedUploadRef} onBusyChange={setThreeDBusy} onGoToAr={() => setEditorMode("ar")} />
+            ) : null}
+            {editorMode === "ar" ? (
+              <ArMode modelUrl={modelUrlForAr} poster={modelPosterForAr} hasModel={Boolean(modelUrlForAr)} onCreate={() => setEditorMode("threed")} />
+            ) : null}
+            {preview && editorMode !== "ar" ? (
+              <div className="version-history-panel" aria-label="Version history" style={{ borderTop: "1px solid #2a2b27", paddingTop: 12, display: "grid", gap: 8 }}>
+                <div className="version-history-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}><ClockCounterClockwise size={14}/> {history.length} versions</span>
                   <span style={{ display: "flex", gap: 6 }}>
-                    <button onClick={undo} disabled={!canUndo} style={{ opacity: canUndo ? 1 : 0.4 }}>Undo</button>
-                    <button onClick={redo} disabled={!canRedo} style={{ opacity: canRedo ? 1 : 0.4 }}>Redo</button>
+                    <button onClick={undo} disabled={!canUndo} style={{ minHeight: 32, padding: "0 10px", border: "1px solid #34362f", borderRadius: 6, background: "transparent", color: canUndo ? "#f4f0e8" : "#5a5b55" }}>Undo</button>
+                    <button onClick={redo} disabled={!canRedo} style={{ minHeight: 32, padding: "0 10px", border: "1px solid #34362f", borderRadius: 6, background: "transparent", color: canRedo ? "#f4f0e8" : "#5a5b55" }}>Redo</button>
                   </span>
                 </div>
-                <div className="version-history-strip" role="list">
+                <div className="version-history-strip" role="list" style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
                   {history.map((img, idx) => (
-                    <button
-                      key={`${idx}-${img.slice(-12)}`}
-                      role="listitem"
-                      className={idx === historyIndex ? "active" : ""}
-                      onClick={() => { setHistoryIndex(idx); setPreview(img); setSaved(false); }}
-                      title={`Version ${idx + 1}${idx === historyIndex ? " (current)" : ""}`}
-                      aria-label={`Version ${idx + 1}`}
-                    >
-                      <img src={img} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 6 }} />
+                    <button key={`${idx}-${img.slice(-18)}`} role="listitem" onClick={() => { setHistoryIndex(idx); setPreview(img); setSaved(false); setZoom(1); setFit(true); }} title={`Preview version ${idx+1}${idx===historyIndex ? " (current)" : ""}`} aria-label={`Preview version ${idx+1}`} style={{ flex: "none", border: idx===historyIndex ? "2px solid #f4f0e8" : "1px solid #34362f", borderRadius: 8, padding: 2, background: "transparent", opacity: idx===historyIndex ? 1 : 0.85 }}>
+                      <img src={img} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 6, display: "block" }} />
                     </button>
                   ))}
                 </div>
-                <small style={{ color: "var(--night-muted)", fontSize: 11 }}>Choose a version to preview it. Save to keep your selection.</small>
+                <small style={{ color: "var(--night-muted)", fontSize: 11, lineHeight: 1.4 }}>Tap a version to <strong>preview</strong> it. Previewing does not restore or save. Use <strong>Save to Projects</strong> above to persist the previewed version. Undo/Redo are consolidated here and in the canvas toolbar.</small>
+                {historyIndex !== history.length - 1 ? <button onClick={() => { setPreview(history[historyIndex]); setSaved(false); }} style={{ minHeight: 36, border: "1px solid #34362f", borderRadius: 8, background: "#1f1f1d", color: "#f4f0e8", fontSize: 12 }}>Restore this preview as current</button> : null}
               </div>
-            ) : null}
-            {preview ? (
-              <p className="integration-error" role="alert">
-                {saveError || uploadError}
-              </p>
             ) : null}
           </div>
         </aside>
       </div>
-      <CreditConfirmation open={generationConfirmOpen} cost={AI_COSTS.imageEdit} title="Generate your design?" description="Create a new version of this photo. Your original stays available for comparison." action="Generate" onCancel={() => setGenerationConfirmOpen(false)} onConfirm={() => void generateDesign()} />
-      <WorkspaceDialog open={threeDOpen} onClose={() => { if (!threeDBusy) setThreeDOpen(false); }} title="3D studio" wide>
-        <ThreeDWorkspace key={`${threeDSource?.kind || "empty"}:${threeDSource?.image || ""}`} initialSource={threeDSource} onBusyChange={setThreeDBusy} />
-        {threeDBusy ? <p className="three-d-stay" role="status">Keep this studio open until the model finishes. Your request is already running.</p> : null}
-      </WorkspaceDialog>
+      <CreditConfirmation open={generationConfirmOpen} cost={AI_COSTS.imageEdit} title="Generate your design?" description="Create a new version of this photo. Your original stays available for comparison. Room-type inference is free; this generation costs credits." action="Generate" onCancel={() => setGenerationConfirmOpen(false)} onConfirm={() => void generateDesign()} />
     </section>
+  );
+}
+function RedesignField({ label, value, values, onChange, hint }: { label: string; value: string; values: string[]; onChange: (v: string) => void; hint?: string }) {
+  return (
+    <fieldset style={{ border: "1px solid var(--night-line)", borderRadius: 10, padding: 10, background: "#181915" }}>
+      <legend style={{ padding: "0 6px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#8f9187", fontWeight: 700 }}>{label}</legend>
+      {hint ? <small style={{ display: "block", color: "#777970", fontSize: 11, marginBottom: 6 }}>{hint}</small> : null}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {values.map(item => (
+          <button key={item} type="button" onClick={() => onChange(item)} aria-pressed={value===item} style={{ minHeight: 34, padding: "0 10px", borderRadius: 999, border: value===item ? "1px solid #f4f0e8" : "1px solid #3a3c36", background: value===item ? "#f4f0e8" : "#1f1f1d", color: value===item ? "#11120f" : "#d6d5cf", fontSize: 12, fontWeight: value===item ? 700 : 500 }}>{item}</button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+function StyleField({ label, value, values, onChange, mode }: { label: string; value: string; values: string[]; onChange: (v: string) => void; mode: DesignMode }) {
+  const imageFor = (item: string) => {
+    if (item.startsWith("Auto")) return modeData[mode].image;
+    const slug = item.toLowerCase().replace(/ /g, "-");
+    const prefix = mode.toLowerCase();
+    return `/pictures/${prefix}-design-style-${slug}.png`;
+  };
+  return (
+    <fieldset style={{ border: "1px solid var(--night-line)", borderRadius: 10, padding: 10, background: "#181915" }}>
+      <legend style={{ padding: "0 6px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#8f9187", fontWeight: 700 }}>{label}</legend>
+      <small style={{ display: "block", color: "#777970", fontSize: 11, marginBottom: 8 }}>Wrapping style options — styled for readability, not clipped circles. Requires space beyond simple inference.</small>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(118px, 1fr))", gap: 8 }}>
+        {values.map(item => (
+          <button key={item} type="button" onClick={() => onChange(item)} aria-pressed={value===item} style={{ border: value===item ? "2px solid #f4f0e8" : "1px solid #34362f", borderRadius: 10, overflow: "hidden", background: value===item ? "#23241f" : "#1f1f1d", color: "#f4f0e8", textAlign: "left", padding: 0 }}>
+            <span style={{ position: "relative", display: "block", height: 72, overflow: "hidden", background: "#0f0f0e" }}>
+              <Image src={imageFor(item)} alt="" width={120} height={72} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { (e.currentTarget as HTMLImageElement).src = modeData[mode].image; }} unoptimized />
+            </span>
+            <span style={{ display: "grid", padding: "6px 8px", gap: 2 }}><b style={{ fontSize: 12, lineHeight: 1.2 }}>{item}</b><small style={{ fontSize: 10, color: "#8f9187" }}>{item.startsWith("Auto") ? "Let Housora choose" : `${mode} direction`}</small></span>
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+function AdvancedGroups({ mode, choices, onChange, onResetGroup }: { mode: DesignMode; choices: Record<string, string>; onChange: (label: string, value: string) => void; onResetGroup: (keys: string[]) => void }) {
+  const groups: Record<DesignMode, { id: string; label: string; keys: string[] }[]> = {
+    Interior: [
+      { id: "palette", label: "Palette & light", keys: ["Color palette", "Lighting"] },
+      { id: "surfaces", label: "Surfaces", keys: ["Wall finish", "Floor material"] },
+      { id: "openings", label: "Openings & circulation", keys: ["Window style", "Door style", "Staircase style"] },
+    ],
+    Exterior: [
+      { id: "palette", label: "Palette & light", keys: ["Color palette", "Lighting"] },
+      { id: "facade", label: "Facade & roof", keys: ["Facade material", "Roof style"] },
+      { id: "openings", label: "Openings & landscape", keys: ["Window style", "Door style", "Landscape level"] },
+    ],
+    Garden: [
+      { id: "greenery", label: "Greenery & paving", keys: ["Greenery", "Paving", "Boundary"] },
+      { id: "atmosphere", label: "Atmosphere", keys: ["Lighting", "Climate", "Maintenance"] },
+      { id: "furnishing", label: "Furnishing", keys: ["Outdoor furniture"] },
+    ],
+  };
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const isAuto = (v: string) => v === "Auto" || v === "Auto style" || v === "Auto-detect" || v === "Keep existing" || v.startsWith("Auto");
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      {groups[mode].map(group => {
+        const vals = group.keys.map(k => choices[k] || detailOptions[mode].find(d => d.label===k)?.values[0] || "Auto");
+        const summary = vals.every(v => isAuto(v)) ? "Defaults" : vals.filter(v => !isAuto(v)).join(" · ");
+        const expanded = !!open[group.id];
+        return (
+          <div key={group.id} style={{ border: "1px solid #34362f", borderRadius: 10, background: "#1a1b17", overflow: "hidden" }}>
+            <button onClick={() => setOpen(o => ({ ...o, [group.id]: !o[group.id] }))} aria-expanded={expanded} style={{ width: "100%", minHeight: 46, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "0 12px", background: "transparent", border: 0, color: "#f4f0e8", textAlign: "left" }}>
+              <span style={{ display: "grid", gap: 2 }}><b style={{ fontSize: 12 }}>{group.label}</b><small style={{ fontSize: 11, color: "#8f9187" }}>{summary}</small></span>
+              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span onClick={(e) => { e.stopPropagation(); onResetGroup(group.keys); }} role="button" tabIndex={0} onKeyDown={e => { if (e.key==="Enter" || e.key===" ") { e.preventDefault(); (e.target as HTMLElement).click(); }}} style={{ fontSize: 11, color: "#a9ba9d", textDecoration: "underline", cursor: "pointer" }}>Reset</span>
+                <CaretDown size={14} style={{ transform: expanded ? "rotate(180deg)" : undefined, transition: "transform 0.15s" }}/>
+              </span>
+            </button>
+            {expanded ? (
+              <div style={{ display: "grid", gap: 12, padding: "0 12px 12px", borderTop: "1px solid #2a2b27" }}>
+                {group.keys.map(label => {
+                  const detail = detailOptions[mode].find(d => d.label===label);
+                  if (!detail) return null;
+                  const val = choices[label] || detail.values[0];
+                  return (
+                    <fieldset key={label} style={{ border: 0, padding: 0, margin: 0 }}>
+                      <legend style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#aaa99f", fontWeight: 700, marginBottom: 6 }}>{label}</legend>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {detail.values.map(opt => (
+                          <button key={opt} type="button" onClick={() => onChange(label, opt)} aria-pressed={val===opt} style={{ minHeight: 32, padding: "0 10px", borderRadius: 999, border: val===opt ? "1px solid #f4f0e8" : "1px solid #3a3c36", background: val===opt ? "#f4f0e8" : "#1f1f1d", color: val===opt ? "#11120f" : "#d6d5cf", fontSize: 11 }}>{opt}</button>
+                        ))}
+                      </div>
+                    </fieldset>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+function ThreeDMode({ editorMode, preview, selectedObject, threeDSource, setThreeDSource, setModelUrlForAr, setModelPosterForAr, fileRef, onBusyChange, onGoToAr }: { editorMode: string; preview: string | null; selectedObject: DetectedObject | null; threeDSource: ThreeDSource | null; setThreeDSource: (s: ThreeDSource | null) => void; setModelUrlForAr: (u: string | null) => void; setModelPosterForAr: (u: string | null) => void; fileRef: React.RefObject<HTMLInputElement | null>; onBusyChange: (b: boolean) => void; onGoToAr: () => void }) {
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { onBusyChange(busy); }, [busy, onBusyChange]);
+  const handleCreatedModel = (url: string, poster: string | null) => { setModelUrlForAr(url); setModelPosterForAr(poster); };
+  return (
+    <div style={{ display: "grid", gap: 14 }}>
+      <div style={{ border: "1px solid #34362f", borderRadius: 10, padding: 12, background: "#1a1b17" }}>
+        <h3 style={{ margin: 0, fontSize: 13, fontFamily: "var(--font-display)" }}>3D models — full workspace mode</h3>
+        <p style={{ margin: "6px 0 0", color: "#aaa99f", fontSize: 12, lineHeight: 1.5 }}>Choose one clearly visible piece of furniture. Instructions are short: upload, or pick a detected object, or reopen an existing model.</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px,1fr))", gap: 8, marginTop: 10 }}>
+          <button onClick={() => fileRef.current?.click()} style={{ minHeight: 64, border: "1px solid #34362f", borderRadius: 10, background: threeDSource?.kind==="furniture-upload" ? "#23241f" : "#1f1f1d", color: "#f4f0e8", display: "grid", placeItems: "center", gap: 4, padding: 10, textAlign: "center" }}>
+            <UploadSimple size={18}/><b style={{ fontSize: 12 }}>Upload furniture</b><small style={{ fontSize: 10, color: "#8f9187" }}>One object, plain background</small>
+          </button>
+          <button onClick={() => { if (selectedObject) setThreeDSource({ image: selectedObject.thumbnail, kind: "sam-crop", objectLabel: selectedObject.label, objectBox: selectedObject.box }); }} disabled={!selectedObject} style={{ minHeight: 64, border: "1px solid #34362f", borderRadius: 10, background: threeDSource?.kind==="sam-crop" ? "#23241f" : "#1f1f1d", color: selectedObject ? "#f4f0e8" : "#5a5b55", display: "grid", placeItems: "center", gap: 4, padding: 10, textAlign: "center", opacity: selectedObject ? 1 : 0.6 }}>
+            <Selection size={18}/><b style={{ fontSize: 12 }}>Choose detected object</b><small style={{ fontSize: 10, color: "#8f9187" }}>{selectedObject ? selectedObject.label : "Select an object in Edit objects"}</small>
+          </button>
+          <button onClick={() => { /* Existing models list is inside ThreeDWorkspace */ const el = document.getElementById("existing-models-anchor"); el?.scrollIntoView({ behavior: "smooth" }); }} style={{ minHeight: 64, border: "1px solid #34362f", borderRadius: 10, background: "#1f1f1d", color: "#f4f0e8", display: "grid", placeItems: "center", gap: 4, padding: 10, textAlign: "center" }}>
+            <Cube size={18}/><b style={{ fontSize: 12 }}>Existing models</b><small style={{ fontSize: 10, color: "#8f9187" }}>Reopen saved models below</small>
+          </button>
+        </div>
+        {threeDSource ? <small style={{ display: "block", marginTop: 8, color: "#a9ba9d", fontSize: 11 }}>Selected: {threeDSource.kind==="sam-crop" ? `${threeDSource.objectLabel} (detected)` : "Uploaded furniture"} — Generate is accessible below.</small> : <small style={{ display: "block", marginTop: 8, color: "#8f9187", fontSize: 11 }}>Pick a source above — Generate stays accessible.</small>}
+      </div>
+      <div id="existing-models-anchor">
+        <ThreeDWorkspace key={`${threeDSource?.kind || "empty"}:${threeDSource?.image || ""}:${editorMode}`} initialSource={threeDSource} onBusyChange={setBusy} onModelReady={handleCreatedModel} />
+      </div>
+      {busy ? <p style={{ color: "var(--night-muted)", fontSize: 12, padding: "6px 2px", borderTop: "1px solid var(--night-line)" }} role="status">Keep this workspace open until the model finishes. Your request is already running.</p> : null}
+      {threeDSource && !busy ? <small style={{ color: "#777970", fontSize: 11 }}>Generating uses 12 credits. You will confirm before spending. View in AR is available after a model is ready.</small> : null}
+    </div>
+  );
+}
+function ArMode({ modelUrl, poster, hasModel, onCreate }: { modelUrl: string | null; poster: string | null; hasModel: boolean; onCreate: () => void }) {
+  if (!hasModel || !modelUrl) {
+    return (
+      <div style={{ display: "grid", gap: 14, textAlign: "center", padding: "18px 12px", border: "1px dashed #3a3c36", borderRadius: 12, background: "#1a1b17" }}>
+        <span style={{ width: 48, height: 48, borderRadius: 12, background: "#23241f", display: "grid", placeItems: "center", margin: "0 auto", color: "#aaa99f" }}><Smartphone size={22}/></span>
+        <h3 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 400 }}>No 3D model yet — View in AR is discoverable</h3>
+        <p style={{ margin: 0, color: "#aaa99f", fontSize: 12, lineHeight: 1.6 }}>Create a furniture model in 3D models (upload or choose a detected object), then return here to preview it in your room. No public links are created automatically.</p>
+        <button onClick={onCreate} style={{ minHeight: 44, border: 0, borderRadius: 999, background: "#f4f0e8", color: "#11120f", fontWeight: 700, padding: "0 18px", justifySelf: "center" }}><Cube size={14}/> Go to 3D models</button>
+        <div style={{ textAlign: "left", borderTop: "1px solid #2a2b27", paddingTop: 12, display: "grid", gap: 6 }}>
+          <small style={{ fontWeight: 700, color: "#f4f0e8" }}>Device requirements</small>
+          <small style={{ color: "#8f9187", lineHeight: 1.5 }}>AR needs a compatible phone with camera access: iOS with AR Quick Look (Safari) or Android with Scene Viewer / WebXR (Chrome). If AR is unavailable, the 3D preview still works. No external account needed.</small>
+          <small style={{ color: "#777970" }}>Existing capabilities are preserved — you will manually create a secure share link after a model is ready. Never shared automatically.</small>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      <div style={{ border: "1px solid #34362f", borderRadius: 12, overflow: "hidden", background: "#11120f", minHeight: 360 }}>
+        <ModelViewer src={modelUrl} poster={poster} />
+      </div>
+      <div style={{ border: "1px solid #34362f", borderRadius: 10, padding: 12, background: "#1a1b17", display: "grid", gap: 8 }}>
+        <b style={{ fontSize: 13 }}>View in your room — device check</b>
+        <p style={{ margin: 0, color: "#aaa99f", fontSize: 12, lineHeight: 1.6 }}>Open this page on your phone and tap <em>View in your room</em> inside the 3D viewer. Allow camera access. If your device does not support AR, use drag to rotate and scroll to zoom — existing capabilities remain.</p>
+        <small style={{ color: "#777970" }}>Approximate dimensions only — not true to scale. Confirm measurements before purchasing. No public links are created without your action.</small>
+        <small style={{ color: "#8f9187" }}>iOS: Safari · AR Quick Look · Android: Chrome · Scene Viewer / WebXR.</small>
+      </div>
+    </div>
   );
 }
 function ClientsPage({
@@ -2917,12 +2945,24 @@ function DiscoverPage({
   const [filter, setFilter] = useState("All");
   const [selected, setSelected] = useState<InspirationReference | null>(null);
   const [copied, setCopied] = useState(false);
+  const [promptOpen, setPromptOpen] = useState(false);
+  const [modalImageError, setModalImageError] = useState(false);
+  const [modalImageLoaded, setModalImageLoaded] = useState(false);
+  const [cardErrors, setCardErrors] = useState<Record<string, boolean>>({});
   const searchRef = useRef<HTMLInputElement>(null);
   const closeReference = () => {
     setSelected(null);
     setCopied(false);
+    setPromptOpen(false);
+    setModalImageError(false);
+    setModalImageLoaded(false);
   };
   const dialogRef = useDialogFocus(Boolean(selected), closeReference);
+  useEffect(() => {
+    setModalImageError(false);
+    setModalImageLoaded(false);
+    setPromptOpen(false);
+  }, [selected?.title]);
   const normalizedQuery = query.toLowerCase();
   const filters = [
     "All",
@@ -2945,6 +2985,60 @@ function DiscoverPage({
         .toLowerCase()
         .includes(normalizedQuery),
   );
+  const primaryResults = results.filter((r) => r.room !== "Detail");
+  const detailResults = results.filter((r) => r.room === "Detail");
+  const hasDetailResults = detailResults.length > 0;
+  const renderCard = (entry: InspirationReference, index: number, visualLen: number) => {
+    const hasErr = cardErrors[entry.title];
+    return (
+      <button
+        key={entry.title}
+        className={`inspiration-card card-${index % 7}`}
+        onClick={() => {
+          setSelected(entry);
+          setCopied(false);
+        }}
+        aria-label={`Open ${entry.title}, ${entry.style} ${entry.room}`}
+      >
+        {!hasErr ? (
+          <Image
+            src={entry.image}
+            alt={`${entry.title}, ${entry.style} ${entry.room} reference`}
+            fill
+            sizes="(max-width: 700px) 50vw, (max-width: 1100px) 33vw, 25vw"
+            priority={visualLen > 0 && index % visualLen < 2}
+            unoptimized
+            onError={() => setCardErrors((m) => ({ ...m, [entry.title]: true }))}
+          />
+        ) : (
+          <span className="card-image-error" role="img" aria-label="Image failed to load">
+            <ImagesSquare />
+            <small>Image unavailable</small>
+            <button
+              className="card-retry"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCardErrors((m) => ({ ...m, [entry.title]: false }));
+              }}
+            >
+              Retry
+            </button>
+          </span>
+        )}
+        <span className="inspiration-overlay">
+          <span>
+            <b>{entry.title}</b>
+            <small>
+              {entry.style} · {entry.room}
+            </small>
+          </span>
+          <i>
+            <ArrowRight />
+          </i>
+        </span>
+      </button>
+    );
+  };
   // CSS columns rebalance cards into visual columns. Eagerly load the first two
   // cards in each desktop column so the first viewport never contains blank tiles.
   const visualColumnLength = Math.ceil(results.length / 4);
@@ -3014,41 +3108,20 @@ function DiscoverPage({
         </div>
       </div>
       <p className="discover-results-count" aria-live="polite">
-        {results.length} directions
+        {results.length} directions {detailResults.length ? `· ${primaryResults.length} rooms · ${detailResults.length} detail studies` : ""}
       </p>
       <section className="inspiration-grid" aria-label="Design inspiration">
-        {results.map((entry, index) => (
-          <button
-            key={entry.title}
-            className={`inspiration-card card-${index % 7}`}
-            onClick={() => {
-              setSelected(entry);
-              setCopied(false);
-            }}
-          >
-            <Image
-              src={entry.image}
-              alt={`${entry.title}, ${entry.style} ${entry.room} reference`}
-              fill
-              sizes="(max-width: 700px) 50vw, (max-width: 1100px) 33vw, 25vw"
-              priority={
-                visualColumnLength > 0 && index % visualColumnLength < 2
-              }
-            />
-            <span className="inspiration-overlay">
-              <span>
-                <b>{entry.title}</b>
-                <small>
-                  {entry.style} · {entry.room}
-                </small>
-              </span>
-              <i>
-                <ArrowRight />
-              </i>
-            </span>
-          </button>
-        ))}
+        {primaryResults.map((entry, index) => renderCard(entry, index, visualColumnLength))}
       </section>
+      {hasDetailResults && primaryResults.length ? (
+        <section className="inspiration-secondary" aria-label="Material and detail studies">
+          <h2 className="eyebrow" style={{ margin: "28px 0 12px" }}>Material & detail studies — separate from room photography</h2>
+          <div className="inspiration-grid secondary-grid" aria-label="Detail studies">
+            {detailResults.map((entry, index) => renderCard(entry, index, 0))}
+          </div>
+          <p style={{ color: "#8f9187", fontSize: 12, marginTop: 8 }}>These are texture and detail boards, kept separate from room directions without deleting assets.</p>
+        </section>
+      ) : null}
       {!results.length ? (
         <div className="empty-panel">
           <MagnifyingGlass />
@@ -3069,10 +3142,7 @@ function DiscoverPage({
           className="inspiration-modal-backdrop"
           role="presentation"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              setSelected(null);
-              setCopied(false);
-            }
+            if (event.target === event.currentTarget) closeReference();
           }}
         >
           <article
@@ -3084,23 +3154,35 @@ function DiscoverPage({
           >
             <button
               className="reference-close"
-              onClick={() => {
-                setSelected(null);
-                setCopied(false);
-              }}
+              onClick={closeReference}
               aria-label="Close reference"
             >
               <X />
             </button>
             <div className="reference-image">
-              <Image
-                src={selected.image}
-                alt={`${selected.title}, ${selected.style} ${selected.room} reference`}
-                fill
-                sizes="(max-width: 800px) 100vw, 58vw"
-                priority
-                unoptimized
-              />
+              {!modalImageLoaded && !modalImageError ? (
+                <span className="image-loading" role="status" aria-live="polite">
+                  <span className="spinner" aria-hidden="true" /> Loading image…
+                </span>
+              ) : null}
+              {modalImageError ? (
+                <span className="card-image-error" role="alert">
+                  <ImagesSquare />
+                  <small>Image failed to load</small>
+                  <button className="card-retry" onClick={() => setModalImageError(false)}>Retry</button>
+                </span>
+              ) : (
+                <Image
+                  src={selected.image}
+                  alt={`${selected.title}, ${selected.style} ${selected.room} reference`}
+                  fill
+                  sizes="(max-width: 800px) 100vw, 58vw"
+                  priority
+                  unoptimized
+                  onLoad={() => setModalImageLoaded(true)}
+                  onError={() => setModalImageError(true)}
+                />
+              )}
             </div>
             <div className="reference-details">
               <span className="eyebrow">
@@ -3108,46 +3190,42 @@ function DiscoverPage({
               </span>
               <h2 id="reference-title">{selected.title}</h2>
               <p>
-                Use this atmosphere as a starting point, then make it work for
-                your own space.
+                Use this atmosphere as a starting point, then make it work for your own space. Verified mapping: image, title, room and style are from the canonical Discover library — including “Sunlit kitchen.”
               </p>
-              <label className="reference-prompt">
-                <span>Design prompt</span>
+              <button
+                className="reference-save primary-action"
+                onClick={() => {
+                  const reference = selected;
+                  closeReference();
+                  onCreate(reference);
+                }}
+                autoFocus
+              >
+                <Sparkle /> Use this direction
+              </button>
+              <details className="reference-prompt-details" open={promptOpen} onToggle={(e) => setPromptOpen((e.target as HTMLDetailsElement).open)}>
+                <summary>Design prompt — expand to view</summary>
                 <textarea
                   value={selected.prompt}
                   readOnly
                   aria-label="Design prompt"
+                  rows={4}
                 />
-                <button className="copy-prompt" onClick={copyPrompt}>
-                  <CopySimple />{" "}
-                  {copied ? "Prompt copied" : "Copy design prompt"}
+                <button className="copy-prompt copy-prompt-demoted" onClick={copyPrompt} aria-label="Copy design prompt">
+                  <CopySimple /> {copied ? "Prompt copied" : "Copy prompt"}
                 </button>
-              </label>
-              <div className="reference-actions">
+              </details>
+              <div className="reference-actions secondary-actions">
                 <button
-                  className="reference-save"
-                  onClick={() => {
-                    const reference = selected;
-                    closeReference();
-                    onCreate(reference);
-                  }}
-                >
-                  <Sparkle /> Use this direction
-                </button>
-                <button
-                  className="reference-heart"
+                  className="reference-heart secondary-action"
                   onClick={() => onSave(selected)}
-                  aria-label="Save this inspiration"
+                  aria-label={savedTitles.includes(selected.title) ? "Remove from saved inspiration" : "Save this inspiration"}
+                  aria-pressed={savedTitles.includes(selected.title)}
                 >
-                  <Heart
-                    fill={savedTitles.includes(selected.title) ? "currentColor" : "none"}
-                  />{" "}
-                  <span>
-                    {savedTitles.includes(selected.title)
-                      ? "Saved"
-                      : "Save inspiration"}
-                  </span>
+                  <Heart fill={savedTitles.includes(selected.title) ? "currentColor" : "none"} />{" "}
+                  <span>{savedTitles.includes(selected.title) ? "Saved" : "Save inspiration"}</span>
                 </button>
+                <small style={{ color: "#8f9187", fontSize: 11 }}>{savedTitles.includes(selected.title) ? "Saved to Saved → Inspiration" : "Saves to your bookmarks"}</small>
               </div>
             </div>
           </article>
@@ -3174,19 +3252,24 @@ function SavedPage({
   onUseReference: (reference: InspirationReference) => void;
   onBrowse: () => void;
 }) {
-  const [tab, setTab] = useState<"designs" | "inspiration">("designs");
+  const [tab, setTab] = useState<"designs" | "inspiration" | "models">("designs");
   const [selected, setSelected] = useState<SavedDesign | null>(null);
   const [selectedReference, setSelectedReference] =
     useState<InspirationReference | null>(null);
   const [shareMessage, setShareMessage] = useState("");
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const recentModels = useQuery(api.models.list, {});
+  const furnitureRows = useQuery(api.furniture.list, {});
+  const hasModels = Array.isArray(recentModels) && recentModels.length > 0;
+  const hasFurniture = Array.isArray(furnitureRows) && furnitureRows.length > 0;
   const formatSavedDate = (value?: string) => {
     if (!value) return "Saved recently";
     try { return new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); } catch { return "Saved recently"; }
   };
   const moveSavedTab = (
     event: React.KeyboardEvent<HTMLButtonElement>,
-    next: "designs" | "inspiration",
+    next: "designs" | "inspiration" | "models",
   ) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
@@ -3203,6 +3286,19 @@ function SavedPage({
     Boolean(selected || selectedReference),
     closeSaved,
   );
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (!t?.closest?.(".saved-card-menu-wrap")) setMenuOpen(null);
+    };
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") setMenuOpen(null); };
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onEsc);
+    };
+  }, []);
   const share = async (design: SavedDesign) => {
     const url = new URL(design.image, window.location.origin).toString();
     try {
@@ -3214,6 +3310,7 @@ function SavedPage({
     } catch {
       setShareMessage("Sharing was cancelled");
     }
+    window.setTimeout(() => setShareMessage(""), 2600);
   };
   const download = (design: SavedDesign) => {
     const link = document.createElement("a");
@@ -3224,9 +3321,13 @@ function SavedPage({
   return (
     <section className="saved-page" aria-labelledby="saved-title">
       <header className="saved-heading">
-        <h1 id="saved-title">Saved</h1>
-        <p>{designs.length + references.length} saved</p>
+        <div>
+          <h1 id="saved-title">Saved</h1>
+          <p>{designs.length + references.length} saved · Bookmarks, not working documents. Projects holds your editable work.</p>
+        </div>
+        <p className="saved-heading-meta" aria-hidden="true">{designs.length} designs · {references.length} inspiration</p>
       </header>
+      <p className="saved-clarify">Saved keeps bookmarks: generated designs you’ve saved and Discover inspiration you’ve hearted. Your working documents live in Projects — no data is moved or reclassified without your action. 3D models from the studio appear under Saved → 3D if available.</p>
       <div
         className="saved-tabs"
         role="tablist"
@@ -3249,10 +3350,21 @@ function SavedPage({
           aria-selected={tab === "inspiration"}
           aria-controls="saved-panel"
           tabIndex={tab === "inspiration" ? 0 : -1}
-          onKeyDown={(event) => moveSavedTab(event, "designs")}
+          onKeyDown={(event) => moveSavedTab(event, tab === "designs" ? "models" : "designs")}
           onClick={() => setTab("inspiration")}
         >
           Inspiration <span>{references.length}</span>
+        </button>
+        <button
+          id="saved-tab-models"
+          role="tab"
+          aria-selected={tab === "models"}
+          aria-controls="saved-panel"
+          tabIndex={tab === "models" ? 0 : -1}
+          onKeyDown={(event) => moveSavedTab(event, "inspiration")}
+          onClick={() => setTab("models")}
+        >
+          3D <span>{recentModels?.length ?? 0}</span>
         </button>
       </div>
       {tab === "designs" && designs.length ? (
@@ -3263,21 +3375,39 @@ function SavedPage({
           className="saved-masonry"
           aria-label="Saved designs"
         >
-          {designs.map((design, index) => (
-            <article className={`saved-card saved-tile-${index % 4}`} key={design.id}>
-              <button className="saved-card-image" onClick={() => { setSelected(design); setShareMessage(""); }} aria-label={`Open ${design.title}`}>
-                <Image src={design.image} alt={design.title} fill sizes="(max-width: 600px) 50vw, (max-width: 1000px) 33vw, 25vw" unoptimized={design.image.startsWith("data:") || design.image.startsWith("http")} />
-              </button>
-              <div className="saved-card-meta">
-                <div className="saved-card-info"><b>{design.title}</b><small>Design · {design.mode} · {formatSavedDate(design.savedAt)}</small></div>
-                <button className="saved-card-open" onClick={() => { setSelected(design); setShareMessage(""); }}>Open</button>
-                <div className="saved-card-menu-wrap">
-                  <button className="saved-card-more" aria-label={`More actions for ${design.title}`} aria-haspopup="menu" aria-expanded={menuOpen === design.id} onClick={() => setMenuOpen((v) => (v === design.id ? null : design.id))}><DotsThree /></button>
-                  {menuOpen === design.id ? <div className="saved-overflow-menu" role="menu"><button role="menuitem" onClick={() => { setMenuOpen(null); share(design); }}><ShareNetwork /> Share</button><button role="menuitem" onClick={() => { setMenuOpen(null); download(design); }}><DownloadSimple /> Download</button><button role="menuitem" onClick={() => { setMenuOpen(null); onUnsave(design.id); }}><TrashSimple /> Remove</button></div> : null}
+          {designs.map((design, index) => {
+            const hasErr = imageErrors[design.id];
+            return (
+              <article className={`saved-card saved-tile-${index % 4} ${menuOpen === design.id ? "has-menu-open" : ""}`} key={design.id}>
+                <button className="saved-card-image" onClick={() => { setSelected(design); setShareMessage(""); }} aria-label={`Open ${design.title}`}>
+                  {!hasErr ? (
+                    <Image
+                      src={design.image}
+                      alt={design.title}
+                      fill
+                      sizes="(max-width: 600px) 50vw, (max-width: 1000px) 33vw, 25vw"
+                      unoptimized={design.image.startsWith("data:") || design.image.startsWith("http")}
+                      onError={() => setImageErrors((m) => ({ ...m, [design.id]: true }))}
+                    />
+                  ) : (
+                    <span className="card-image-error" role="img" aria-label="Image failed to load">
+                      <ImagesSquare />
+                      <small>Image unavailable</small>
+                      <button className="card-retry" onClick={(e) => { e.stopPropagation(); setImageErrors((m) => ({ ...m, [design.id]: false })); }} aria-label={`Retry ${design.title}`}>Retry</button>
+                    </span>
+                  )}
+                </button>
+                <div className="saved-card-meta">
+                  <div className="saved-card-info"><b>{design.title}</b><small>Design · {design.mode} · {formatSavedDate(design.savedAt)}</small></div>
+                  <button className="saved-card-open" onClick={() => { setSelected(design); setShareMessage(""); }}>Open</button>
+                  <div className="saved-card-menu-wrap">
+                    <button className="saved-card-more" aria-label={`More actions for ${design.title}`} aria-haspopup="menu" aria-expanded={menuOpen === design.id} onClick={() => setMenuOpen((v) => (v === design.id ? null : design.id))}><DotsThree /></button>
+                    {menuOpen === design.id ? <div className="saved-overflow-menu" role="menu"><button role="menuitem" onClick={() => { setMenuOpen(null); share(design); }}><ShareNetwork /> Share</button><button role="menuitem" onClick={() => { setMenuOpen(null); download(design); }}><DownloadSimple /> Download</button><button role="menuitem" onClick={() => { setMenuOpen(null); onUnsave(design.id); }}><TrashSimple /> Remove</button></div> : null}
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
+              </article>
+            );
+          })}
         </div>
       ) : tab === "inspiration" && references.length ? (
         <div
@@ -3287,21 +3417,55 @@ function SavedPage({
           className="saved-masonry"
           aria-label="Saved inspiration"
         >
-          {references.map((reference, index) => (
-            <article className={`saved-card saved-tile-${index % 4}`} key={reference.title}>
-              <button className="saved-card-image" onClick={() => { setSelectedReference(reference); setShareMessage(""); }} aria-label={`Open ${reference.title}`}>
-                <Image src={reference.image} alt={reference.title} fill sizes="(max-width: 600px) 50vw, (max-width: 1000px) 33vw, 25vw" unoptimized />
-              </button>
-              <div className="saved-card-meta">
-                <div className="saved-card-info"><b>{reference.title}</b><small>Inspiration · {reference.style} · {reference.room}</small></div>
-                <button className="saved-card-open" onClick={() => { setSelectedReference(reference); setShareMessage(""); }}>Open</button>
-                <div className="saved-card-menu-wrap">
-                  <button className="saved-card-more" aria-label={`More actions for ${reference.title}`} aria-haspopup="menu" aria-expanded={menuOpen === reference.title} onClick={() => setMenuOpen((v) => (v === reference.title ? null : reference.title))}><DotsThree /></button>
-                  {menuOpen === reference.title ? <div className="saved-overflow-menu" role="menu"><button role="menuitem" onClick={() => { setMenuOpen(null); onUseReference(reference); }}><Sparkle /> Use direction</button><button role="menuitem" onClick={() => { setMenuOpen(null); share({ id: reference.title, title: reference.title, image: reference.image, mode: "Interior", savedAt: "" }); }}><ShareNetwork /> Share</button><button role="menuitem" onClick={() => { setMenuOpen(null); download({ id: reference.title, title: reference.title, image: reference.image, mode: "Interior", savedAt: "" }); }}><DownloadSimple /> Download</button><button role="menuitem" onClick={() => { setMenuOpen(null); onUnsaveReference(reference.title); }}><TrashSimple /> Remove</button></div> : null}
+          {references.map((reference, index) => {
+            const hasErr = imageErrors[reference.title];
+            return (
+              <article className={`saved-card saved-tile-${index % 4} ${menuOpen === reference.title ? "has-menu-open" : ""}`} key={reference.title}>
+                <button className="saved-card-image" onClick={() => { setSelectedReference(reference); setShareMessage(""); }} aria-label={`Open ${reference.title}`}>
+                  {!hasErr ? (
+                    <Image src={reference.image} alt={reference.title} fill sizes="(max-width: 600px) 50vw, (max-width: 1000px) 33vw, 25vw" unoptimized onError={() => setImageErrors((m) => ({ ...m, [reference.title]: true }))} />
+                  ) : (
+                    <span className="card-image-error" role="img" aria-label="Image failed to load"><ImagesSquare /><small>Image unavailable</small><button className="card-retry" onClick={(e) => { e.stopPropagation(); setImageErrors((m) => ({ ...m, [reference.title]: false })); }} aria-label={`Retry ${reference.title}`}>Retry</button></span>
+                  )}
+                </button>
+                <div className="saved-card-meta">
+                  <div className="saved-card-info"><b>{reference.title}</b><small>Inspiration · {reference.style} · {reference.room}</small></div>
+                  <button className="saved-card-open" onClick={() => { setSelectedReference(reference); setShareMessage(""); }}>Open</button>
+                  <div className="saved-card-menu-wrap">
+                    <button className="saved-card-more" aria-label={`More actions for ${reference.title}`} aria-haspopup="menu" aria-expanded={menuOpen === reference.title} onClick={() => setMenuOpen((v) => (v === reference.title ? null : reference.title))}><DotsThree /></button>
+                    {menuOpen === reference.title ? <div className="saved-overflow-menu" role="menu"><button role="menuitem" onClick={() => { setMenuOpen(null); onUseReference(reference); }}><Sparkle /> Use direction</button><button role="menuitem" onClick={() => { setMenuOpen(null); share({ id: reference.title, title: reference.title, image: reference.image, mode: "Interior", savedAt: "" }); }}><ShareNetwork /> Share</button><button role="menuitem" onClick={() => { setMenuOpen(null); download({ id: reference.title, title: reference.title, image: reference.image, mode: "Interior", savedAt: "" }); }}><DownloadSimple /> Download</button><button role="menuitem" onClick={() => { setMenuOpen(null); onUnsaveReference(reference.title); }}><TrashSimple /> Remove</button></div> : null}
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
+              </article>
+            );
+          })}
+        </div>
+      ) : tab === "models" ? (
+        <div id="saved-panel" role="tabpanel" aria-labelledby="saved-tab-models" className="saved-masonry" aria-label="Saved 3D models">
+          {recentModels === undefined ? (
+            <div className="saved-empty small-empty" role="status" aria-live="polite"><span className="spinner" aria-hidden="true" /><p>Loading 3D assets…</p></div>
+          ) : hasModels ? (
+            recentModels.map((m: any, i: number) => (
+              <article key={m.taskId} className={`saved-card saved-tile-${i % 4}`}>
+                <a className="saved-card-image" href={m.url} target="_blank" rel="noreferrer" aria-label={`Open 3D model ${i + 1}`}><img src={m.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} /><span className="card-badge">3D · GLB</span></a>
+                <div className="saved-card-meta"><div className="saved-card-info"><b>3D model {recentModels.length - i}</b><small>Generated · {new Date(m.createdAt).toLocaleDateString()}</small></div><a className="saved-card-open" href={m.url} download target="_blank" rel="noreferrer">Download</a></div>
+              </article>
+            ))
+          ) : hasFurniture ? (
+            furnitureRows.map((f: any, i: number) => (
+              <article key={f._id} className={`saved-card saved-tile-${i % 4}`}>
+                <div className="saved-card-image" aria-label={f.name}><img src={f.thumbnail || "/pictures/interior-design-cover.png"} alt={f.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /><span className="card-badge">{f.category || f.source}</span></div>
+                <div className="saved-card-meta"><div className="saved-card-info"><b>{f.name}</b><small>{f.category || "Furniture"} · {f.style || "Catalog"}</small></div><span className="saved-card-open" style={{ opacity: 0.6 }}>Catalog</span></div>
+              </article>
+            ))
+          ) : (
+            <div className="saved-empty small-empty">
+              <span><Cube /></span>
+              <h2>No 3D models yet</h2>
+              <p>3D assets you generate in the studio appear here. The backend currently exposes generated GLB models via <code>api.models.list</code>; no separate furniture library is populated — generate a model from any furniture image to see it here. We don’t fake a catalog.</p>
+              <small style={{ color: "#8f9187" }}>If you expected a shared library, the backend does not yet provide one — this is documented, not mocked.</small>
+            </div>
+          )}
         </div>
       ) : (
         <div className="saved-empty">
@@ -3311,12 +3475,12 @@ function SavedPage({
           <h2>
             {tab === "designs"
               ? "No saved designs yet"
-              : "No saved inspiration yet"}
+              : tab === "inspiration" ? "No saved inspiration yet" : "No 3D assets"}
           </h2>
           <p>
             {tab === "designs"
-              ? "Generate a design you love, then save it here for later."
-              : "Save a direction from Discover to keep it close."}
+              ? "Generate a design you love, then save it here for later. Your working documents stay in Projects."
+              : "Save a direction from Discover to keep it close. Bookmarks don’t move your projects."}
           </p>
           <button
             className="primary-action"
@@ -3879,7 +4043,7 @@ function DesignStudio({
   );
 }
 
-function ThreeDWorkspace({ initialSource = null, onBusyChange }: { initialSource?: ThreeDSource | null; onBusyChange?: (busy: boolean) => void } = {}) {
+function ThreeDWorkspace({ initialSource = null, onBusyChange, onModelReady }: { initialSource?: ThreeDSource | null; onBusyChange?: (busy: boolean) => void; onModelReady?: (url: string, poster: string | null) => void } = {}) {
   const { user } = useUser();
   const trackingKey = user?.id ? `housora:tripo:${user.id}` : null;
   const recentModels = useQuery(api.models.list, {});
@@ -4030,6 +4194,7 @@ function ThreeDWorkspace({ initialSource = null, onBusyChange }: { initialSource
   const busy = status === "uploading" || status === "queued" || status === "running";
   const sourceValidation = isValidThreeDSource(source);
   useEffect(() => { onBusyChange?.(busy); }, [busy, onBusyChange]);
+  useEffect(() => { if (modelUrl) onModelReady?.(modelUrl, modelPoster); }, [modelUrl, modelPoster, onModelReady]);
   return (
     <section className="three-d-workspace tripo-workspace">
       <header className="three-d-heading">
