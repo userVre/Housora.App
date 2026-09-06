@@ -5,7 +5,13 @@ export const REQUIRED_LEGAL_ENV = [
   "HOUSORA_PRIVACY_EMAIL",
   "HOUSORA_JURISDICTION",
 ] as const;
-
+export const LEGAL_ENV_LABELS: Record<(typeof REQUIRED_LEGAL_ENV)[number], string> = {
+  HOUSORA_LEGAL_NAME: "legal entity name",
+  HOUSORA_LEGAL_ADDRESS: "registered address",
+  HOUSORA_SUPPORT_EMAIL: "support contact email",
+  HOUSORA_PRIVACY_EMAIL: "privacy contact email",
+  HOUSORA_JURISDICTION: "governing jurisdiction",
+};
 export type LegalConfig = {
   legalName?: string;
   legalAddress?: string;
@@ -17,7 +23,6 @@ export type LegalConfig = {
   missing: string[];
   ready: boolean;
 };
-
 export function getLegalConfig(): LegalConfig {
   const missing = REQUIRED_LEGAL_ENV.filter(name => !process.env[name]?.trim());
   const reviewed = process.env.HOUSORA_LEGAL_REVIEWED === "true";
