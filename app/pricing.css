@@ -1,21 +1,34 @@
 /* Product pricing: controls first, then plans, top-ups and cost reference. */
 .commerce-page.pricing-page { padding-top: 32px; padding-bottom: 48px; }
 .pricing-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.pricing-toolbar .balance-pill { margin: 0; min-height: 48px; }
+.pricing-toolbar .balance-pill { margin: 0; min-height: 48px; flex-wrap: wrap; gap: 8px; }
 .pricing-toolbar .billing-toggle button { min-height: 44px; }
-.pricing-page .plan-grid { margin-top: 32px; }
+.balance-breakdown { font-size: 11px; color: var(--night-muted); margin-left: 6px; }
+.billing-disclosure { margin: 14px 0 0; color: var(--night-muted); font-size: 12px; line-height: 1.5; max-width: 720px; }
+.pricing-page .plan-grid { margin-top: 24px; }
 .pricing-page .plan-card { min-height: 0; padding: 24px; }
 .pricing-page .plan-card > p { margin: 12px 0; min-height: 48px; }
 .pricing-page .plan-card > strong { margin-top: 8px; }
-.pricing-page .plan-card ul { margin: 24px 0; gap: 12px; }
-.pricing-page .plan-card.popular { box-shadow: none; }
+.pricing-page .plan-card ul { margin: 20px 0; gap: 12px; }
+.pricing-page .plan-card.popular { box-shadow: none; border-color: var(--night-line); }
+.pricing-page .plan-card.popular .popular-label { background: var(--night-text); color: var(--night); font-weight: 700; letter-spacing: 0.02em; }
+.plan-annual-note { display: block; margin: 6px 0 0; color: var(--night-muted); font-size: 11px; line-height: 1.4; }
+.pricing-note { margin: 14px 0 0; color: var(--night-muted); font-size: 13px; line-height: 1.6; }
+.pricing-note em { font-style: normal; font-weight: 700; color: var(--night-text); }
 .pricing-page .topup-section { margin-top: 32px; padding: 24px; gap: 32px; }
-.pricing-page .topup-section h2 { font-size: 28px; }
-.pricing-page .topup-section .pack-grid button { min-height: 64px; }
+.pricing-page .topup-section h2 { font-size: 28px; font-family: var(--font-display); font-weight: 400; letter-spacing: -0.02em; }
+.pricing-page .topup-section .pack-grid { gap: 10px; }
+.pricing-page .topup-section .pack-grid button { min-height: 64px; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; position: relative; text-align: left; border: 1px solid var(--night-line); background: var(--night); }
+.pricing-page .topup-section .pack-grid button.selected { border-color: var(--night-text); background: var(--night-panel); box-shadow: 0 0 0 1px var(--night-text); }
+.pricing-page .topup-section .pack-grid button.best:not(.selected) { border-color: #87947a; }
+.pricing-page .topup-section .pack-grid button:focus-visible { outline: 2px solid #d7e2c8; outline-offset: 2px; }
+.pricing-page .topup-section .pack-grid button[aria-checked="true"] { color: var(--night-text); }
+.pack-unit { font-size: 11px; color: var(--night-muted); font-weight: 400; }
+.pricing-page .pack-grid button small { font-size: 11px; }
 .pricing-page .checkout-error { margin: 16px 0 0; max-width: none; }
 .credit-cost-section { margin-top: 32px; border: 1px solid var(--night-line); border-radius: var(--radius-lg); overflow: hidden; background: var(--night-panel); }
 .credit-cost-section > header { padding: 24px; }
-.credit-cost-section h2 { margin: 0 0 8px; font: 600 24px/1.3 var(--font-body); }
+.credit-cost-section h2 { margin: 0 0 8px; font: 600 24px/1.3 var(--font-body); font-family: var(--font-body); }
 .credit-cost-section p { margin: 0; color: var(--night-muted); line-height: 1.6; }
 .credit-cost-table { width: 100%; table-layout: fixed; border-collapse: collapse; text-align: left; font-size: 14px; line-height: 1.5; }
 .credit-cost-table th, .credit-cost-table td { padding: 16px 24px; border-top: 1px solid var(--night-line); vertical-align: top; overflow-wrap: anywhere; }
@@ -27,9 +40,16 @@
 .credit-cost-table th:last-child, .credit-cost-table td:last-child { text-align: right; }
 .credit-cost-table td:last-child { color: var(--night-text); font-weight: 700; font-variant-numeric: tabular-nums; }
 .credit-cost-section .credit-cost-note { padding: 20px 24px; border-top: 1px solid var(--night-line); font-size: 14px; }
+@media (max-width: 760px) {
+  .billing-disclosure { font-size: 12px; }
+  .pricing-page .topup-section { gap: 20px; }
+  .pricing-page .topup-section .pack-grid { grid-template-columns: 1fr; }
+}
 @media (max-width: 620px) {
   .commerce-page.pricing-page { padding-top: 20px; }
   .pricing-toolbar { justify-content: center; gap: 12px; }
+  .pricing-toolbar .balance-pill { justify-content: center; text-align: center; }
+  .billing-disclosure { text-align: center; }
   .pricing-page .plan-card { padding: 20px; }
   .pricing-page .plan-card > p { min-height: 0; }
   .credit-cost-section > header { padding: 20px 16px; }

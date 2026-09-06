@@ -24,14 +24,14 @@ import { AI_COSTS } from "../lib/ai-costs";
 import "./settings.css";
 
 const plans = [
-  { name: "Free", monthly: "$0", yearly: "$0", credits: "12 credits once", description: "Explore the full workflow before choosing a plan.", features: ["Up to 3 image generations or edits", "Or 1 complete 3D model", "AR viewing is always free"] },
-  { name: "Creator", monthly: "$19/mo", yearly: "$190/yr", credits: "120 credits each month", description: "For homeowners and independent designers.", features: ["Up to 30 image generations or edits", "Or up to 10 3D models", "Extra credits available anytime"], popular: true },
+  { name: "Free", monthly: "$0", yearly: "$0", credits: "12 credits once", description: "Starter credits to try core tools — each generation, edit, and 3D draws from the same balance.", features: ["Up to 3 image generations or edits", "Or 1 complete 3D model", "AR viewing is always free"] },
+  { name: "Creator", monthly: "$19/mo", yearly: "$190/yr", credits: "120 credits each month", description: "For homeowners and independent designers creating regularly.", features: ["Up to 30 image generations or edits", "Or up to 10 3D models", "Extra credits available anytime"], highlight: "Recommended" },
   { name: "Studio", monthly: "$49/mo", yearly: "$490/yr", credits: "400 credits each month", description: "For professionals managing ongoing projects.", features: ["Up to 100 image generations or edits", "Or up to 33 3D models", "Best rate for regular production"] },
 ];
 const packs = [
   { key: "credits_50", credits: 50, price: "$10", best: false },
   { key: "credits_150", credits: 150, price: "$25", best: false },
-  { key: "credits_400", credits: 400, price: "$55", best: true },
+  { key: "credits_400", credits: 400, price: "$55", best: true, badge: "Lowest per credit" },
 ] as const;
 
 export function PricingPage() {
@@ -44,6 +44,22 @@ export function PricingPage() {
   const initialize = useMutation(api.credits.initialize);
   useEffect(() => { void initialize(); }, [initialize]);
   useEffect(() => { setCheckoutReturned(new URLSearchParams(window.location.search).get("checkout") === "success"); }, []);
+  const balanceLoaded = balance !== undefined;
+  const balanceText = balanceLoaded ? new Intl.NumberFormat().format(balance.total) : "—";
+  const isFreePlan = balance?.plan === "free";
+  function handlePackKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const keys = packs.map((p) => p.key) as string[];
+    const idx = keys.indexOf(selectedPack);
+    let next = idx;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (idx + 1) % keys.length;
+    if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (idx - 1 + keys.length) % keys.length;
+    if (event.key === "Home") next = 0;
+    if (event.key === "End") next = keys.length - 1;
+    setSelectedPack(keys[next] as typeof selectedPack);
+    setError("");
+  }
   async function checkout(offer: WhopOfferKey) {
     setPending(offer); setError("");
     try {
@@ -56,23 +72,28 @@ export function PricingPage() {
   return <div className="commerce-page pricing-page">
     <h1 className="visually-hidden">Pricing</h1>
     <header className="pricing-toolbar">
-      <div className="balance-pill" aria-live="polite"><Sparkle aria-hidden size={16} /> <b>{balance?.total ?? "—"}</b> credits available</div>
+      <div className="balance-pill" aria-live="polite" aria-busy={balance === undefined}><Sparkle aria-hidden size={16} /> {balance === undefined ? <span>Loading balance…</span> : <><b>{new Intl.NumberFormat().format(balance.total)}</b> credits available</>}{balance !== undefined && (balance.subscription !== undefined || balance.purchased !== undefined) ? <small className="balance-breakdown">{balance.subscription ?? 0} plan + {balance.purchased ?? 0} purchased</small> : null}</div>
       <div className="billing-toggle" role="group" aria-label="Billing period">
         <button aria-pressed={!annual} className={!annual ? "active" : ""} onClick={() => setAnnual(false)}>Monthly</button>
         <button aria-pressed={annual} className={annual ? "active" : ""} onClick={() => setAnnual(true)}>Yearly <small>Save 2 months</small></button>
       </div>
     </header>
+    <p className="billing-disclosure" role="note">Yearly plans are billed upfront for 12 months — Creator $190, Studio $490. Included credits refresh monthly; purchased credits expire after 12 months and are used by nearest expiry.</p>
     {checkoutReturned ? <p className="checkout-success" role="status"><Check aria-hidden size={16} /> Checkout complete. We’re confirming your purchase with Whop; your balance updates automatically.</p> : null}
     <section className="plan-grid" aria-label="Plans">
-      {plans.map((plan, index) => <article key={plan.name} className={plan.popular ? "plan-card popular" : "plan-card"}>
-        {plan.popular ? <span className="popular-label">Most popular</span> : null}
-        <h2>{plan.name}</h2><p>{plan.description}</p><strong>{annual ? plan.yearly : plan.monthly}</strong><b>{plan.credits}</b>
+      {plans.map((plan, index) => {
+        const isPopular = "highlight" in plan && !!(plan as any).highlight;
+        const label = (plan as any).highlight;
+        return <article key={plan.name} className={isPopular ? "plan-card popular" : "plan-card"}>
+        {isPopular && label ? <span className="popular-label">{label}</span> : null}
+        <h2>{plan.name}</h2><p>{plan.description}</p><strong aria-label={annual ? `${plan.yearly} billed yearly upfront` : plan.monthly}>{annual ? plan.yearly : plan.monthly}</strong><b>{plan.credits}</b>
+        {annual && index !== 0 ? <small className="plan-annual-note">Billed {plan.yearly.replace("/yr","")} upfront · credits refresh monthly</small> : null}
         <ul>{plan.features.map(feature => <li key={feature}><Check aria-hidden size={16} />{feature}</li>)}</ul>
-        {index === 0 ? <button disabled>{balance?.plan === "free" ? "Current starter plan" : "Starter plan"}</button> : (() => { const offer = `${plan.name.toLowerCase()}_${annual ? "yearly" : "monthly"}` as WhopOfferKey; const current = balance?.plan === offer; return <button className={plan.popular ? "primary-action" : ""} disabled={Boolean(pending) || current} onClick={() => checkout(offer)}>{current ? "Current plan" : pending?.startsWith(plan.name.toLowerCase()) ? "Opening secure checkout…" : `Choose ${plan.name}`}</button>; })()}
-      </article>)}
+        {index === 0 ? <button disabled aria-disabled="true">{isFreePlan ? "Current starter plan" : "Starter plan"}</button> : (() => { const offer = `${plan.name.toLowerCase()}_${annual ? "yearly" : "monthly"}` as WhopOfferKey; const current = balance?.plan === offer; const isPending = pending?.startsWith(plan.name.toLowerCase()); return <button className={isPopular ? "primary-action" : ""} disabled={Boolean(pending) || current} aria-busy={isPending ? true : undefined} onClick={() => checkout(offer)}>{current ? "Current plan" : isPending ? "Opening secure checkout…" : `Choose ${plan.name}`}</button>; })()}
+      </article>;})}
     </section>
-    <p className="pricing-note" role="note">Mixed actions share one balance — detections 1 credit, image generations/edits 4, 3D models 12. AR viewing is free after a model exists.</p>
-    <section className="topup-section"><div><span className="eyebrow">Extra credits</span><h2>Add credits, keep your plan.</h2><p>Choose a pack, then continue to Whop’s secure checkout. Purchased credits remain available for 12 months.</p></div><div className="pack-purchase"><div className="pack-grid" role="radiogroup" aria-label="Extra credit pack">{packs.map(pack => <button key={pack.key} role="radio" aria-checked={selectedPack === pack.key} className={`${pack.best ? "best " : ""}${selectedPack === pack.key ? "selected" : ""}`} disabled={Boolean(pending)} onClick={() => { setSelectedPack(pack.key); setError(""); }}><span><b>{pack.credits} credits</b>{pack.best ? <small>Best value</small> : null}</span><strong>{pack.price}</strong></button>)}</div><button className="primary-action pack-checkout" disabled={Boolean(pending)} onClick={() => checkout(selectedPack)}>{pending?.startsWith("credits_") ? "Opening secure checkout…" : `Buy ${packs.find(pack => pack.key === selectedPack)?.credits} credits`}</button></div></section>
+    <p className="pricing-note" role="note">One shared balance for every AI action. “Up to X images <em>or</em> Y models” are alternative uses — mixing reduces each count. Detections 1 credit, image generations/edits 4, 3D models 12. AR viewing is free after a model exists.</p>
+    <section className="topup-section" aria-labelledby="topup-title"><div><span className="eyebrow">Extra credits</span><h2 id="topup-title">Add credits, keep your plan.</h2><p>Choose a pack, then continue to Whop’s secure checkout. Purchased credits remain available for 12 months and are consumed by nearest expiry after plan credits.</p></div><div className="pack-purchase"><div className="pack-grid" role="radiogroup" aria-label="Extra credit pack" tabIndex={0} onKeyDown={handlePackKeyDown}>{packs.map(pack => <button key={pack.key} role="radio" aria-checked={selectedPack === pack.key} tabIndex={selectedPack === pack.key ? 0 : -1} className={`${(pack as any).best ? "best " : ""}${selectedPack === pack.key ? "selected" : ""}`} disabled={Boolean(pending)} onClick={() => { setSelectedPack(pack.key); setError(""); }}><span><b>{pack.credits} credits</b>{(pack as any).badge && (pack as any).best ? <small>{(pack as any).badge}</small> : (pack as any).best ? <small>Best value</small> : null}</span><strong>{pack.price}</strong><small className="pack-unit">{pack.credits === 400 ? "$0.14 per credit" : pack.credits === 150 ? "$0.17 per credit" : "$0.20 per credit"}</small></button>)}</div><button className="primary-action pack-checkout" disabled={Boolean(pending)} aria-busy={pending?.startsWith("credits_") ? true : undefined} onClick={() => checkout(selectedPack)}>{pending?.startsWith("credits_") ? "Opening secure checkout…" : `Buy ${packs.find(pack => pack.key === selectedPack)?.credits} credits`}</button></div></section>
     {error ? <p className="checkout-error" role="alert">{error}</p> : null}
     <section className="credit-cost-section" aria-labelledby="credit-cost-title">
       <header><h2 id="credit-cost-title">Credit costs</h2><p>One balance for every AI tool. Here’s what each action uses.</p></header>
