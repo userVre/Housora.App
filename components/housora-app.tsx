@@ -53,6 +53,7 @@ import {
   Users,
   X,
   PanelLeftClose,
+  Smartphone,
   PanelLeftOpen,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
