@@ -1,0 +1,29 @@
+/* Projects — feature-scoped overrides. Keeps warm dark theme, cream primary actions, serif headings. */
+.clean-projects .visual-projects-header { gap: 24px; align-items: end; }
+.clean-projects .visual-projects-header > div { max-width: 640px; }
+.clean-projects .project-toolbar-hint { color: #8f9187; font-size: 11px; margin-left: auto; white-space: nowrap; }
+.album-grid { gap: 16px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); align-items: start; }
+.album-grid-empty { grid-template-columns: minmax(220px, 280px); justify-content: start; }
+.album-card, .new-album-card { border-radius: 12px; overflow: hidden; background: #1b1c18; border: 1px solid #34362f; text-align: left; }
+.new-album-card { min-height: 260px; display: grid; place-items: center; gap: 10px; padding: 18px; background: transparent; border-style: dashed; border-color: #4a4d45; }
+.new-album-card:hover { background: #23241f; border-color: #5c5d55; }
+.new-album-card > span { width: 46px; height: 46px; border-radius: 50%; background: #1b1c18; border: 1px solid #34362f; display: grid; place-items: center; }
+.album-card > span { aspect-ratio: 4/3; position: relative; display: block; overflow: hidden; background: #22221f; }
+.album-card > span img { object-fit: cover; width: 100%; height: 100%; transition: transform 0.35s ease; }
+.album-card:hover > span img { transform: scale(1.03); }
+.album-card b { margin-top: 10px; font-size: 13px; line-height: 1.35; display: block; padding: 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.album-card small { margin-top: 3px; color: #9b9d94; font-size: 11px; display: block; padding: 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-badge { position: absolute; right: 8px; bottom: 8px; background: rgba(17,18,15,0.82); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.15); border-radius: 999px; padding: 4px 8px; font-size: 10px; font-weight: 600; color: #f4f0e8; }
+.card-image-error { width: 100%; height: 100%; display: grid; place-items: center; gap: 8px; padding: 18px; background: #1b1c18; color: #a8a9a0; text-align: center; }
+.card-image-error svg { width: 28px; height: 28px; }
+.card-image-error small { font-size: 11px; }
+.card-retry { min-height: 32px; padding: 0 12px; border: 1px solid #3a3c36; border-radius: 8px; background: #23231f; color: #f4f0e8; font-size: 11px; font-weight: 600; }
+.card-retry:hover { background: #2a2b27; }
+.projects-empty-hint { margin-top: 14px; padding: 12px 14px; background: #1b1c18; border: 1px solid #34362f; border-radius: 10px; }
+.projects-empty-hint p { margin: 0; color: #a6a79f; font-size: 12px; line-height: 1.6; }
+.saved-heading-meta { display: none; }
+@media (max-width: 760px) {
+  .clean-projects .project-toolbar-hint { display: none; }
+  .album-grid, .album-grid-empty { grid-template-columns: 1fr !important; gap: 14px; }
+  .album-card > span { aspect-ratio: 16/10; }
+}

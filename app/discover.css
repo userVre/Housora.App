@@ -1,4 +1,4 @@
-/* Search-first Discover refinement. */
+/* Search-first Discover refinement — feature-scoped */
 .simple-discover-tools{padding:0 0 22px;display:grid;gap:14px}
 .simple-discover-tools .inspiration-search{width:min(100%,620px);height:52px;max-width:none;border-radius:12px;background:#171815;border:1px solid #2a2a26}
 .simple-discover-tools .inspiration-search:focus-within{border-color:#4a4a44;box-shadow:0 0 0 3px rgba(184,94,52,0.12)}
@@ -9,3 +9,22 @@
 .copy-prompt svg{width:15px;height:15px}
 .inspiration-card:focus-visible{outline:2px solid #e27b4b;outline-offset:2px}
 .inspiration-overlay i{width:36px;height:36px}
+.inspiration-card .card-image-error{position:absolute;inset:0;display:grid;place-items:center;gap:8px;padding:16px;background:#1b1c18;color:#a8a9a0;text-align:center}
+.inspiration-card .card-image-error svg{width:26px;height:26px}
+.inspiration-card .card-retry{min-height:32px;padding:0 12px;border:1px solid #3a3c36;border-radius:8px;background:#23231f;color:#f4f0e8;font-size:11px;font-weight:600}
+.image-loading{position:absolute;inset:0;display:grid;place-items:center;gap:10px;background:#0f0f0e;color:#a8a9a0;font-size:12px}
+.reference-prompt-details{width:100%;margin-top:14px;border:1px solid #34362f;border-radius:10px;background:#141410;overflow:hidden}
+.reference-prompt-details summary{list-style:none;cursor:pointer;min-height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;color:#e8e4da;font-size:12px;font-weight:600}
+.reference-prompt-details summary::-webkit-details-marker{display:none}
+.reference-prompt-details[open] summary{border-bottom:1px solid #34362f;background:#1b1c18}
+.reference-prompt-details textarea{width:100%;min-height:110px;border:0;background:transparent;color:#e8e4da;padding:12px 14px;font-size:12px;line-height:1.6;resize:vertical}
+.reference-prompt-details textarea:focus{outline:0}
+.copy-prompt-demoted{margin:0 14px 14px;width:calc(100% - 28px);height:40px;border:1px solid #34362f;background:#23231f;color:#e8e4da;font-size:11px}
+.copy-prompt-demoted:hover{background:#2a2b27}
+.inspiration-secondary{margin-top:8px}
+.secondary-grid{opacity:0.96}
+.reference-save.primary-action{width:100%;justify-content:center;margin-top:14px;min-height:46px;background:#f4f0e8;color:#11120f;border:0;border-radius:999px;font-weight:800}
+.reference-save.primary-action:hover{background:#fff}
+.reference-actions.secondary-actions{display:flex;align-items:center;gap:10px;margin-top:14px}
+.reference-heart.secondary-action{min-height:44px;padding:0 14px;border:1px solid #34362f;border-radius:999px;background:#1f1f1d;color:#f4f0e8;display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600}
+.reference-heart.secondary-action:hover{background:#262722}

@@ -1,6 +1,9 @@
 @import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700&display=swap");
 @import "./studio.css";
 @import "./discover.css";
+@import "./projects.css";
+@import "./saved.css";
+@import "./legal.css";
 @import "./object-tools.css";
 @import "./pricing.css";
 @import "./threeD-ar.css";
