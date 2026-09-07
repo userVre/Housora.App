@@ -5,16 +5,30 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 const esbuild = require('esbuild');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const root = path.resolve(__dirname, '..');
+function resolveFile(specifier, resolveDir) {
+  const base = path.resolve(resolveDir, specifier);
+  for (const candidate of [base, `${base}.ts`, `${base}.tsx`, `${base}.js`, `${base}.cjs`, path.join(base, 'index.js')]) {
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
+  }
+  return null;
+}
 function css(file) {
   return fs.readFileSync(file, 'utf8').replace(/@import url\([^;]+;/g, '').replace(/@import "(.+?)";/g, (_, name) => css(path.resolve(path.dirname(file), name)));
 }
 (async () => {
-  const bundle = await esbuild.build({stdin:{contents:`import React from 'react'; import {createRoot} from 'react-dom/client'; import {PricingPage} from './components/billing-settings'; createRoot(document.getElementById('root')).render(<PricingPage/>);`,resolveDir:process.cwd(),loader:'tsx'},bundle:true,write:false,jsx:'automatic',plugins:[{name:'mock-services',setup(b){
+  const bundle = await esbuild.build({absWorkingDir:root,stdin:{contents:`import React from 'react'; import {createRoot} from 'react-dom/client'; import {PricingPage} from './components/billing-settings'; createRoot(document.getElementById('root')).render(<PricingPage/>);`,resolveDir:root,loader:'tsx'},bundle:true,write:false,jsx:'automatic',plugins:[{name:'mock-services',setup(b){
     b.onResolve({filter:/^(next\/link|convex\/react|@clerk\/nextjs)$/},a=>({path:a.path,namespace:'test'}));
     b.onResolve({filter:/convex\/_generated\/api$/},a=>({path:a.path,namespace:'test'}));
-    b.onLoad({filter:/.*/,namespace:'test'},a=>({contents:a.path==='next/link'?`import React from 'react';export default function Link(p){return React.createElement('a',p)}`:a.path==='convex/react'?`const init=async()=>{};export function useMutation(){return init}export function useQuery(){return {total:12,plan:'free'}}`:a.path==='@clerk/nextjs'?`export const useClerk=()=>({});export const useUser=()=>({});`:`export const api={credits:{getMyBalance:'balance',initialize:'initialize'}}`,loader:'js',resolveDir:process.cwd()}));
+    b.onResolve({filter:/^\.\/components\/billing-settings$/},()=>({path:path.join(root,'components','billing-settings.tsx')}));
+    b.onResolve({filter:/^(react|react\/jsx-runtime|react-dom\/client|lucide-react)$/},a=>({path:require.resolve(a.path,{paths:[root]})}));
+    b.onResolve({filter:/^[^./]/},a=>{try{return {path:require.resolve(a.path,{paths:[root]})}}catch{return null}});
+    b.onResolve({filter:/\.css$/},a=>({path:a.path,namespace:'style-stub'}));
+    b.onLoad({filter:/.*/,namespace:'style-stub'},()=>({contents:'',loader:'js'}));
+    b.onResolve({filter:/^\./},a=>{const resolved=resolveFile(a.path,a.resolveDir);return resolved?{path:resolved}:null});
+    b.onLoad({filter:/.*/,namespace:'test'},a=>({contents:a.path==='next/link'?`import React from 'react';export default function Link(p){return React.createElement('a',p)}`:a.path==='convex/react'?`const init=async()=>{};export function useMutation(){return init}export function useQuery(){return {total:12,plan:'free'}}`:a.path==='@clerk/nextjs'?`export const useClerk=()=>({});export const useUser=()=>({});`:`export const api={credits:{getMyBalance:'balance',initialize:'initialize'}}`,loader:'js',resolveDir:root}));
   }}]});
-  const styles=css(path.resolve('app/globals.css'));
+  const styles=css(path.join(root,'app','globals.css'));
   const server=http.createServer((req,res)=>{
     if(req.url==='/app.js'){res.setHeader('Content-Type','text/javascript');res.end(bundle.outputFiles[0].contents)}
     else res.end(`<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${styles}body{background:var(--night);padding-left:232px}@media(max-width:700px){body{padding-left:0}} </style></head><body><main id="root"></main><script src="/app.js"></script></body></html>`);

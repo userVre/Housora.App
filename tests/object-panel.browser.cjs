@@ -5,21 +5,43 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const esbuild = require('esbuild');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const root = path.resolve(__dirname, '..');
+function resolveFile(specifier, resolveDir) {
+  const base = path.resolve(resolveDir, specifier);
+  for (const candidate of [base, `${base}.ts`, `${base}.tsx`, `${base}.js`, `${base}.cjs`, path.join(base, 'index.js')]) {
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
+  }
+  return null;
+}
+function css(file) {
+  return fs.readFileSync(file, 'utf8').replace(/@import url\([^;]+;/g, '').replace(/@import "(.+?)";/g, (_, name) => css(path.resolve(path.dirname(file), name)));
+}
 
 (async () => {
   const build = await esbuild.build({
-    stdin: { contents: `import React from 'react'; import {createRoot} from 'react-dom/client'; import {DetectedObjects} from './components/detected-objects'; createRoot(document.getElementById('root')).render(<DetectedObjects hasImage mode="Interior" image="/photo.png" onUpload={()=>{}} onCreate3d={()=>{window.selected3d=true}} />);`, resolveDir: process.cwd(), loader: 'tsx' },
+    absWorkingDir: root,
+    stdin: { contents: `import React from 'react'; import {createRoot} from 'react-dom/client'; import {DetectedObjects} from './components/detected-objects'; createRoot(document.getElementById('root')).render(<DetectedObjects hasImage mode="Interior" image="/photo.png" onUpload={()=>{}} onCreate3d={()=>{window.selected3d=true}} />);`, resolveDir: root, loader: 'tsx' },
     bundle: true, write: false, platform: 'browser', jsx: 'automatic',
     plugins: [{ name: 'test-adapters', setup(b) {
       b.onResolve({filter:/^(next\/image|convex\/react)$/}, a => ({path:a.path,namespace:'test'}));
       b.onResolve({filter:/convex\/_generated\/api$/}, a => ({path:a.path,namespace:'test'}));
-      b.onLoad({filter:/.*/,namespace:'test'}, a => ({contents: a.path==='next/image' ? `import React from 'react'; export default function Image({fill,unoptimized,sizes,...p}) { return React.createElement('img',p); }` : a.path==='convex/react' ? `export function useQuery(){return {total:12}}` : `export const api={credits:{getMyBalance:'balance'}}`,loader:'js',resolveDir:process.cwd()}));
+      b.onResolve({filter:/^\.\/components\/detected-objects$/}, () => ({path:path.join(root,'components','detected-objects.tsx')}));
+      b.onResolve({filter:/^(react|react\/jsx-runtime|react-dom\/client|lucide-react)$/}, a => ({path:require.resolve(a.path,{paths:[root]})}));
+      b.onResolve({filter:/^[^./]/}, a => {
+        try { return {path:require.resolve(a.path,{paths:[root]})}; } catch { return null; }
+      });
+      b.onResolve({filter:/^\./}, a => {
+        const resolved = resolveFile(a.path, a.resolveDir);
+        return resolved ? {path:resolved} : null;
+      });
+      b.onLoad({filter:/.*/,namespace:'test'}, a => ({contents: a.path==='next/image' ? `import React from 'react'; export default function Image({fill,unoptimized,sizes,...p}) { return React.createElement('img',p); }` : a.path==='convex/react' ? `export function useQuery(){return {total:12}}` : `export const api={credits:{getMyBalance:'balance'}}`,loader:'js',resolveDir:root}));
     }}]
   });
+  const styles = css(path.join(root,'app','globals.css'));
   const server=http.createServer((req,res)=>{
     if(req.url==='/app.js'){res.setHeader('Content-Type','text/javascript');res.end(build.outputFiles[0].contents)}
-    else if(req.url==='/photo.png'){res.setHeader('Content-Type','image/png');res.end(fs.readFileSync('public/pictures/interior-design-room-living-room.png'))}
-    else res.end(`<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>:root{--night-line:#42443c;--night-panel:#20221d;--night-text:#f0f0e9;--font-body:Arial;--radius-lg:20px}body{background:#151612;color:#eee;font-family:Arial}#root{max-width:390px;margin:auto}img{max-width:100%;height:100%;object-fit:cover}button{cursor:pointer;color:inherit;background:#30332b;border:1px solid #666;padding:12px}${fs.readFileSync('app/object-tools.css','utf8')}</style></head><body><div id="root"></div><script src="/app.js"></script></body></html>`);
+    else if(req.url==='/photo.png'){res.setHeader('Content-Type','image/png');res.end(fs.readFileSync(path.join(root,'public','pictures','interior-design-room-living-room.png')))}
+    else res.end(`<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${styles}body{background:#151612;color:#eee;font-family:Arial}#root{max-width:390px;margin:auto}${fs.readFileSync(path.join(root,'app','object-tools.css'),'utf8')}</style></head><body><div id="root"></div><script src="/app.js"></script></body></html>`);
   });
   await new Promise(r=>server.listen(0,'127.0.0.1',r));
   let browser;
