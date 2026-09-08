@@ -2247,7 +2247,7 @@ function AlbumWorkspace({
                 <p>Upload a room photo to redesign it, edit individual objects, or create a 3D furniture model.</p>
               </div>
               <div className="album-start-actions">
-                <button onClick={() => fileRef.current?.click()} autoFocus>
+                <button onClick={() => fileRef.current?.click()}>
                   <UploadSimple />
                   <b>Upload a room photo</b>
                   <small>JPG, PNG, or WEBP · up to 10 MB</small>
@@ -2305,7 +2305,7 @@ function AlbumWorkspace({
                   <StyleField label="Design style" value={style} values={modeData[mode].styles} onChange={setStyle} mode={mode} />
                   <label className="prompt-field album-prompt">
                     <span>Describe the direction <small>Optional</small></span>
-                    <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder={modeData[mode].prompt} rows={3} />
+                    <textarea name="design-direction" autoComplete="off" value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder={modeData[mode].prompt} rows={3} />
                   </label>
                   <details className="album-customize-details">
                     <summary><span><b>Customize details</b><small>Materials, lighting, openings, and more</small></span><CaretDown/></summary>
@@ -3431,7 +3431,7 @@ function SavedPage({
                   {!hasErr ? (
                     <Image src={reference.image} alt={reference.title} fill sizes="(max-width: 600px) 50vw, (max-width: 1000px) 33vw, 25vw" unoptimized onError={() => setImageErrors((m) => ({ ...m, [reference.title]: true }))} />
                   ) : (
-                    <span className="card-image-error" role="img" aria-label="Image failed to load"><ImagesSquare /><small>Image unavailable</small><span className="card-retry" role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setImageErrors((m) => ({ ...m, [reference.title]: false })); }} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setImageErrors((m) => ({ ...m, [reference.title]: false })); } }} aria-label={`Retry ${reference.title}`}>Retry</span></span>
+                    <div className="card-image-error" aria-label="Image failed to load"><ImagesSquare aria-hidden="true" /><small>Image unavailable</small><button type="button" className="card-retry" onClick={(e) => { e.stopPropagation(); setImageErrors((m) => ({ ...m, [reference.title]: false })); }} aria-label={`Retry ${reference.title}`}>Retry</button></div>
                   )}
                 </button>
                 <div className="saved-card-meta">
@@ -3453,14 +3453,14 @@ function SavedPage({
           ) : hasModels ? (
             recentModels.map((m: any, i: number) => (
               <article key={m.taskId} className={`saved-card saved-tile-${i % 4}`}>
-                <a className="saved-card-image" href={m.url} target="_blank" rel="noreferrer" aria-label={`Open 3D model ${i + 1}`}><img src={m.url} alt={`3D model preview ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} /><span className="card-badge">3D · GLB</span></a>
+                <a className="saved-card-image" href={m.url} target="_blank" rel="noreferrer" aria-label={`Open 3D model ${i + 1}`}><img src={m.url} alt={`3D model preview ${i + 1}`} width="640" height="480" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} /><span className="card-badge">3D · GLB</span></a>
                 <div className="saved-card-meta"><div className="saved-card-info"><b>3D model {recentModels.length - i}</b><small>Generated · {new Date(m.createdAt).toLocaleDateString()}</small></div><a className="saved-card-open" href={m.url} download target="_blank" rel="noreferrer">Download</a></div>
               </article>
             ))
           ) : hasFurniture ? (
             furnitureRows.map((f: any, i: number) => (
               <article key={f._id} className={`saved-card saved-tile-${i % 4}`}>
-                <div className="saved-card-image" aria-label={f.name}><img src={f.thumbnail || "/pictures/interior-design-cover.png"} alt={f.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /><span className="card-badge">{f.category || f.source}</span></div>
+                <div className="saved-card-image" aria-label={f.name}><img src={f.thumbnail || "/pictures/interior-design-cover.png"} alt={f.name} width="640" height="480" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} /><span className="card-badge">{f.category || f.source}</span></div>
                 <div className="saved-card-meta"><div className="saved-card-info"><b>{f.name}</b><small>{f.category || "Furniture"} · {f.style || "Catalog"}</small></div><span className="saved-card-open" style={{ opacity: 0.6 }}>Catalog</span></div>
               </article>
             ))

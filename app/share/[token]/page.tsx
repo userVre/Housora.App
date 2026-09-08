@@ -19,7 +19,7 @@ export default async function Page({ params }: { params: Promise<{ token: string
       {project.rooms.length === 0 && <p>No saved designs are available in this project yet.</p>}
       {project.rooms.map((room, index) => <section key={index} style={{ marginTop: 32 }}>
         <h2>{room.name}</h2>
-        {room.image ? <img src={room.image} alt={`Saved design for ${room.name}`} style={{ width: "100%", borderRadius: 16 }} /> : <p>No saved image yet.</p>}
+        {room.image ? <img src={room.image} alt={`Saved design for ${room.name}`} width="1536" height="1024" style={{ width: "100%", height: "auto", borderRadius: 16 }} /> : <p>No saved image yet.</p>}
       </section>)}
     </>}
   </main>;

@@ -22,7 +22,7 @@ export function WorkspaceDialog({ open, onClose, title, children, wide = false }
   }, [open]);
   return <dialog ref={ref} className={`workspace-dialog${wide ? " workspace-dialog-wide" : ""}`} aria-label={title}
     onCancel={event => { event.preventDefault(); onClose(); }}>
-    <header className="workspace-dialog-header"><h2>{title}</h2><button autoFocus onClick={onClose} aria-label="Close dialog"><X aria-hidden size={20} /></button></header>
+    <header className="workspace-dialog-header"><h2>{title}</h2><button onClick={onClose} aria-label="Close dialog"><X aria-hidden size={20} /></button></header>
     {children}
   </dialog>;
 }
