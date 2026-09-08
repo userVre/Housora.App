@@ -138,7 +138,7 @@ export function DetectedObjects({ hasImage, mode, image, onUpload, onImageChange
     {error && !isServiceUnavailable ? <p className="integration-error" role="alert">{error}</p> : null}
     <CreditConfirmation open={active && confirmation !== null} cost={confirmation === "edit" ? AI_COSTS.imageEdit : AI_COSTS.detection}
       title={confirmation === "edit" ? `Edit ${selected?.label || "object"}?` : "Detect objects in this photo?"}
-      description={confirmation === "edit" ? "Send your photo and instruction for an AI edit. This uses the existing detection, with no extra scanning charge." : "Send this photo to SAM to find furniture and surfaces. Failed or empty scans return the detection credit."}
+      description={confirmation === "edit" ? "Send your photo and instruction for an AI edit. This uses the existing detection, with no extra scanning charge." : "Scan this photo to find furniture and surfaces. Failed or empty scans return the detection credit."}
       action={confirmation === "edit" ? "Edit object" : "Detect objects"} onCancel={() => setConfirmation(null)} onConfirm={() => void (confirmation === "edit" ? edit() : detect())} />
   </div>;
 }

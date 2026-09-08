@@ -2205,7 +2205,7 @@ function AlbumWorkspace({
           <button className="album-back" onClick={onBack} aria-label="Back to Projects">
             <ArrowLeft /> Back to Projects
           </button>
-          <span className="album-project-title" title={initialDraft?.title ?? "New project"}>{initialDraft?.title ?? "New project"}</span>
+          <span className="album-project-title" title={initialDraft?.title ?? "Untitled project"}>{initialDraft?.title ?? "Untitled project"}</span>
         </div>
         <div className="album-bar-right">
           {preview ? (
@@ -2244,22 +2244,22 @@ function AlbumWorkspace({
               <div>
                 <span className="eyebrow">Your space, reimagined</span>
                 <h1>Start with your space</h1>
-                <p>Upload a photo or try an example. Redesign, edit objects, and create 3D models from the same image.</p>
+                <p>Upload a room photo to redesign it, edit individual objects, or create a 3D furniture model.</p>
               </div>
               <div className="album-start-actions">
                 <button onClick={() => fileRef.current?.click()} autoFocus>
                   <UploadSimple />
-                  <b>Upload room</b>
+                  <b>Upload a room photo</b>
                   <small>JPG, PNG, or WEBP · up to 10 MB</small>
                 </button>
                 <button onClick={startTemplate}>
                   <SquaresFour />
-                  <b>Try example</b>
+                  <b>Use an example room</b>
                   <small>Explore without uploading</small>
                 </button>
               </div>
               {uploadError ? <p className="album-upload-error" role="alert">{uploadError}</p> : null}
-              <p style={{ color: "var(--night-muted)", fontSize: 12, marginTop: 8 }}>No credits are used until you generate or detect objects. Room-type selection is free.</p>
+              <p className="album-credit-note">Uploading and choosing a direction are free. We always ask before using credits.</p>
             </div>
           )}
           {preview ? <div className="canvas-tool-dock" role="toolbar" aria-label="Canvas tools">
@@ -2283,19 +2283,19 @@ function AlbumWorkspace({
           </form> : null}
         </main>
         <aside className="album-control-panel">
-          <div className="editor-mode-tabs" role="tablist" aria-label="Editor modes" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4, padding: 6, borderBottom: "1px solid #30302d", background: "#11120f" }}>
-            <button role="tab" aria-selected={editorMode==="redesign"} onClick={() => setEditorMode("redesign")} style={{ minHeight: 44, border: 0, borderRadius: 8, background: editorMode==="redesign" ? "#f4f0e8" : "transparent", color: editorMode==="redesign" ? "#11120f" : "#aaa99f", fontWeight: 700, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Sparkle size={14}/> Redesign</button>
-            <button role="tab" aria-selected={editorMode==="objects"} onClick={() => setEditorMode("objects")} disabled={!preview} title={!preview ? "Upload an image first" : undefined} style={{ minHeight: 44, border: 0, borderRadius: 8, background: editorMode==="objects" ? "#f4f0e8" : "transparent", color: !preview ? "#5a5b55" : editorMode==="objects" ? "#11120f" : "#aaa99f", fontWeight: 700, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: !preview ? 0.6 : 1 }}><Selection size={14}/> Edit objects</button>
-            <button role="tab" aria-selected={editorMode==="threed"} onClick={() => setEditorMode("threed")} style={{ minHeight: 44, border: 0, borderRadius: 8, background: editorMode==="threed" ? "#f4f0e8" : "transparent", color: editorMode==="threed" ? "#11120f" : "#aaa99f", fontWeight: 700, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Cube size={14}/> 3D models</button>
-            <button role="tab" aria-selected={editorMode==="ar"} onClick={() => setEditorMode("ar")} style={{ minHeight: 44, border: 0, borderRadius: 8, background: editorMode==="ar" ? "#f4f0e8" : "transparent", color: editorMode==="ar" ? "#11120f" : "#aaa99f", fontWeight: 700, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Smartphone size={14}/> View in AR</button>
+          <div className="editor-mode-tabs" role="tablist" aria-label="Editor tools">
+            <button role="tab" aria-selected={editorMode==="redesign"} onClick={() => setEditorMode("redesign")}><Sparkle/> <span>Redesign</span></button>
+            <button role="tab" aria-selected={editorMode==="objects"} onClick={() => setEditorMode("objects")} disabled={!preview} title={!preview ? "Upload a photo first" : undefined} aria-describedby={!preview ? "edit-disabled-reason" : undefined}><Selection/> <span>Edit objects</span></button>
+            <button role="tab" aria-selected={editorMode==="threed"} onClick={() => setEditorMode("threed")}><Cube/> <span>3D models</span></button>
+            <button role="tab" aria-selected={editorMode==="ar"} onClick={() => setEditorMode("ar")}><Smartphone/> <span>View in AR</span></button>
           </div>
           {!preview ? <p id="edit-disabled-reason" className="visually-hidden">Upload a photo to edit objects. Choosing a room type is free.</p> : null}
-          <div className="album-panel-content" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 16, display: "grid", alignContent: "start", gap: 16 }}>
+          <div className="album-panel-content">
             {editorMode === "redesign" ? (
               <>
-                {!preview ? <div style={{ border: "1px dashed #3a3c36", borderRadius: 10, padding: 10, background: "#1a1b17", fontSize: 12, color: "#a8a9a0" }}><strong style={{ color: "#f4f0e8" }}>Start with a photo</strong><br/>Upload your room or try an example. Redesign controls are ready below and will generate once you have an image. No wall of disabled controls.</div> : null}
-                <p className="album-help">{preview ? "Shape the atmosphere. Redesign is optional — you can also edit objects or create 3D directly." : "Choose a direction. Room-type inference is free — object detection is a separate paid step in Edit objects."}</p>
-                <div className={`create-secondary-group ${!preview ? "is-secondary" : ""}`}>
+                {!preview ? <div className="editor-getting-started"><span>1</span><div><strong>Add a room photo</strong><p>Use the large buttons on the canvas. Your redesign settings will appear here afterwards.</p></div></div> : null}
+                {preview ? <p className="album-help">Choose a direction, then generate a new version. You can edit objects or create a 3D model at any time.</p> : null}
+                {preview ? <div className="create-secondary-group">
                   <div className="album-mode-switch" aria-label="Project type">
                     {(["Interior", "Exterior", "Garden"] as DesignMode[]).map((item) => (
                       <button key={item} className={mode === item ? "selected" : ""} onClick={() => changeMode(item)} aria-pressed={mode === item}>{item}</button>
@@ -2305,20 +2305,23 @@ function AlbumWorkspace({
                   <StyleField label="Design style" value={style} values={modeData[mode].styles} onChange={setStyle} mode={mode} />
                   <label className="prompt-field album-prompt">
                     <span>Describe the direction <small>Optional</small></span>
-                    <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder={modeData[mode].prompt} rows={3} style={{ resize: "vertical", minHeight: 84 }} />
+                    <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder={modeData[mode].prompt} rows={3} />
                   </label>
-                  <AdvancedGroups mode={mode} choices={detailChoices} onChange={(label, value) => setDetailChoices(c => ({ ...c, [label]: value }))} onResetGroup={(keys) => setDetailChoices(c => { const n={...c}; keys.forEach(k=>delete n[k]); return n; })} />
-                </div>
+                  <details className="album-customize-details">
+                    <summary><span><b>Customize details</b><small>Materials, lighting, openings, and more</small></span><CaretDown/></summary>
+                    <AdvancedGroups mode={mode} choices={detailChoices} onChange={(label, value) => setDetailChoices(c => ({ ...c, [label]: value }))} onResetGroup={(keys) => setDetailChoices(c => { const n={...c}; keys.forEach(k=>delete n[k]); return n; })} />
+                  </details>
+                </div> : null}
                 {generationError ? <p className="integration-error" role="alert">{generationError}</p> : null}
-                <div className="album-sticky-action" style={{ position: "sticky", bottom: 0, background: "linear-gradient(transparent, #191918 20%), #191918", borderTop: "1px solid #2a2b27", margin: "8px -16px -16px", padding: "12px 16px", display: "grid", gap: 8 }}>
+                {preview ? <div className="album-sticky-action">
                   <button className="primary-action" onClick={() => setGenerationConfirmOpen(true)} disabled={generating || !preview} style={{ width: "100%", justifyContent: "center", minHeight: 46, opacity: !preview ? 0.5 : 1 }} title={!preview ? "Upload a photo to generate" : undefined}>{generating ? <><span className="spinner"/> Creating your design…</> : <><Sparkle size={14}/> Generate · {AI_COSTS.imageEdit} credits</>}</button>
-                  <small style={{ textAlign: "center", color: "#8f9187", fontSize: 11 }}>{preview ? "Uses credits · you will confirm before spending" : "Upload a photo or try an example to enable Generate"}</small>
+                  <small className="album-action-hint">You will confirm before spending credits</small>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between", fontSize: 11, color: saveError ? "#d89585" : saved ? "#a9ba9d" : "#8f9187" }}>
                     <span style={{ display: "flex", alignItems: "center", gap: 6 }}>{saving ? <span className="spinner" style={{ width: 12, height: 12 }}/> : saved ? <Check size={12}/> : null}{saveStateLabel}</span>
                     {preview ? <button onClick={async () => { setSaving(true); setSaveError(""); try { await persistImage(preview); } catch (e) { setSaveError(e instanceof Error ? e.message : "Could not save."); } finally { setSaving(false); }}} disabled={saving || saved} style={{ border: "1px solid #34362f", background: saved ? "#2a2a26" : "#1f1f1d", color: "#f4f0e8", borderRadius: 6, padding: "6px 10px", fontSize: 11, opacity: saving || saved ? 0.7 : 1 }}>{saving ? "Saving…" : saved ? "Saved" : "Save to Projects"}</button> : null}
                   </div>
                   {saveStateDetail ? <small style={{ color: saveError ? "#d89585" : "#aaa99f", lineHeight: 1.4 }}>{saveStateDetail}</small> : null}
-                </div>
+                </div> : null}
               </>
             ) : null}
             {editorMode === "objects" ? (
@@ -2343,7 +2346,7 @@ function AlbumWorkspace({
             {preview && editorMode !== "ar" ? (
               <div className="version-history-panel" aria-label="Version history" style={{ borderTop: "1px solid #2a2b27", paddingTop: 12, display: "grid", gap: 8 }}>
                 <div className="version-history-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
-                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}><ClockCounterClockwise size={14}/> {history.length} versions</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}><ClockCounterClockwise size={14}/> {history.length} {history.length === 1 ? "version" : "versions"}</span>
                   <span style={{ display: "flex", gap: 6 }}>
                     <button onClick={undo} disabled={!canUndo} style={{ minHeight: 32, padding: "0 10px", border: "1px solid #34362f", borderRadius: 6, background: "transparent", color: canUndo ? "#f4f0e8" : "#5a5b55" }}>Undo</button>
                     <button onClick={redo} disabled={!canRedo} style={{ minHeight: 32, padding: "0 10px", border: "1px solid #34362f", borderRadius: 6, background: "transparent", color: canRedo ? "#f4f0e8" : "#5a5b55" }}>Redo</button>
@@ -2356,7 +2359,7 @@ function AlbumWorkspace({
                     </button>
                   ))}
                 </div>
-                <small style={{ color: "var(--night-muted)", fontSize: 11, lineHeight: 1.4 }}>Select a version to preview it. To keep an older version, select it, restore it, then save.</small>
+                <small className="version-history-help">Select a thumbnail to preview an earlier version.</small>
                 {historyIndex !== history.length - 1 ? <button onClick={() => { setPreview(history[historyIndex]); setSaved(false); }} style={{ minHeight: 36, border: "1px solid #34362f", borderRadius: 8, background: "#1f1f1d", color: "#f4f0e8", fontSize: 12 }}>Restore this preview as current</button> : null}
               </div>
             ) : null}

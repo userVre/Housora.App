@@ -36,8 +36,8 @@ export function CreditConfirmation({ open, cost, title, description, action, onC
   return <WorkspaceDialog open={open} onClose={onCancel} title={title}>
     <div className="credit-confirm-body"><p>{description}</p>
       <dl><div><dt>Cost</dt><dd>{cost} Housora {cost === 1 ? "credit" : "credits"}</dd></div>
-        <div><dt>Your balance</dt><dd>{balance ? `${balance.total} credits` : "Loading…"}</dd></div>
-        {enough && balance ? <div><dt>After this action</dt><dd>{balance.total - cost} credits</dd></div> : null}</dl>
+        <div><dt>Your balance</dt><dd>{balance ? `${balance.total.toLocaleString()} credits` : "Loading…"}</dd></div>
+        {enough && balance ? <div><dt>After this action</dt><dd>{(balance.total - cost).toLocaleString()} credits</dd></div> : null}</dl>
       <p className="credit-confirm-hint">Nothing is sent or charged until you confirm.</p>
       {balance && !enough ? <p role="alert">Not enough credits. Open Pricing to add credits.</p> : null}
     </div>
