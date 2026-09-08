@@ -698,7 +698,7 @@ export function HousoraApp({
       url.searchParams.delete("space");
     }
     window.history.pushState({ view: next }, "", url);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: "auto" });
   };
   const startBlankProject = () => {
     const draftId = safeUUID();
@@ -933,12 +933,12 @@ export function HousoraApp({
         {activePage === "pricing" ? <PricingPage /> : null}
         {activePage === "settings" ? <SettingsPage onPricing={() => navigate("pricing")} /> : null}
       </main>
-      <nav
+      {!isEditor ? <nav
         className="mobile-bottom-nav"
         aria-label="Mobile workspace navigation"
       >
         <NavButton
-          active={activePage === "projects" || activePage === "album"}
+          active={activePage === "projects"}
           icon={<FolderOpen />}
           label="Projects"
           onClick={() => navigate("projects")}
@@ -961,7 +961,7 @@ export function HousoraApp({
           label="Pricing"
           onClick={() => navigate("pricing")}
         />
-      </nav>
+      </nav> : null}
       {notice ? (
         <div className="workspace-toast" role="status">
           <span>{notice}</span>
@@ -2472,11 +2472,11 @@ function ThreeDMode({ editorMode, preview, selectedObject, threeDSource, setThre
   useEffect(() => { onBusyChange(busy); }, [busy, onBusyChange]);
   const handleCreatedModel = (url: string, poster: string | null) => { setModelUrlForAr(url); setModelPosterForAr(poster); };
   return (
-    <div style={{ display: "grid", gap: 14 }}>
-      <div style={{ border: "1px solid #34362f", borderRadius: 10, padding: 12, background: "#1a1b17" }}>
+    <div className="three-d-mode">
+      <div className="three-d-source-card">
         <h3 style={{ margin: 0, fontSize: 13, fontFamily: "var(--font-display)" }}>Create a 3D furniture model</h3>
         <p style={{ margin: "6px 0 0", color: "#aaa99f", fontSize: 12, lineHeight: 1.5 }}>Upload a clear furniture photo, use an object detected in your room, or reopen a saved model.</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px,1fr))", gap: 8, marginTop: 10 }}>
+        <div className="three-d-source-options">
           <button onClick={() => fileRef.current?.click()} style={{ minHeight: 64, border: "1px solid #34362f", borderRadius: 10, background: threeDSource?.kind==="furniture-upload" ? "#23241f" : "#1f1f1d", color: "#f4f0e8", display: "grid", placeItems: "center", gap: 4, padding: 10, textAlign: "center" }}>
             <UploadSimple size={18}/><b style={{ fontSize: 12 }}>Upload furniture</b><small style={{ fontSize: 10, color: "#8f9187" }}>One object, plain background</small>
           </button>
@@ -2490,7 +2490,7 @@ function ThreeDMode({ editorMode, preview, selectedObject, threeDSource, setThre
         {threeDSource ? <small style={{ display: "block", marginTop: 8, color: "#a9ba9d", fontSize: 11 }}>Selected: {threeDSource.kind==="sam-crop" ? `${threeDSource.objectLabel} (detected)` : "Uploaded furniture"}. Review it below, then generate when ready.</small> : <small style={{ display: "block", marginTop: 8, color: "#aaa99f", fontSize: 11 }}>Choose a furniture source to continue.</small>}
       </div>
       <div id="existing-models-anchor">
-        <ThreeDWorkspace key={`${threeDSource?.kind || "empty"}:${threeDSource?.image || ""}:${editorMode}`} initialSource={threeDSource} onBusyChange={setBusy} onModelReady={handleCreatedModel} />
+        <ThreeDWorkspace compact key={`${threeDSource?.kind || "empty"}:${threeDSource?.image || ""}:${editorMode}`} initialSource={threeDSource} onBusyChange={setBusy} onModelReady={handleCreatedModel} />
       </div>
       {busy ? <p style={{ color: "var(--night-muted)", fontSize: 12, padding: "6px 2px", borderTop: "1px solid var(--night-line)" }} role="status">Keep this workspace open until the model finishes. Your request is already running.</p> : null}
       {threeDSource && !busy ? <small style={{ color: "#777970", fontSize: 11 }}>Generating uses 12 credits. You will confirm before spending. View in AR is available after a model is ready.</small> : null}
@@ -2505,13 +2505,12 @@ function ArMode({ modelUrl, poster, hasModel, onCreate }: { modelUrl: string | n
     return (
       <div style={{ display: "grid", gap: 14, textAlign: "center", padding: "18px 12px", border: "1px dashed #3a3c36", borderRadius: 12, background: "#1a1b17" }}>
         <span style={{ width: 48, height: 48, borderRadius: 12, background: "#23241f", display: "grid", placeItems: "center", margin: "0 auto", color: "#aaa99f" }}><Smartphone size={22}/></span>
-        <h3 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 400 }}>Create a 3D model to use AR</h3>
-        <p style={{ margin: 0, color: "#aaa99f", fontSize: 12, lineHeight: 1.6 }}>Create a furniture model in 3D models (upload or choose a detected object), then return here to preview it in your room. No public links are created automatically.</p>
+        <h3 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 400 }}>Preview furniture in your room</h3>
+        <p style={{ margin: 0, color: "#aaa99f", fontSize: 12, lineHeight: 1.6 }}>AR becomes available after you create a 3D furniture model.</p>
         <button onClick={onCreate} style={{ minHeight: 44, border: 0, borderRadius: 999, background: "#f4f0e8", color: "#11120f", fontWeight: 700, padding: "0 18px", justifySelf: "center" }}><Cube size={14}/> Go to 3D models</button>
         <div style={{ textAlign: "left", borderTop: "1px solid #2a2b27", paddingTop: 12, display: "grid", gap: 6 }}>
-          <small style={{ fontWeight: 700, color: "#f4f0e8" }}>Device requirements</small>
-          <small style={{ color: "#8f9187", lineHeight: 1.5 }}>AR needs a compatible phone with camera access: iOS with AR Quick Look (Safari) or Android with Scene Viewer / WebXR (Chrome). If AR is unavailable, the 3D preview still works. No external account needed.</small>
-          <small style={{ color: "#aaa99f" }}>Models stay private until you choose to create and share a link.</small>
+          <small style={{ fontWeight: 700, color: "#f4f0e8" }}>Works on supported phones</small>
+          <small style={{ color: "#8f9187", lineHeight: 1.5 }}>Allow camera access when asked. If AR is unavailable, you can still rotate and inspect the 3D preview.</small>
         </div>
       </div>
     );
@@ -3334,7 +3333,7 @@ function SavedPage({
         </div>
         <p className="saved-heading-meta" aria-hidden="true">{designs.length} designs · {references.length} inspiration</p>
       </header>
-      <p className="saved-clarify">Saved keeps bookmarks: generated designs you’ve saved and Discover inspiration you’ve hearted. Your working documents live in Projects — no data is moved or reclassified without your action. 3D models from the studio appear under Saved → 3D if available.</p>
+      <p className="saved-clarify">Your saved designs, inspiration, and 3D models live here. Editable rooms stay in Projects.</p>
       <div
         className="saved-tabs"
         role="tablist"
@@ -4049,7 +4048,7 @@ function DesignStudio({
   );
 }
 
-function ThreeDWorkspace({ initialSource = null, onBusyChange, onModelReady }: { initialSource?: ThreeDSource | null; onBusyChange?: (busy: boolean) => void; onModelReady?: (url: string, poster: string | null) => void } = {}) {
+function ThreeDWorkspace({ initialSource = null, onBusyChange, onModelReady, compact = false }: { initialSource?: ThreeDSource | null; onBusyChange?: (busy: boolean) => void; onModelReady?: (url: string, poster: string | null) => void; compact?: boolean } = {}) {
   const { user } = useUser();
   const trackingKey = user?.id ? `housora:tripo:${user.id}` : null;
   const recentModels = useQuery(api.models.list, {});
@@ -4199,18 +4198,21 @@ function ThreeDWorkspace({ initialSource = null, onBusyChange, onModelReady }: {
 
   const busy = status === "uploading" || status === "queued" || status === "running";
   const sourceValidation = isValidThreeDSource(source);
+  const userFacingError = /TRIPO_API_KEY|authentication|Tripo|provider/i.test(error)
+    ? "3D creation is temporarily unavailable. No credits were used. Please try again later."
+    : error;
   useEffect(() => { onBusyChange?.(busy); }, [busy, onBusyChange]);
   useEffect(() => { if (modelUrl) onModelReady?.(modelUrl, modelPoster); }, [modelUrl, modelPoster, onModelReady]);
   return (
     <section className="three-d-workspace tripo-workspace">
-      <header className="three-d-heading">
+      {!compact ? <header className="three-d-heading">
         <div>
           <span className="eyebrow"><Cube /> 3D & augmented reality</span>
           <h2>See the furniture in your room.</h2>
           <p>Start with one clearly visible piece of furniture. Create its 3D model, then preview it in your room on a compatible phone. Confirm real measurements before buying.</p>
         </div>
         {modelUrl ? <span className="integration-ready"><CheckCircle /> 3D model ready</span> : null}
-      </header>
+      </header> : null}
 
       <div className="tripo-grid">
         <div className="tripo-stage">
@@ -4222,7 +4224,7 @@ function ThreeDWorkspace({ initialSource = null, onBusyChange, onModelReady }: {
               {busy ? (
                 <div className="tripo-progress" role="status" aria-live="polite">
                   <span className="spinner" />
-                  <b>{status === "uploading" ? "Uploading securely…" : status === "queued" ? "Waiting for Tripo…" : "Building your 3D model…"}</b>
+                  <b>{status === "uploading" ? "Uploading securely…" : status === "queued" ? "Preparing your model…" : "Building your 3D model…"}</b>
                   <small>{progress ? `${Math.round(progress)}% complete` : "This usually takes one or two minutes."}</small>
                   <i><em style={{ width: `${Math.max(4, progress)}%` }} /></i>
                 </div>
@@ -4250,14 +4252,14 @@ function ThreeDWorkspace({ initialSource = null, onBusyChange, onModelReady }: {
             }}
           />
           <span className="eyebrow">Image to 3D</span>
-          <h3>{modelUrl ? "Your model is ready" : "Create an AR-ready object"}</h3>
+          <h3>{modelUrl ? "Your model is ready" : "Create your model"}</h3>
           <p>{modelUrl ? "Drag to rotate, scroll to zoom, or open this page on your phone and select View in your room." : sourceValidation.valid ? "For the clearest model, use a front three-quarter product photo with the entire object visible." : guidanceForInvalid()}</p>
           <ol className="tripo-steps">
             <li className={imagePreview ? "complete" : "active"}><span>1</span><b>Choose furniture</b></li>
-            <li className={busy ? "active" : modelUrl ? "complete" : ""}><span>2</span><b>Generate with Tripo</b></li>
-            <li className={modelUrl ? "active" : ""}><span>3</span><b>Preview or launch AR</b></li>
+            <li className={busy ? "active" : modelUrl ? "complete" : ""}><span>2</span><b>Create 3D model</b></li>
+            <li className={modelUrl ? "active" : ""}><span>3</span><b>Preview in 3D or AR</b></li>
           </ol>
-          <p className="integration-error" role="alert">{error}</p>
+          {userFacingError ? <p className="integration-error" role="alert">{userFacingError}</p> : null}
           {trackingPaused ? <button onClick={() => { setTrackingPaused(false); setPollAttempt(value => value + 1); }}>Check existing model status · no extra credits</button> : null}
           <div className="tripo-actions">
             <button onClick={() => inputRef.current?.click()} disabled={busy}>
@@ -4292,12 +4294,12 @@ function ThreeDWorkspace({ initialSource = null, onBusyChange, onModelReady }: {
               </>
             )}
           </div>
-          <small className="tripo-expiry-note">{modelSaved ? "Saved to your account. Anyone you send the AR link to can view this model." : "Unsaved provider links are temporary. Download your model if saving fails."} AR requires a compatible phone; generated dimensions are approximate.</small>
+          <small className="tripo-expiry-note">{modelSaved ? "Saved to your account. Shared links work only for people you send them to. " : ""}Generated dimensions are approximate. Confirm measurements before buying.</small>
           {recentModels?.length ? <div className="tripo-recent-models"><h3>Saved models</h3>{recentModels.filter(model => model.url).map((model, index) => <button key={model.taskId} disabled={busy} onClick={() => { setTaskId(model.taskId); setModelUrl(model.url); setModelPoster(null); setModelSaved(true); setShareToken(null); setStatus("success"); setError(""); }}>Open model {recentModels.length - index} · {new Date(model.createdAt).toLocaleDateString()}</button>)}</div> : null}
         </aside>
       </div>
       <CreditConfirmation open={confirmOpen} cost={AI_COSTS.model3d} title="Create this 3D model?"
-        description="Send this image to Tripo to build a textured 3D model. Confirmed failed generations return your Housora credits. AI models are approximations, not measured replicas."
+        description="Use this image to create a textured 3D model. Failed generations return your Housora credits. AI models are approximations, not measured replicas."
         action="Create 3D" onCancel={() => setConfirmOpen(false)} onConfirm={() => { setConfirmOpen(false); void generateModel(); }} />
     </section>
   );
