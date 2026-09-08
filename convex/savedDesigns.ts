@@ -67,3 +67,22 @@ export const remove = mutation({
     if (existing) await ctx.db.patch(existing._id, { removedAt: Date.now() });
   },
 });
+
+export const updateMeta = mutation({
+  args: {
+    designId: v.string(),
+    title: v.optional(v.string()),
+    pinned: v.optional(v.boolean()),
+    archived: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { designId, title, pinned, archived }) => {
+    const ownerId = await owner(ctx);
+    const existing = await ctx.db.query("savedDesigns").withIndex("by_owner_designId", (q) => q.eq("ownerId", ownerId).eq("designId", designId)).unique();
+    if (!existing) throw new Error("Project not found.");
+    const patch: { title?: string; pinned?: boolean; archivedAt?: number | undefined } = {};
+    if (title !== undefined) patch.title = title.trim().slice(0, 80) || existing.title;
+    if (pinned !== undefined) patch.pinned = pinned;
+    if (archived !== undefined) patch.archivedAt = archived ? Date.now() : undefined;
+    await ctx.db.patch(existing._id, patch);
+  },
+});

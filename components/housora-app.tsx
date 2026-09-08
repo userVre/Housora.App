@@ -55,6 +55,8 @@ import {
   PanelLeftClose,
   Smartphone,
   PanelLeftOpen,
+  Pin,
+  Archive,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ModelViewer } from "./model-viewer";
@@ -133,6 +135,8 @@ type SavedDesign = {
   image: string;
   mode: DesignMode;
   savedAt: string;
+  pinned?: boolean;
+  archivedAt?: number;
 };
 type ProjectDraft = {
   detectedObjects?: DetectedObject[];
@@ -566,6 +570,7 @@ export function HousoraApp({
   const referenceRows = useQuery(api.savedReferences.list, {});
   const saveDesignRecord = useMutation(api.savedDesigns.save);
   const removeDesignRecord = useMutation(api.savedDesigns.remove);
+  const updateDesignMeta = useMutation(api.savedDesigns.updateMeta);
   const saveReferenceRecord = useMutation(api.savedReferences.save);
   const removeReferenceRecord = useMutation(api.savedReferences.remove);
   const creditBalance = useQuery(api.credits.getMyBalance, {});
@@ -580,6 +585,8 @@ export function HousoraApp({
     image: row.image,
     mode: row.mode as DesignMode,
     savedAt: row.savedAt,
+    pinned: row.pinned,
+    archivedAt: row.archivedAt,
   }));
   const savedReferences: InspirationReference[] = (referenceRows ?? []).map((row) => ({
     title: row.title,
@@ -604,6 +611,7 @@ export function HousoraApp({
   }, [activePage, designRows, projectDraft?.id]);
   const [removedDesign, setRemovedDesign] = useState<SavedDesign | null>(null);
   const [notice, setNotice] = useState("");
+  const [recentMenuOpen, setRecentMenuOpen] = useState<string | null>(null);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const rawRequestedView = params.get("view");
@@ -728,6 +736,25 @@ export function HousoraApp({
     navigate("album", design.id);
   };
   const openStudio = () => navigate("studio");
+  const renameProject = async (design: SavedDesign) => {
+    const nextTitle = window.prompt("Rename project", design.title)?.trim();
+    if (!nextTitle || nextTitle === design.title) return;
+    await updateDesignMeta({ designId: design.id, title: nextTitle });
+    setNotice("Project renamed");
+    setRecentMenuOpen(null);
+  };
+  const shareProject = async (design: SavedDesign) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("view", "album");
+    url.searchParams.set("design", design.id);
+    try {
+      const canShare = typeof navigator.share === "function";
+      if (canShare) await navigator.share({ title: design.title, url: url.toString() });
+      else await navigator.clipboard.writeText(url.toString());
+      setNotice(canShare ? "Share opened" : "Project link copied");
+    } catch { setNotice("Sharing cancelled"); }
+    setRecentMenuOpen(null);
+  };
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem("housora:editorCollapsed");
@@ -739,6 +766,10 @@ export function HousoraApp({
       window.localStorage.setItem("housora:editorCollapsed", editorCollapsed ? "1" : "0");
     } catch {}
   }, [editorCollapsed]);
+  const recentProjects = savedDesigns
+    .filter((design) => !design.archivedAt)
+    .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || b.savedAt.localeCompare(a.savedAt))
+    .slice(0, 8);
   useEffect(() => {
     if (!profileOpen) return;
     const onDown = (e: MouseEvent) => {
@@ -776,11 +807,28 @@ export function HousoraApp({
           </div>
         </div>
         <nav aria-label="Workspace navigation">
-          <NavButton active={activePage === "projects" || activePage === "album"} icon={<FolderOpen />} label="Projects" collapsed={shellCollapsed} onClick={() => navigate("projects")} />
-          <NavButton active={activePage === "discover"} icon={<MagnifyingGlass />} label="Discover" collapsed={shellCollapsed} onClick={() => navigate("discover")} />
-          <NavButton active={activePage === "library"} icon={<Heart />} label="Saved" collapsed={shellCollapsed} onClick={() => navigate("library")} />
+          <NavButton active={activePage === "album"} icon={<Plus />} label="New project" collapsed={shellCollapsed} onClick={startBlankProject} />
+          <NavButton active={activePage === "discover"} icon={<ImagesSquare />} label="Images" collapsed={shellCollapsed} onClick={() => navigate("discover")} />
+          <NavButton active={activePage === "library"} icon={<FolderOpen />} label="Library" collapsed={shellCollapsed} onClick={() => navigate("library")} />
           <NavButton active={activePage === "pricing"} icon={<CreditCard />} label="Pricing" collapsed={shellCollapsed} onClick={() => navigate("pricing")} />
         </nav>
+        {!shellCollapsed ? <section className="rail-recents" aria-labelledby="recent-projects-title">
+          <div className="rail-section-title"><span id="recent-projects-title">Recent</span><button onClick={() => navigate("projects")} aria-label="View all projects">View all</button></div>
+          {recentProjects.length ? <ul>{recentProjects.map((design) => <li key={design.id}>
+            <button className="rail-recent-project" onClick={() => openSavedProject(design)} title={design.title}>
+              {design.pinned ? <Pin aria-hidden="true" /> : <span aria-hidden="true" />}
+              <span>{design.title}</span>
+            </button>
+            <button className="rail-recent-more" onClick={() => setRecentMenuOpen(recentMenuOpen === design.id ? null : design.id)} aria-label={`Project actions for ${design.title}`} aria-expanded={recentMenuOpen === design.id}><DotsThree aria-hidden="true" /></button>
+            {recentMenuOpen === design.id ? <div className="rail-project-menu" role="menu">
+              <button role="menuitem" onClick={() => void renameProject(design)}><PencilSimple /> Rename</button>
+              <button role="menuitem" onClick={() => void shareProject(design)}><ShareNetwork /> Share</button>
+              <button role="menuitem" onClick={() => { void updateDesignMeta({ designId: design.id, pinned: !design.pinned }); setRecentMenuOpen(null); }}><Pin /> {design.pinned ? "Unpin" : "Pin"}</button>
+              <button role="menuitem" onClick={() => { void updateDesignMeta({ designId: design.id, archived: true }); setRecentMenuOpen(null); setNotice("Project archived"); }}><Archive /> Archive</button>
+              <button role="menuitem" className="danger" onClick={() => { void unsaveDesign(design.id); setRecentMenuOpen(null); }}><TrashSimple /> Delete</button>
+            </div> : null}
+          </li>)}</ul> : <p>Your projects will appear here.</p>}
+        </section> : null}
         <div className="rail-account">
           {profileOpen ? (
             <div className="profile-menu" role="menu" aria-label="Account menu">
@@ -909,13 +957,12 @@ export function HousoraApp({
           />
         ) : null}
         {activePage === "library" ? (
-          <SavedPage
+          <LibraryPage
             designs={savedDesigns}
             references={savedReferences}
             onCreate={startBlankProject}
-            onUnsave={unsaveDesign}
-            onUnsaveReference={unsaveReference}
-            onUseReference={startFromReference}
+            onOpenDesign={openSavedProject}
+            onOpenReference={startFromReference}
             onBrowse={() => navigate("discover")}
           />
         ) : null}
@@ -939,20 +986,20 @@ export function HousoraApp({
       >
         <NavButton
           active={activePage === "projects"}
-          icon={<FolderOpen />}
-          label="Projects"
-          onClick={() => navigate("projects")}
+          icon={<Plus />}
+          label="New"
+          onClick={startBlankProject}
         />
         <NavButton
           active={activePage === "discover"}
-          icon={<MagnifyingGlass />}
-          label="Discover"
+          icon={<ImagesSquare />}
+          label="Images"
           onClick={() => navigate("discover")}
         />
         <NavButton
           active={activePage === "library"}
-          icon={<Heart />}
-          label="Saved"
+          icon={<FolderOpen />}
+          label="Library"
           onClick={() => navigate("library")}
         />
         <NavButton
@@ -2103,6 +2150,7 @@ function AlbumWorkspace({
       setCompareOriginal(false);
       setSaveError("");
       setZoom(1); setFit(true);
+      void persistImage(img, prompt).catch(() => setSaveError("The image opened, but the project could not be saved. Use Save this design to retry."));
     };
     reader.onerror = () => setUploadError("This image could not be opened. Try another photo.");
     reader.readAsDataURL(file);
@@ -2115,6 +2163,7 @@ function AlbumWorkspace({
     setEditorMode("redesign");
     setSaved(false);
     setZoom(1); setFit(true);
+    void persistImage(img, prompt).catch(() => setSaveError("The example opened, but the project could not be saved. Use Save this design to retry."));
   };
   const buildGenerationPrompt = () => {
     const isAutoSpace = !space || space === "Auto-detect";
@@ -3239,6 +3288,51 @@ function DiscoverPage({
       ) : null}
     </div>
   );
+}
+
+function LibraryPage({ designs, references, onCreate, onOpenDesign, onOpenReference, onBrowse }: {
+  designs: SavedDesign[];
+  references: InspirationReference[];
+  onCreate: () => void;
+  onOpenDesign: (design: SavedDesign) => void;
+  onOpenReference: (reference: InspirationReference) => void;
+  onBrowse: () => void;
+}) {
+  const [filter, setFilter] = useState<"all" | "generated" | "saved">("all");
+  const [query, setQuery] = useState("");
+  const normalized = query.trim().toLowerCase();
+  const matchingDesigns = designs.filter((item) => !normalized || `${item.title} ${item.mode} ${item.prompt || ""}`.toLowerCase().includes(normalized));
+  const generated = matchingDesigns.filter((item) => Boolean(item.prompt?.trim()));
+  const uploaded = matchingDesigns.filter((item) => !item.prompt?.trim());
+  const saved = references.filter((item) => !normalized || `${item.title} ${item.room} ${item.style}`.toLowerCase().includes(normalized));
+  const savedAndUploadedCount = uploaded.length + saved.length;
+  const total = matchingDesigns.length + saved.length;
+  const visibleDesigns = filter === "generated" ? generated : filter === "saved" ? uploaded : matchingDesigns;
+  const visibleCount = visibleDesigns.length + (filter === "generated" ? 0 : saved.length);
+  return <section className="asset-library" aria-labelledby="library-title">
+    <header className="asset-library-header">
+      <div><span className="eyebrow">Your visual workspace</span><h1 id="library-title">Library</h1><p>Find every design you created or saved, ready to reuse in a project.</p></div>
+      <button className="primary-action" onClick={onCreate}><Plus /> New project</button>
+    </header>
+    <div className="asset-library-tools">
+      <label><MagnifyingGlass aria-hidden="true" /><span className="visually-hidden">Search library</span><input name="library-search" autoComplete="off" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search your library…" /></label>
+      <div role="tablist" aria-label="Filter library">
+        <button role="tab" aria-selected={filter === "all"} onClick={() => setFilter("all")}>All <span>{total}</span></button>
+        <button role="tab" aria-selected={filter === "generated"} onClick={() => setFilter("generated")}>Generated <span>{generated.length}</span></button>
+        <button role="tab" aria-selected={filter === "saved"} onClick={() => setFilter("saved")}>Uploaded & saved <span>{savedAndUploadedCount}</span></button>
+      </div>
+    </div>
+    {visibleCount ? <div className="asset-library-grid">
+      {visibleDesigns.map((design) => <button key={design.id} className="asset-card" onClick={() => onOpenDesign(design)}>
+        <span><Image src={design.image} alt="" fill sizes="(max-width:700px) 50vw, 260px" unoptimized={design.image.startsWith("http") || design.image.startsWith("data:")} /><i>{design.prompt?.trim() ? "Generated" : "Uploaded"}</i></span>
+        <b>{design.title}</b><small>{design.mode} · {new Intl.DateTimeFormat("en", { month:"short", day:"numeric" }).format(new Date(design.savedAt))}</small>
+      </button>)}
+      {filter !== "generated" ? saved.map((reference) => <button key={reference.title} className="asset-card" onClick={() => onOpenReference(reference)}>
+        <span><Image src={reference.image} alt="" fill sizes="(max-width:700px) 50vw, 260px" unoptimized /><i>Saved</i></span>
+        <b>{reference.title}</b><small>{reference.style} · {reference.room}</small>
+      </button>) : null}
+    </div> : <div className="asset-library-empty"><ImagesSquare /><h2>{query ? "No matching images" : "Your library is ready"}</h2><p>{query ? "Try another search or filter." : "Create a design or save an image to see it here."}</p><button onClick={onBrowse}>Browse images</button></div>}
+  </section>;
 }
 
 function SavedPage({

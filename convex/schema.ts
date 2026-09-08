@@ -86,6 +86,8 @@ export default defineSchema({
   }).index("by_owner", ["ownerId"]),
   savedDesigns: defineTable({
     removedAt: v.optional(v.number()),
+    archivedAt: v.optional(v.number()),
+    pinned: v.optional(v.boolean()),
     ownerId: v.string(),
     projectId: v.optional(v.string()),
     roomId: v.optional(v.string()),
