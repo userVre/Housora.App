@@ -1997,13 +1997,14 @@ function AlbumWorkspace({
   type EditorMode = "redesign" | "objects";
   const [editorMode, setEditorMode] = useState<EditorMode>("redesign");
   const [detailChoices, setDetailChoices] = useState<Record<string, string>>({});
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(Boolean(initialDraft?.image && initialDraft?.projectId && initialDraft.roomId));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [exportStatus, setExportStatus] = useState("");
   const [uploadError, setUploadError] = useState("");
   const [generating, setGenerating] = useState(false);
   const [generationConfirmOpen, setGenerationConfirmOpen] = useState(false);
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   const generationLock = useRef(false);
   const [generationError, setGenerationError] = useState("");
   const [activeTool, setActiveTool] = useState("select");
@@ -2075,9 +2076,16 @@ function AlbumWorkspace({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [historyIndex, history]);
+  useEffect(() => {
+    if (!preview || saved || saving) return;
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [preview, saved, saving]);
   const [threeDSource, setThreeDSource] = useState<ThreeDSource | null>(null);
   const [threeDBusy, setThreeDBusy] = useState(false);
   const [threeDOpen, setThreeDOpen] = useState(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const open3d = (object: DetectedObject) => {
     setThreeDSource({ image: object.thumbnail, kind: "sam-crop", objectLabel: object.label, objectBox: object.box });
     setThreeDOpen(true);
@@ -2244,7 +2252,7 @@ function AlbumWorkspace({
     <section className="album-workspace" aria-label="Project editor">
       <header className="album-workspace-bar">
         <div className="album-bar-left">
-          <button className="album-back" onClick={onBack} aria-label="Back to Projects">
+          <button className="album-back" onClick={() => preview && !saved ? setLeaveConfirmOpen(true) : onBack()} aria-label="Back to Projects">
             <ArrowLeft /> Back to Projects
           </button>
           <span className="album-project-title" title={initialDraft?.title ?? "Untitled project"}>{initialDraft?.title ?? "Untitled project"}</span>
@@ -2255,7 +2263,7 @@ function AlbumWorkspace({
             {threeDBusy ? <i aria-hidden="true" /> : null}
           </button>
           {preview ? (
-            <div className="album-bar-actions">
+            <div className="album-bar-actions" aria-label="Project image actions">
               <button className="icon-secondary" aria-label="Compare with original" title="Compare with original" aria-pressed={compareOriginal} onClick={() => setCompareOriginal((value) => !value)}>
                 <ImagesSquare />
               </button>
@@ -2265,6 +2273,18 @@ function AlbumWorkspace({
               <button className="icon-secondary" aria-label="Share design" title="Share design" onClick={() => void exportImage(true)}>
                 <ShareNetwork />
               </button>
+            </div>
+          ) : null}
+          {preview ? (
+            <div className="album-mobile-actions">
+              <button className="icon-secondary" aria-label="More project actions" aria-controls="mobile-project-actions" aria-expanded={headerMenuOpen} onClick={() => setHeaderMenuOpen((open) => !open)}>
+                <DotsThree aria-hidden="true" />
+              </button>
+              {headerMenuOpen ? <div id="mobile-project-actions" className="album-mobile-action-menu" aria-label="Project image actions">
+                <button aria-pressed={compareOriginal} onClick={() => { setCompareOriginal((value) => !value); setHeaderMenuOpen(false); }}><ImagesSquare aria-hidden="true" />{compareOriginal ? "Show current design" : "Compare with original"}</button>
+                <button onClick={() => { setHeaderMenuOpen(false); void exportImage(false); }}><DownloadSimple aria-hidden="true" />Download image</button>
+                <button onClick={() => { setHeaderMenuOpen(false); void exportImage(true); }}><ShareNetwork aria-hidden="true" />Share design</button>
+              </div> : null}
             </div>
           ) : null}
         </div>
@@ -2324,7 +2344,7 @@ function AlbumWorkspace({
           </div> : null}
           {exportStatus ? <div role="status" aria-live="polite" style={{ position: "absolute", bottom: 64, left: "50%", transform: "translateX(-50%)", background: "rgba(24,24,22,0.96)", color: "#f4f0e8", border: "1px solid #34362f", borderRadius: 10, padding: "8px 12px", fontSize: 12, zIndex: 5 }}>{exportStatus}</div> : null}
           {preview && editorMode === "objects" && (activeTool === "text" || activeTool === "comment") ? <form className="canvas-note-composer" onSubmit={(event) => { event.preventDefault(); if (!noteDraft.trim()) return; setCanvasNotes(items => [...items, { kind: activeTool, text: noteDraft.trim() }]); setNoteDraft(""); setActiveTool("select"); }}>
-            <input autoFocus value={noteDraft} onChange={event => setNoteDraft(event.target.value)} placeholder={activeTool === "comment" ? "Add feedback for this design" : "Add a label to the canvas"} />
+            <input name="canvas-note" autoComplete="off" aria-label={activeTool === "comment" ? "Feedback for this design" : "Canvas label"} value={noteDraft} onChange={event => setNoteDraft(event.target.value)} placeholder={activeTool === "comment" ? "Add feedback for this design…" : "Add a label to the canvas…"} />
             <button type="submit">Add</button>
           </form> : null}
         </main>
@@ -2405,6 +2425,13 @@ function AlbumWorkspace({
         </aside>
       </div>
       <CreditConfirmation open={generationConfirmOpen} cost={AI_COSTS.imageEdit} title="Generate your design?" description="Create a new version of this photo. Your original stays available for comparison. Room-type inference is free; this generation costs credits." action="Generate" onCancel={() => setGenerationConfirmOpen(false)} onConfirm={() => void generateDesign()} />
+      <WorkspaceDialog open={leaveConfirmOpen} onClose={() => setLeaveConfirmOpen(false)} title="Leave without saving?">
+        <p className="workspace-dialog-copy">This version has not been saved to Projects. Stay here to save it, or leave and discard these unsaved changes.</p>
+        <footer>
+          <button onClick={() => setLeaveConfirmOpen(false)}>Stay here</button>
+          <button className="primary-action" onClick={onBack}>Leave project</button>
+        </footer>
+      </WorkspaceDialog>
       <WorkspaceDialog open={threeDOpen} onClose={() => setThreeDOpen(false)} title={threeDSource?.objectLabel ? `Create a 3D model of ${threeDSource.objectLabel}` : "3D models"} wide>
         <div className="project-3d-dialog-body">
           <ThreeDWorkspace initialSource={threeDSource} onBusyChange={setThreeDBusy} />

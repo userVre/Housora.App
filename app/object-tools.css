@@ -12,6 +12,7 @@
 .workspace-dialog-wide > *:not(.workspace-dialog-header) { overflow: auto; }
 .workspace-dialog-header { display: flex; gap: 16px; align-items: center; justify-content: space-between; }
 .workspace-dialog-header h2 { margin: 0; font: 600 20px/1.4 var(--font-body); letter-spacing: -0.02em; }
+.workspace-dialog-copy { margin:18px 0 0; color:#aaa99f; font-size:14px; line-height:1.6; }
 .workspace-dialog button { min-height: 44px; border: 1px solid var(--night-line); border-radius: var(--radius-sm); padding: 10px 16px; background: var(--night); color: var(--night-text); font-weight: 600; }
 .workspace-dialog-header > button { min-width: 44px; font-size: 24px; padding: 0; border-radius: 10px; }
 .workspace-dialog button:hover:not(:disabled) { border-color: var(--night-muted); }
