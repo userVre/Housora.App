@@ -53,7 +53,7 @@ export async function GET() {
     ok: allCritical,
     ready: allCritical,
     legalReady: legal.ready,
-    legal: { missing: legal.missing },
+    legal: { missing: legal.missing, reviewed: legal.reviewed },
     billingReady,
     billing: { missingOffers: missingWhopOffers },
     timestamp: new Date().toISOString(),

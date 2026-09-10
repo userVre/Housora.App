@@ -24,9 +24,8 @@ export type LegalConfig = {
   ready: boolean;
 };
 export function getLegalConfig(): LegalConfig {
-  const missing: string[] = REQUIRED_LEGAL_ENV.filter(name => !process.env[name]?.trim());
+  const missing = REQUIRED_LEGAL_ENV.filter(name => !process.env[name]?.trim());
   const reviewed = process.env.HOUSORA_LEGAL_REVIEWED === "true";
-  if (!reviewed) missing.push("HOUSORA_LEGAL_REVIEWED=true");
   return {
     legalName: process.env.HOUSORA_LEGAL_NAME?.trim(),
     legalAddress: process.env.HOUSORA_LEGAL_ADDRESS?.trim(),
@@ -35,7 +34,7 @@ export function getLegalConfig(): LegalConfig {
     jurisdiction: process.env.HOUSORA_JURISDICTION?.trim(),
     salesGeo: process.env.HOUSORA_SALES_GEO?.trim(),
     reviewed,
-    missing,
+    missing: [...missing],
     ready: missing.length === 0 && reviewed,
   };
 }

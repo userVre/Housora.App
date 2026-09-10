@@ -53,7 +53,6 @@ import {
   Users,
   X,
   PanelLeftClose,
-  Smartphone,
   PanelLeftOpen,
   Pin,
   Archive,
@@ -922,7 +921,6 @@ export function HousoraApp({
             key={projectDraft?.id || "new-project"}
             onBack={() => navigate("projects")}
             onSaveDesign={saveDesign}
-            onOpenStudio={openStudio}
           />
         ) : null}
         {activePage === "projects" ? (
@@ -974,7 +972,6 @@ export function HousoraApp({
             onBack={() => navigate("projects")}
             onSaveDesign={saveDesign}
             initialDraft={projectDraft}
-            onOpenStudio={openStudio}
           />
         ) : null}
         {activePage === "pricing" ? <PricingPage /> : null}
@@ -1986,12 +1983,10 @@ function ProjectsPage({
 function AlbumWorkspace({
   onBack,
   onSaveDesign,
-  onOpenStudio,
   initialDraft,
 }: {
   onBack: () => void;
   onSaveDesign: (design: Omit<SavedDesign, "savedAt">) => Promise<{ projectId: string; roomId: string }>;
-  onOpenStudio: () => void;
   initialDraft?: ProjectDraft | null;
 }) {
   const [mode, setMode] = useState<DesignMode>(initialDraft?.mode ?? "Interior");
@@ -1999,7 +1994,7 @@ function AlbumWorkspace({
   const [style, setStyle] = useState("Auto style");
   const [prompt, setPrompt] = useState(initialDraft?.prompt ?? "");
   const [preview, setPreview] = useState<string | null>(initialDraft?.image ?? null);
-  type EditorMode = "redesign" | "objects" | "threed" | "ar";
+  type EditorMode = "redesign" | "objects";
   const [editorMode, setEditorMode] = useState<EditorMode>("redesign");
   const [detailChoices, setDetailChoices] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
@@ -2082,15 +2077,14 @@ function AlbumWorkspace({
   }, [historyIndex, history]);
   const [threeDSource, setThreeDSource] = useState<ThreeDSource | null>(null);
   const [threeDBusy, setThreeDBusy] = useState(false);
-  const [modelUrlForAr, setModelUrlForAr] = useState<string | null>(null);
-  const [modelPosterForAr, setModelPosterForAr] = useState<string | null>(null);
+  const [threeDOpen, setThreeDOpen] = useState(false);
   const open3d = (object: DetectedObject) => {
     setThreeDSource({ image: object.thumbnail, kind: "sam-crop", objectLabel: object.label, objectBox: object.box });
-    setEditorMode("threed");
+    setThreeDOpen(true);
   };
   const open3dFromPreview = () => {
-    // do not set source – let user choose upload or detected object in 3D mode
-    setEditorMode("threed");
+    setThreeDSource(null);
+    setThreeDOpen(true);
   };
   const [compareOriginal, setCompareOriginal] = useState(false);
   const [selectionPoint, setSelectionPoint] = useState<{ x: number; y: number } | null>(null);
@@ -2099,7 +2093,6 @@ function AlbumWorkspace({
   const originalPreview = useRef<string | null>(initialDraft?.image ?? null);
   const canvasRef = useRef<HTMLElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const threedUploadRef = useRef<HTMLInputElement>(null);
   const exportImage = async (share: boolean) => {
     if (!preview) return;
     setExportStatus("");
@@ -2257,6 +2250,10 @@ function AlbumWorkspace({
           <span className="album-project-title" title={initialDraft?.title ?? "Untitled project"}>{initialDraft?.title ?? "Untitled project"}</span>
         </div>
         <div className="album-bar-right">
+          <button className="album-models-action" onClick={open3dFromPreview} aria-label="Open 3D models">
+            <Cube /> <span>3D models</span>
+            {threeDBusy ? <i aria-hidden="true" /> : null}
+          </button>
           {preview ? (
             <div className="album-bar-actions">
               <button className="icon-secondary" aria-label="Compare with original" title="Compare with original" aria-pressed={compareOriginal} onClick={() => setCompareOriginal((value) => !value)}>
@@ -2332,14 +2329,12 @@ function AlbumWorkspace({
           </form> : null}
         </main>
         <aside className="album-control-panel">
-          <div className="editor-mode-tabs" role="tablist" aria-label="Editor tools">
-            <button role="tab" aria-selected={editorMode==="redesign"} onClick={() => setEditorMode("redesign")}><Sparkle/> <span>Redesign</span></button>
-            <button role="tab" aria-selected={editorMode==="objects"} onClick={() => setEditorMode("objects")} disabled={!preview} title={!preview ? "Upload a photo first" : undefined} aria-describedby={!preview ? "edit-disabled-reason" : undefined}><Selection/> <span>Edit objects</span></button>
-            <button role="tab" aria-selected={editorMode==="threed"} onClick={() => setEditorMode("threed")}><Cube/> <span>3D models</span></button>
-            <button role="tab" aria-selected={editorMode==="ar"} onClick={() => setEditorMode("ar")}><Smartphone/> <span>View in AR</span></button>
+          <div className="editor-mode-tabs" role="tablist" aria-label="Image editing mode">
+            <button id="editor-tab-redesign" role="tab" aria-controls="editor-panel" aria-selected={editorMode==="redesign"} onClick={() => setEditorMode("redesign")}><Sparkle/> <span>Design room</span></button>
+            <button id="editor-tab-objects" role="tab" aria-controls="editor-panel" aria-selected={editorMode==="objects"} onClick={() => setEditorMode("objects")} disabled={!preview} title={!preview ? "Upload a photo first" : undefined} aria-describedby={!preview ? "edit-disabled-reason" : undefined}><Selection/> <span>Edit objects</span></button>
           </div>
           {!preview ? <p id="edit-disabled-reason" className="visually-hidden">Upload a photo to edit objects. Choosing a room type is free.</p> : null}
-          <div className="album-panel-content">
+          <div id="editor-panel" className="album-panel-content" role="tabpanel" aria-labelledby={editorMode === "redesign" ? "editor-tab-redesign" : "editor-tab-objects"}>
             {editorMode === "redesign" ? (
               <>
                 {!preview ? <div className="editor-getting-started"><span>1</span><div><strong>Add a room photo</strong><p>Use the large buttons on the canvas. Your redesign settings will appear here afterwards.</p></div></div> : null}
@@ -2386,13 +2381,7 @@ function AlbumWorkspace({
                 <DetectedObjects key={`${mode}:${preview}`} hasImage active={editorMode === "objects"} initialObjects={preview === initialDraft?.image ? initialDraft.detectedObjects : undefined} mode={mode} image={preview} onUpload={() => fileRef.current?.click()} onSelect={setSelectedObject} onCreate3d={open3d} onImageChange={async (image, storageWarning) => { setPreview(image); pushHistory(image); setSelectedObject(null); if (storageWarning) { setSaveError(storageWarning); return; } try { if (!versionContext) await persistImage(preview); await persistImage(image, "Object edit"); } catch { setSaveError("Your edit is ready, but saving failed. Save again or download before leaving."); } }} />
               )
             ) : null}
-            {editorMode === "threed" ? (
-              <ThreeDMode editorMode={editorMode} preview={preview} selectedObject={selectedObject} threeDSource={threeDSource} setThreeDSource={setThreeDSource} setModelUrlForAr={setModelUrlForAr} setModelPosterForAr={setModelPosterForAr} fileRef={threedUploadRef} onBusyChange={setThreeDBusy} onGoToAr={() => setEditorMode("ar")} />
-            ) : null}
-            {editorMode === "ar" ? (
-              <ArMode modelUrl={modelUrlForAr} poster={modelPosterForAr} hasModel={Boolean(modelUrlForAr)} onCreate={() => setEditorMode("threed")} />
-            ) : null}
-            {preview && editorMode !== "ar" ? (
+            {preview ? (
               <div className="version-history-panel" aria-label="Version history" style={{ borderTop: "1px solid #2a2b27", paddingTop: 12, display: "grid", gap: 8 }}>
                 <div className="version-history-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
                   <span style={{ display: "flex", alignItems: "center", gap: 6 }}><ClockCounterClockwise size={14}/> {history.length} {history.length === 1 ? "version" : "versions"}</span>
@@ -2416,6 +2405,11 @@ function AlbumWorkspace({
         </aside>
       </div>
       <CreditConfirmation open={generationConfirmOpen} cost={AI_COSTS.imageEdit} title="Generate your design?" description="Create a new version of this photo. Your original stays available for comparison. Room-type inference is free; this generation costs credits." action="Generate" onCancel={() => setGenerationConfirmOpen(false)} onConfirm={() => void generateDesign()} />
+      <WorkspaceDialog open={threeDOpen} onClose={() => setThreeDOpen(false)} title={threeDSource?.objectLabel ? `Create a 3D model of ${threeDSource.objectLabel}` : "3D models"} wide>
+        <div className="project-3d-dialog-body">
+          <ThreeDWorkspace initialSource={threeDSource} onBusyChange={setThreeDBusy} />
+        </div>
+      </WorkspaceDialog>
     </section>
   );
 }
@@ -2513,68 +2507,6 @@ function AdvancedGroups({ mode, choices, onChange, onResetGroup }: { mode: Desig
           </div>
         );
       })}
-    </div>
-  );
-}
-function ThreeDMode({ editorMode, preview, selectedObject, threeDSource, setThreeDSource, setModelUrlForAr, setModelPosterForAr, fileRef, onBusyChange, onGoToAr }: { editorMode: string; preview: string | null; selectedObject: DetectedObject | null; threeDSource: ThreeDSource | null; setThreeDSource: (s: ThreeDSource | null) => void; setModelUrlForAr: (u: string | null) => void; setModelPosterForAr: (u: string | null) => void; fileRef: React.RefObject<HTMLInputElement | null>; onBusyChange: (b: boolean) => void; onGoToAr: () => void }) {
-  const [busy, setBusy] = useState(false);
-  useEffect(() => { onBusyChange(busy); }, [busy, onBusyChange]);
-  const handleCreatedModel = (url: string, poster: string | null) => { setModelUrlForAr(url); setModelPosterForAr(poster); };
-  return (
-    <div className="three-d-mode">
-      <div className="three-d-source-card">
-        <h3 style={{ margin: 0, fontSize: 13, fontFamily: "var(--font-display)" }}>Create a 3D furniture model</h3>
-        <p style={{ margin: "6px 0 0", color: "#aaa99f", fontSize: 12, lineHeight: 1.5 }}>Upload a clear furniture photo, use an object detected in your room, or reopen a saved model.</p>
-        <div className="three-d-source-options">
-          <button onClick={() => fileRef.current?.click()} style={{ minHeight: 64, border: "1px solid #34362f", borderRadius: 10, background: threeDSource?.kind==="furniture-upload" ? "#23241f" : "#1f1f1d", color: "#f4f0e8", display: "grid", placeItems: "center", gap: 4, padding: 10, textAlign: "center" }}>
-            <UploadSimple size={18}/><b style={{ fontSize: 12 }}>Upload furniture</b><small style={{ fontSize: 10, color: "#8f9187" }}>One object, plain background</small>
-          </button>
-          <button onClick={() => { if (selectedObject) setThreeDSource({ image: selectedObject.thumbnail, kind: "sam-crop", objectLabel: selectedObject.label, objectBox: selectedObject.box }); }} disabled={!selectedObject} style={{ minHeight: 64, border: "1px solid #34362f", borderRadius: 10, background: threeDSource?.kind==="sam-crop" ? "#23241f" : "#1f1f1d", color: selectedObject ? "#f4f0e8" : "#5a5b55", display: "grid", placeItems: "center", gap: 4, padding: 10, textAlign: "center", opacity: selectedObject ? 1 : 0.6 }}>
-            <Selection size={18}/><b style={{ fontSize: 12 }}>Choose detected object</b><small style={{ fontSize: 10, color: "#8f9187" }}>{selectedObject ? selectedObject.label : "Select an object in Edit objects"}</small>
-          </button>
-          <button onClick={() => { /* Existing models list is inside ThreeDWorkspace */ const el = document.getElementById("existing-models-anchor"); el?.scrollIntoView({ behavior: "smooth" }); }} style={{ minHeight: 64, border: "1px solid #34362f", borderRadius: 10, background: "#1f1f1d", color: "#f4f0e8", display: "grid", placeItems: "center", gap: 4, padding: 10, textAlign: "center" }}>
-            <Cube size={18}/><b style={{ fontSize: 12 }}>Existing models</b><small style={{ fontSize: 10, color: "#8f9187" }}>Reopen saved models below</small>
-          </button>
-        </div>
-        {threeDSource ? <small style={{ display: "block", marginTop: 8, color: "#a9ba9d", fontSize: 11 }}>Selected: {threeDSource.kind==="sam-crop" ? `${threeDSource.objectLabel} (detected)` : "Uploaded furniture"}. Review it below, then generate when ready.</small> : <small style={{ display: "block", marginTop: 8, color: "#aaa99f", fontSize: 11 }}>Choose a furniture source to continue.</small>}
-      </div>
-      <div id="existing-models-anchor">
-        <ThreeDWorkspace compact key={`${threeDSource?.kind || "empty"}:${threeDSource?.image || ""}:${editorMode}`} initialSource={threeDSource} onBusyChange={setBusy} onModelReady={handleCreatedModel} />
-      </div>
-      {busy ? <p style={{ color: "var(--night-muted)", fontSize: 12, padding: "6px 2px", borderTop: "1px solid var(--night-line)" }} role="status">Keep this workspace open until the model finishes. Your request is already running.</p> : null}
-      {threeDSource && !busy ? <small style={{ color: "#777970", fontSize: 11 }}>Generating uses 12 credits. You will confirm before spending. View in AR is available after a model is ready.</small> : null}
-    </div>
-  );
-}
-function ArMode({ modelUrl, poster, hasModel, onCreate }: { modelUrl: string | null; poster: string | null; hasModel: boolean; onCreate: () => void }) {
-  const recentModels = useQuery(api.models.list, {});
-  const savedModelUrl = recentModels?.find((model) => Boolean(model.url))?.url ?? null;
-  const activeModelUrl = modelUrl || savedModelUrl;
-  if (!hasModel && !activeModelUrl) {
-    return (
-      <div style={{ display: "grid", gap: 14, textAlign: "center", padding: "18px 12px", border: "1px dashed #3a3c36", borderRadius: 12, background: "#1a1b17" }}>
-        <span style={{ width: 48, height: 48, borderRadius: 12, background: "#23241f", display: "grid", placeItems: "center", margin: "0 auto", color: "#aaa99f" }}><Smartphone size={22}/></span>
-        <h3 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 400 }}>Preview furniture in your room</h3>
-        <p style={{ margin: 0, color: "#aaa99f", fontSize: 12, lineHeight: 1.6 }}>AR becomes available after you create a 3D furniture model.</p>
-        <button onClick={onCreate} style={{ minHeight: 44, border: 0, borderRadius: 999, background: "#f4f0e8", color: "#11120f", fontWeight: 700, padding: "0 18px", justifySelf: "center" }}><Cube size={14}/> Go to 3D models</button>
-        <div style={{ textAlign: "left", borderTop: "1px solid #2a2b27", paddingTop: 12, display: "grid", gap: 6 }}>
-          <small style={{ fontWeight: 700, color: "#f4f0e8" }}>Works on supported phones</small>
-          <small style={{ color: "#8f9187", lineHeight: 1.5 }}>Allow camera access when asked. If AR is unavailable, you can still rotate and inspect the 3D preview.</small>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ border: "1px solid #34362f", borderRadius: 12, overflow: "hidden", background: "#11120f", minHeight: 360 }}>
-        <ModelViewer src={activeModelUrl!} poster={poster} />
-      </div>
-      <div style={{ border: "1px solid #34362f", borderRadius: 10, padding: 12, background: "#1a1b17", display: "grid", gap: 8 }}>
-        <b style={{ fontSize: 13 }}>View in your room — device check</b>
-        <p style={{ margin: 0, color: "#aaa99f", fontSize: 12, lineHeight: 1.6 }}>Open this page on your phone and tap <em>View in your room</em> inside the 3D viewer. Allow camera access. If your device does not support AR, use drag to rotate and scroll to zoom — existing capabilities remain.</p>
-        <small style={{ color: "#777970" }}>Approximate dimensions only — not true to scale. Confirm measurements before purchasing. No public links are created without your action.</small>
-        <small style={{ color: "#8f9187" }}>iOS: Safari · AR Quick Look · Android: Chrome · Scene Viewer / WebXR.</small>
-      </div>
     </div>
   );
 }
