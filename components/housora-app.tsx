@@ -4400,6 +4400,20 @@ function ThreeDWorkspace({ initialSource = null, onBusyChange, onModelReady, com
 }
 
 function ExportWorkspace() {
+  const [exporting, setExporting] = useState(false);
+  const [exportMessage, setExportMessage] = useState("");
+  const exportPdf = async () => {
+    setExporting(true);
+    setExportMessage("");
+    try {
+      await downloadDesignPackage();
+      setExportMessage("Design package downloaded as a two-page PDF.");
+    } catch {
+      setExportMessage("The PDF could not be created. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  };
   return (
     <section className="export-workspace">
       <div className="export-copy">
@@ -4409,14 +4423,11 @@ function ExportWorkspace() {
           Export the concept, selected materials, layout notes and reference
           prompt in one concise design package.
         </p>
-        <div className="service-notice export-service-notice" role="status">
-          <b>PDF export not available yet</b>
-          <p>We are finalizing verified exports. The current design can be downloaded as an image from the editor. No credits were charged.</p>
-        </div>
-        <button className="primary-action export-unavailable-action" disabled aria-disabled="true" title="PDF export is not release-ready">
+        <button className="primary-action" onClick={exportPdf} disabled={exporting}>
           <FilePdf />
-          Download design package — coming soon
+          {exporting ? "Building PDF…" : "Download design package"}
         </button>
+        <p className="export-message" role="status" aria-live="polite">{exportMessage}</p>
       </div>
       <div className="export-preview">
         <span>ISMAIL STUDIO</span>

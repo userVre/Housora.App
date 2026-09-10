@@ -1,3 +1,11 @@
+import nextEnv from "@next/env";
+
+const { loadEnvConfig } = nextEnv;
+
+// Match Next.js itself: local readiness checks must read .env.local/.env
+// instead of incorrectly reporting configured values as missing.
+loadEnvConfig(process.cwd());
+
 const required = ["HOUSORA_LEGAL_NAME", "HOUSORA_LEGAL_ADDRESS", "HOUSORA_SUPPORT_EMAIL", "HOUSORA_PRIVACY_EMAIL", "HOUSORA_JURISDICTION"];
 const missing = required.filter(name => !process.env[name]?.trim());
 if (process.env.HOUSORA_LEGAL_REVIEWED !== "true") missing.push("HOUSORA_LEGAL_REVIEWED=true");
