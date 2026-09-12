@@ -1,0 +1,90 @@
+/* Task-specific shells: the work area scrolls; its composer stays visible. */
+.album-workspace .album-workspace-body.workflow-create { position:relative; display:flex!important; flex-direction:column; height:calc(100dvh - 80px); min-height:0; overflow:hidden; }
+.album-workspace .workflow-create .album-canvas { flex:1; width:100%; height:auto; min-height:0!important; overflow:auto; padding:24px 28px!important; background:var(--night); }
+.album-workspace .workflow-create .create-upload-first { min-height:0; width:100%; padding:0; gap:10px; }
+.workflow-create .create-start-heading h1 { font-size:clamp(32px,3vw,44px); line-height:1.15; }
+.workflow-create .create-start-heading p { font-size:15px; font-weight:400; }
+.workflow-create .create-hero-dropzone { width:min(720px,100%); min-height:clamp(240px,40vh,450px); margin:24px auto 0; border:2px dashed #50514b; background:#191a17; border-radius:18px; }
+.workflow-create .create-upload-mark { display:none; }
+.workflow-create .create-hero-dropzone b { font-size:18px; }
+.workflow-create .project-example-link { margin:10px auto 0; }
+.album-workspace .workflow-create .album-preview,.album-workspace .workflow-create .album-preview img { max-height:calc(100dvh - 300px)!important; max-width:100%!important; }
+.studio-composer-anchor { position:relative; flex:none; width:min(1080px,calc(100% - 48px)); margin:0 auto 20px; z-index:20; color:var(--night-text); }
+.studio-composer { border:1px solid #3b3d36; border-radius:24px; padding:16px 14px 12px; background:#191a17; }
+.studio-composer textarea { display:block; width:100%; min-height:62px; max-height:130px; resize:none; border:0; border-radius:8px; padding:3px 6px; background:transparent; color:var(--night-text); font:400 15px/1.5 var(--font-body); }
+.studio-composer textarea::placeholder { color:var(--night-muted); }
+.studio-composer-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding-top:10px; }
+.studio-composer-row>button { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:40px; padding:0 11px; border:1px solid #3b3d36; border-radius:999px; color:var(--night-text); background:#22231f; font:500 12px var(--font-body); white-space:nowrap; }
+.studio-composer-row>button svg { width:16px; height:16px; flex:none; }
+.studio-composer-row>button[aria-expanded="true"],.studio-options button[aria-pressed="true"] { border-color:#cf8752; color:#ffad6d; background:#392714; }
+.studio-composer-row>button.studio-add-photo { width:40px; padding:0; }
+.studio-composer-row>button.studio-generate { width:44px; min-height:44px; padding:0; margin-left:auto; background:var(--night-text); color:var(--night); border:0; }
+.studio-composer-row>button:disabled { opacity:.35; cursor:not-allowed; }
+.studio-composer-anchor :focus-visible { outline:2px solid #eab083; outline-offset:3px; }
+.studio-options { position:absolute; left:0; bottom:calc(100% + 10px); width:min(430px,100%); max-height:min(420px,calc(100dvh - 270px)); overflow:auto; overscroll-behavior:contain; padding:12px; border:1px solid #3b3d36; border-radius:18px; background:#1b1c19; box-shadow:0 14px 40px #0006; }
+.studio-options.is-visual { width:min(780px,100%); }
+.studio-options>header { display:flex; align-items:center; justify-content:space-between; padding:0 4px 8px; }
+.studio-options>header b { text-transform:uppercase; letter-spacing:.06em; font-size:11px; color:var(--night-muted); }
+.studio-options>header button { width:32px; height:32px; padding:7px; border:0; background:transparent; color:var(--night-muted); border-radius:50%; }
+.studio-options>header svg { width:16px; height:16px; }
+.studio-mode-images { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.studio-mode-images button,.studio-style-images button { display:flex; flex-direction:column; gap:8px; padding:0 0 10px; overflow:hidden; border:1px solid transparent; border-radius:14px; background:transparent; color:var(--night-text); font:500 13px var(--font-body); }
+.studio-mode-images img { width:100%; height:170px; object-fit:cover; border-radius:12px; }
+.studio-mode-images span { align-self:center; }
+.studio-style-images { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+.studio-style-images img { width:100%; height:96px; object-fit:cover; }
+.studio-style-images svg { width:14px; height:14px; align-self:center; }
+.studio-option-list { display:grid; gap:3px; }
+.studio-option-list>button { min-height:44px; display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:transparent; color:var(--night-text); border:1px solid transparent; border-radius:10px; text-align:left; }
+.studio-option-list svg { width:16px; height:16px; }
+.studio-detail-options { display:grid; gap:16px; }
+.studio-detail-options fieldset { min-width:0; margin:0; padding:0; border:0; }
+.studio-detail-options legend { padding:0 0 8px; font-size:12px; color:var(--night-muted); }
+.studio-detail-options fieldset>div { display:flex; flex-wrap:wrap; gap:6px; }
+.studio-detail-options button { min-height:40px; padding:6px 10px; border:1px solid #3b3d36; border-radius:999px; background:#22231f; color:var(--night-text); font-size:12px; }
+.album-workspace .workflow-edit.is-launcher .album-canvas { padding:28px!important; background:var(--night); }
+.album-workspace .edit-start-view { min-height:0; padding:0; gap:20px; width:min(920px,100%); }
+.edit-start-heading .eyebrow { display:none; }
+.edit-start-heading h1 { font-size:clamp(32px,3vw,44px); }
+.edit-start-heading p { font-size:14px; }
+.album-workspace .is-edit-studio .album-canvas { overflow:hidden; background:#302c26; }
+.album-workspace .is-edit-studio .album-preview { overflow:hidden; box-shadow:none; }
+.album-workspace .is-edit-studio .album-preview>span { display:none; }
+.album-workspace .is-edit-studio .edit-canvas-toolbar { gap:6px; padding:8px; }
+.edit-canvas-toolbar button { width:44px; padding:0!important; }
+.edit-canvas-toolbar button span,.edit-canvas-toolbar kbd { display:none; }
+.album-workspace .is-edit-inspector { position:relative; }
+.album-workspace .is-edit-inspector .album-panel-content { padding:12px!important; }
+.is-edit-inspector .edit-inspector-heading small { display:none; }
+.is-edit-inspector .real-object-list>button { min-height:60px; grid-template-columns:48px minmax(0,1fr) 18px; gap:12px; }
+.is-edit-inspector .real-object-thumb { width:48px; height:48px; border-radius:10px; }
+.is-edit-inspector .real-object-list small { display:none; }
+.is-edit-inspector .version-history-panel { margin-top:12px; }
+.is-edit-inspector .region-edit-panel { position:sticky; bottom:0; z-index:5; background:#292a26; border-radius:20px; }
+.is-edit-inspector .region-edit-panel textarea { resize:none; }
+.is-edit-inspector .real-object-actions { position:sticky; bottom:0; background:#292a26; padding:16px; border-radius:20px; z-index:4; }
+.workflow-3d .three-d-heading,.workflow-ar .ar-workspace-heading { text-align:center; justify-content:center; margin:0 auto 24px; }
+.workflow-3d .three-d-heading h2,.workflow-ar .ar-workspace-heading h2 { font-size:clamp(32px,3vw,44px); line-height:1.15; }
+.workflow-3d .three-d-heading p,.workflow-ar .ar-workspace-heading p { max-width:540px; margin:auto; font-size:14px; }
+.workflow-3d .tripo-grid { grid-template-columns:minmax(0,1fr) 300px; gap:24px; }
+.workflow-3d .tripo-stage,.workflow-3d .tripo-empty { min-height:420px; }
+.workflow-3d .tripo-panel { padding:24px; border-radius:16px; }
+.workflow-3d .tripo-panel h3 { font:600 20px var(--font-body); }
+.workflow-3d .tripo-panel>p { font-size:13px; line-height:1.6; }
+.workflow-3d .tripo-steps { gap:14px; margin:24px 0; }
+.workflow-ar .ar-workspace-heading .eyebrow { justify-content:center; }
+.workflow-ar .ar-workspace-layout { grid-template-columns:240px minmax(0,1fr); }
+@media(max-width:900px) {
+ .album-workspace .album-workspace-body.workflow-create { height:calc(100dvh - 152px); }
+ .studio-composer-anchor { width:calc(100% - 24px); margin-bottom:12px; }
+ .studio-composer-row>button { min-height:40px; font-size:11px; }
+ .album-workspace .workflow-create .album-canvas { padding:14px!important; }
+ .workflow-3d .tripo-grid { grid-template-columns:1fr; }
+ .workflow-3d .tripo-stage,.workflow-3d .tripo-empty { min-height:280px; }
+ .workflow-ar .ar-workspace-layout { grid-template-columns:1fr; }
+ .studio-mode-images { gap:6px; }.studio-mode-images img { height:105px; }
+ .studio-mode-images button { font-size:11px; }
+ .studio-style-images { grid-template-columns:repeat(3,minmax(0,1fr)); }
+ .studio-composer { padding:10px; border-radius:18px; }.studio-composer textarea { min-height:44px; font-size:14px; }
+ .studio-options { max-height:calc(100dvh - 350px); }
+}

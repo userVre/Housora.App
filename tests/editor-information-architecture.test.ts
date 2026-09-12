@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const source = readFileSync("components/housora-app.tsx", "utf8");
 const styles = readFileSync("app/globals.css", "utf8");
+const workflowStyles = readFileSync("app/workflow-studio.css", "utf8");
 const albumWorkspace = source.slice(
   source.indexOf("function AlbumWorkspace("),
   source.indexOf("function RedesignField("),
@@ -64,15 +65,21 @@ describe("project editor information architecture", () => {
   });
 
   it("uses a launcher-only layout and explains each workflow before upload", () => {
-    expect(albumWorkspace).toContain('album-workspace-body${preview ? "" : " is-launcher"}');
-    expect(albumWorkspace).toContain('{preview ? <aside className={`album-control-panel');
+    expect(albumWorkspace).toContain('album-workspace-body workflow-${selectedWorkflow || "launcher"}');
+    expect(albumWorkspace).toContain('preview && selectedWorkflow === "edit" ? <aside className="album-control-panel is-edit-inspector"');
     expect(albumWorkspace).toContain("Redesign any space from a photo");
     expect(albumWorkspace).toContain("create-dropzone");
-    expect(albumWorkspace).toContain("Every option below adapts to this choice");
+    expect(albumWorkspace).toContain("<CreateComposer");
+    expect(albumWorkspace).toContain('className="studio-composer"');
+    expect(albumWorkspace).toContain('["Interior", "Exterior", "Garden"]');
+    expect(albumWorkspace).toContain("Describe the redesign you want, then hit generate");
     expect(albumWorkspace).toContain("Edit any part of your image");
     expect(albumWorkspace).toContain("edit-dropzone");
+    expect(albumWorkspace).not.toContain("edit-start-steps");
+    expect(albumWorkspace).not.toContain("edit-credit-note");
     expect(albumWorkspace).toContain("<ArWorkspace onCreateModel=");
     expect(styles).toContain(".album-workspace-body.is-launcher");
+    expect(workflowStyles).toContain(".studio-composer-anchor { position:relative; flex:none;");
   });
 
   it("keeps 3D creation and AR placement as one clear connected pipeline", () => {

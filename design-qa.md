@@ -7,6 +7,8 @@ The supplied Housora and Reve screenshots, the approved furniture-photo-to-3D-to
 ## Verified
 
 - Static layout and interaction architecture match the reference hierarchy.
+- Create now uses one photo-first canvas and a compact adaptive composer; switching Interior, Exterior, or Garden changes the space taxonomy, styles, prompt defaults, and advanced options without changing page geometry.
+- After upload, Create keeps the image dominant and anchors the same settings model below it instead of switching users into an unrelated sidebar workflow.
 - Edit upload is separated from Create and has no redesign option bar.
 - Select, Spotlight, Draw, and Reframe have visible selected states and keyboard shortcuts.
 - Spotlight and Draw create real PNG masks for the existing image-edit endpoint.
@@ -19,6 +21,6 @@ The supplied Housora and Reve screenshots, the approved furniture-photo-to-3D-to
 
 ## Visual comparison
 
-The in-app browser could not navigate to the local development URL (navigation timed out), so a same-viewport rendered screenshot comparison could not be completed in this run. The strict design-audit script also could not run because Python is not installed on this machine.
+The production build and browser component tests completed successfully. A signed-in, same-viewport screenshot comparison of the complete workspace could not be completed locally because the development Clerk keys enter a handshake redirect loop; this is an environment/authentication mismatch rather than a workspace render error.
 
 final result: blocked

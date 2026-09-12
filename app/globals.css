@@ -8537,3 +8537,87 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .ar-how-it-works { display:flex; align-items:center; justify-content:center; gap:18px; color:var(--night-muted); font-size:12px; }.ar-how-it-works span { display:flex; align-items:center; gap:8px; }.ar-how-it-works b { width:25px; height:25px; display:grid; place-items:center; border:1px solid #45483f; border-radius:50%; color:var(--night-text); }
 @media (max-width:900px) { .workflow-full-start { padding:22px 18px 90px; }.ar-workspace-layout { grid-template-columns:1fr; }.ar-model-library { max-height:280px; border-right:0; border-bottom:1px solid var(--night-line); }.ar-preview-stage { min-height:460px; }.ar-how-it-works { flex-wrap:wrap; }.ar-how-it-works>svg { display:none; } }
 @media (max-width:560px) { .workflow-full-start { padding:18px 12px 96px; }.ar-workspace-heading h2 { font-size:36px; }.ar-model-empty { min-height:330px; padding:24px 16px; }.ar-preview-stage { min-height:390px; padding:10px; }.ar-preview-stage .model-viewer-shell { min-height:330px; }.ar-preview-actions { display:grid; }.ar-how-it-works { align-items:flex-start; flex-direction:column; } }
+
+/* Canonical creation flow: photo-first canvas with one compact adaptive
+   composer. Interior, exterior, and garden share the same stable geometry. */
+.create-upload-first { width:min(1080px,100%); min-height:calc(100dvh - 64px); padding:30px 32px 60px; gap:14px; align-content:start; }
+.create-upload-first .create-back-to-tools { margin-bottom:2px; }
+.create-upload-first .create-start-heading { gap:6px; }
+.create-upload-first .create-start-heading h1 { font-size:clamp(42px,4.4vw,64px); }
+.create-upload-first .create-start-heading p { font-size:15px; }
+.create-hero-dropzone { position:relative; top:auto; width:min(760px,100%); min-height:330px; margin:20px auto 0; border-color:#565850; border-radius:18px; background:#171816; }
+.create-hero-dropzone:hover,.create-hero-dropzone.is-dragging { transform:none; border-color:#d8dfd0; background:#1c1e19; }
+.create-upload-mark { width:52px; height:52px; display:grid; place-items:center; margin-bottom:8px; border:1px solid #3f423a; border-radius:14px; background:#20221d; color:#c8d5bd; }
+.create-hero-dropzone .create-upload-mark svg { width:22px; height:22px; margin:0; padding:0; border:0; }
+.create-upload-first .project-example-link { margin:-2px auto 2px; }
+.create-composer { width:min(920px,100%); margin:0 auto; padding:14px; display:grid; gap:10px; border:1px solid #3c3d38; border-radius:20px; background:#1b1c19; box-shadow:0 22px 55px rgba(0,0,0,.28); }
+.create-composer-prompt textarea { width:100%; min-height:58px; padding:4px 6px 10px; resize:none; border:0; outline:0; background:transparent; color:#f4f0e8; font:500 15px/1.5 var(--font-body); }
+.create-composer-prompt textarea::placeholder { color:#8d8e87; }
+.create-composer-controls { display:flex; align-items:center; gap:7px; min-width:0; }
+.create-mode-switch { display:flex; gap:3px; padding:3px; border:1px solid #3a3c36; border-radius:999px; background:#141512; }
+.create-mode-switch button { min-height:38px; padding:0 12px; border:0; border-radius:999px; background:transparent; color:#b9bab3; font-size:12px; }
+.create-mode-switch button[aria-pressed="true"] { background:#f4f0e8; color:#11120f; font-weight:750; }
+.create-compact-menu { position:relative; }
+.create-compact-menu>summary,.create-details>summary { min-height:44px; padding:0 12px; display:flex; align-items:center; gap:7px; border:1px solid #3b3d37; border-radius:999px; background:#20211e; color:#e7e4dd; font-size:12px; font-weight:650; list-style:none; cursor:pointer; white-space:nowrap; }
+.create-compact-menu>summary::-webkit-details-marker,.create-details>summary::-webkit-details-marker { display:none; }
+.create-compact-menu>summary svg,.create-details>summary svg { width:13px; height:13px; }
+.create-compact-menu[open]>summary,.create-details[open]>summary { border-color:#9aaa90; background:#292d26; }
+.create-compact-menu>fieldset { position:absolute; z-index:12; left:0; bottom:calc(100% + 8px); width:min(430px,80vw); max-height:360px; overflow:auto; box-shadow:0 18px 48px #000b; }
+.create-style-menu>fieldset { width:min(560px,82vw); }
+.create-composer .create-details { position:relative; border:0; background:transparent; }
+.create-composer .create-details>div { position:absolute; z-index:12; right:0; bottom:calc(100% + 8px); width:min(520px,82vw); max-height:420px; padding:12px; overflow:auto; border:1px solid #3b3d37; border-radius:14px; background:#171815; box-shadow:0 18px 48px #000b; }
+.create-disabled-generate { min-height:44px; margin-left:auto; padding-inline:18px; border-radius:999px; }
+.create-composer>small { color:#85877f; font-size:10px; text-align:right; }
+
+/* Create after upload becomes a canvas with an anchored creation console,
+   matching the interaction model used before upload instead of switching to
+   an unrelated settings sidebar. */
+.album-workspace-body.is-create-studio { position:relative; display:block!important; height:calc(100dvh - 64px); overflow:hidden; }
+.is-create-studio .album-canvas { height:100%; min-height:0; padding:22px 22px 330px!important; }
+.is-create-studio .album-preview,.is-create-studio .album-preview img { max-height:calc(100dvh - 410px)!important; }
+.is-create-studio .album-control-panel.is-create-composer { position:absolute; z-index:8; left:50%; right:auto; bottom:18px; width:min(980px,calc(100% - 36px))!important; height:auto; max-height:292px; transform:translateX(-50%); overflow:hidden; border:1px solid #3b3d37; border-radius:20px; background:rgba(27,28,25,.97); box-shadow:0 24px 64px #000b; backdrop-filter:blur(18px); }
+.is-create-studio .is-create-composer .editor-mode-tabs { display:none; }
+.is-create-studio .is-create-composer .album-panel-content { padding:14px!important; overflow:auto!important; }
+.is-create-studio .is-create-composer .album-help { display:none; }
+.is-create-studio .is-create-composer .create-secondary-group { display:grid; grid-template-columns:auto minmax(180px,1fr) minmax(240px,1.25fr); gap:9px; align-items:start; }
+.is-create-studio .is-create-composer .album-mode-switch { grid-column:1; }
+.is-create-studio .is-create-composer .create-secondary-group>fieldset:nth-of-type(1) { grid-column:2; }
+.is-create-studio .is-create-composer .create-secondary-group>fieldset:nth-of-type(2) { grid-column:3; }
+.is-create-studio .is-create-composer .album-prompt { grid-column:1/3; min-height:78px; }
+.is-create-studio .is-create-composer .album-customize-details { grid-column:3; }
+.is-create-studio .is-create-composer .album-sticky-action { position:absolute; right:14px; bottom:14px; width:calc(33% - 20px); padding:0; background:transparent; border:0; }
+.is-create-studio .is-create-composer .version-history-panel { display:none!important; }
+
+/* Edit is deliberately denser: image and tools remain spatially stable while
+   detected layers and the prompt scroll independently in the inspector. */
+.album-workspace-body.is-edit-studio { grid-template-columns:minmax(0,1fr) minmax(360px,420px)!important; height:calc(100dvh - 64px); overflow:hidden; }
+.is-edit-studio .album-canvas { min-height:0; }
+.is-edit-studio .album-control-panel { height:100%; max-height:none; }
+.is-edit-studio .album-panel-content { overflow-y:auto; padding-bottom:124px!important; }
+.is-edit-studio .edit-inspector-heading { flex:none; background:#191a17; }
+.is-edit-studio .edit-canvas-toolbar { bottom:22px; }
+
+@media (max-width:900px) {
+  .create-composer-controls { flex-wrap:wrap; }
+  .create-disabled-generate { flex:1; }
+  .album-workspace-body.is-create-studio,.album-workspace-body.is-edit-studio { display:flex!important; height:auto; overflow:visible; }
+  .is-create-studio .album-canvas { min-height:58svh; padding:18px 12px 82px!important; }
+  .is-create-studio .album-preview,.is-create-studio .album-preview img { max-height:52svh!important; }
+  .is-create-studio .album-control-panel.is-create-composer { position:relative; left:auto; bottom:auto; width:100%!important; max-height:none; transform:none; border-width:1px 0 0; border-radius:0; }
+  .is-create-studio .is-create-composer .create-secondary-group { grid-template-columns:1fr; }
+  .is-create-studio .is-create-composer .create-secondary-group>* { grid-column:1!important; }
+  .is-create-studio .is-create-composer .album-sticky-action { position:relative; right:auto; bottom:auto; width:100%; }
+  .is-edit-studio .album-control-panel { height:auto; }
+}
+@media (max-width:600px) {
+  .create-upload-first { padding:20px 12px 104px; }
+  .create-upload-first .create-start-heading h1 { font-size:39px; }
+  .create-hero-dropzone { min-height:250px; margin-top:10px; padding:22px; }
+  .create-composer { padding:11px; border-radius:16px; }
+  .create-mode-switch { width:100%; }
+  .create-mode-switch button { flex:1; }
+  .create-compact-menu,.create-details { flex:1 1 calc(50% - 6px); }
+  .create-compact-menu>summary,.create-details>summary { justify-content:center; }
+  .create-disabled-generate { flex-basis:100%; }
+  .create-composer>small { text-align:left; }
+}
