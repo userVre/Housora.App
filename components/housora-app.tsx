@@ -44,6 +44,7 @@ import {
   Plus,
   Ruler,
   Share2 as ShareNetwork,
+  Smartphone,
   LogOut as SignOut,
   Sparkles as Sparkle,
   LayoutGrid as SquaresFour,
@@ -611,6 +612,12 @@ export function HousoraApp({
   const [removedDesign, setRemovedDesign] = useState<SavedDesign | null>(null);
   const [notice, setNotice] = useState("");
   const [recentMenuOpen, setRecentMenuOpen] = useState<string | null>(null);
+  const [renamingRecentId, setRenamingRecentId] = useState<string | null>(null);
+  const [recentRename, setRecentRename] = useState("");
+  const recentOpenTimer = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (recentOpenTimer.current) window.clearTimeout(recentOpenTimer.current);
+  }, []);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const rawRequestedView = params.get("view");
@@ -714,13 +721,19 @@ export function HousoraApp({
     navigate("album");
   };
   const startFromReference = (reference: InspirationReference) => {
-    setProjectDraft({
+    const draftId = safeUUID();
+    const draft: ProjectDraft = {
+      id: draftId,
       title: reference.title,
       image: reference.image,
       prompt: reference.prompt,
       mode: "Interior",
-    });
+    };
+    setProjectDraft(draft);
     navigate("album");
+    void saveDesign({ ...draft, id: draftId }).then((context) => {
+      setProjectDraft((current) => current?.id === draftId ? { ...current, ...context } : current);
+    }).catch(() => setNotice("The image opened, but the project could not be saved. Save it from the editor before leaving."));
   };
   const openSavedProject = (design: SavedDesign) => {
     setProjectDraft({
@@ -735,12 +748,24 @@ export function HousoraApp({
     navigate("album", design.id);
   };
   const openStudio = () => navigate("studio");
-  const renameProject = async (design: SavedDesign) => {
-    const nextTitle = window.prompt("Rename project", design.title)?.trim();
+  const renameProject = async (design: SavedDesign, requestedTitle: string) => {
+    const nextTitle = requestedTitle.trim();
     if (!nextTitle || nextTitle === design.title) return;
     await updateDesignMeta({ designId: design.id, title: nextTitle });
     setNotice("Project renamed");
     setRecentMenuOpen(null);
+  };
+  const beginRecentRename = (design: SavedDesign) => {
+    if (recentOpenTimer.current) window.clearTimeout(recentOpenTimer.current);
+    setRecentMenuOpen(null);
+    setRenamingRecentId(design.id);
+    setRecentRename(design.title);
+  };
+  const finishRecentRename = (design: SavedDesign) => {
+    const nextTitle = recentRename.trim();
+    setRenamingRecentId(null);
+    setRecentRename("");
+    if (nextTitle && nextTitle !== design.title) void renameProject(design, nextTitle);
   };
   const shareProject = async (design: SavedDesign) => {
     const url = new URL(window.location.href);
@@ -814,13 +839,20 @@ export function HousoraApp({
         {!shellCollapsed ? <section className="rail-recents" aria-labelledby="recent-projects-title">
           <div className="rail-section-title"><span id="recent-projects-title">Recent</span><button onClick={() => navigate("projects")} aria-label="View all projects">View all</button></div>
           {recentProjects.length ? <ul>{recentProjects.map((design) => <li key={design.id}>
-            <button className="rail-recent-project" onClick={() => openSavedProject(design)} title={design.title}>
+            {renamingRecentId === design.id ? <input className="rail-recent-rename" aria-label={`Rename ${design.title}`} value={recentRename} onChange={(event) => setRecentRename(event.target.value)} onBlur={() => finishRecentRename(design)} onKeyDown={(event) => {
+              if (event.key === "Enter") event.currentTarget.blur();
+              if (event.key === "Escape") { setRenamingRecentId(null); setRecentRename(""); }
+            }} autoFocus /> : <button className="rail-recent-project" onClick={(event) => {
+              if (event.detail !== 1) return;
+              if (recentOpenTimer.current) window.clearTimeout(recentOpenTimer.current);
+              recentOpenTimer.current = window.setTimeout(() => openSavedProject(design), 220);
+            }} onDoubleClick={() => beginRecentRename(design)} title={`${design.title} · Double-click to rename`}>
               {design.pinned ? <Pin aria-hidden="true" /> : <span aria-hidden="true" />}
               <span>{design.title}</span>
-            </button>
+            </button>}
             <button className="rail-recent-more" onClick={() => setRecentMenuOpen(recentMenuOpen === design.id ? null : design.id)} aria-label={`Project actions for ${design.title}`} aria-expanded={recentMenuOpen === design.id}><DotsThree aria-hidden="true" /></button>
             {recentMenuOpen === design.id ? <div className="rail-project-menu" role="menu">
-              <button role="menuitem" onClick={() => void renameProject(design)}><PencilSimple /> Rename</button>
+              <button role="menuitem" onClick={() => beginRecentRename(design)}><PencilSimple /> Rename</button>
               <button role="menuitem" onClick={() => void shareProject(design)}><ShareNetwork /> Share</button>
               <button role="menuitem" onClick={() => { void updateDesignMeta({ designId: design.id, pinned: !design.pinned }); setRecentMenuOpen(null); }}><Pin /> {design.pinned ? "Unpin" : "Pin"}</button>
               <button role="menuitem" onClick={() => { void updateDesignMeta({ designId: design.id, archived: true }); setRecentMenuOpen(null); setNotice("Project archived"); }}><Archive /> Archive</button>
@@ -969,6 +1001,7 @@ export function HousoraApp({
         ) : null}
         {activePage === "album" ? (
           <AlbumWorkspace
+            key={`${projectDraft?.id || "new-project"}:${projectDraft?.projectId || "draft"}`}
             onBack={() => navigate("projects")}
             onSaveDesign={saveDesign}
             initialDraft={projectDraft}
@@ -1996,6 +2029,7 @@ function AlbumWorkspace({
   const [preview, setPreview] = useState<string | null>(initialDraft?.image ?? null);
   type EditorMode = "redesign" | "objects";
   const [editorMode, setEditorMode] = useState<EditorMode>("redesign");
+  const uploadIntentRef = useRef<EditorMode>("redesign");
   const [detailChoices, setDetailChoices] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(Boolean(initialDraft?.image && initialDraft?.projectId && initialDraft.roomId));
   const [saving, setSaving] = useState(false);
@@ -2085,12 +2119,20 @@ function AlbumWorkspace({
   const [threeDSource, setThreeDSource] = useState<ThreeDSource | null>(null);
   const [threeDBusy, setThreeDBusy] = useState(false);
   const [threeDOpen, setThreeDOpen] = useState(false);
+  const [threeDEntry, setThreeDEntry] = useState<"3d" | "ar">("3d");
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const open3d = (object: DetectedObject) => {
+    setThreeDEntry("3d");
     setThreeDSource({ image: object.thumbnail, kind: "sam-crop", objectLabel: object.label, objectBox: object.box });
     setThreeDOpen(true);
   };
   const open3dFromPreview = () => {
+    setThreeDEntry("3d");
+    setThreeDSource(null);
+    setThreeDOpen(true);
+  };
+  const openArWorkflow = () => {
+    setThreeDEntry("ar");
     setThreeDSource(null);
     setThreeDOpen(true);
   };
@@ -2129,6 +2171,10 @@ function AlbumWorkspace({
       window.setTimeout(() => setExportStatus(""), 3500);
     }
   };
+  const requestUpload = (intent: EditorMode) => {
+    uploadIntentRef.current = intent;
+    fileRef.current?.click();
+  };
   const upload = (file?: File) => {
     setUploadError("");
     if (!file) return;
@@ -2147,7 +2193,8 @@ function AlbumWorkspace({
       pushHistory(img);
       originalPreview.current = String(reader.result);
       setSelectedObject(null);
-      setEditorMode("redesign");
+      setEditorMode(uploadIntentRef.current);
+      uploadIntentRef.current = "redesign";
       setCompareOriginal(false);
       setSaveError("");
       setZoom(1); setFit(true);
@@ -2310,20 +2357,31 @@ function AlbumWorkspace({
               <div>
                 <span className="eyebrow">Your space, reimagined</span>
                 <h1>Start with your space</h1>
-                <p>Upload a room photo to redesign it, edit individual objects, or create a 3D furniture model.</p>
+                <p>Choose what you want to make. Your project is created automatically after you add an image.</p>
               </div>
-              <div className="album-start-actions">
-                <button onClick={() => fileRef.current?.click()}>
-                  <UploadSimple />
-                  <b>Upload a room photo</b>
-                  <small>JPG, PNG, or WEBP · up to 10 MB</small>
+              <div className="project-workflow-grid" aria-label="Choose a project workflow">
+                <button onClick={() => requestUpload("redesign")}>
+                  <span><Sparkle aria-hidden="true" /></span>
+                  <b>Create</b>
+                  <small>Redesign a room from your photo</small>
                 </button>
-                <button onClick={startTemplate}>
-                  <SquaresFour />
-                  <b>Use an example room</b>
-                  <small>Explore without uploading</small>
+                <button onClick={() => requestUpload("objects")}>
+                  <span><Selection aria-hidden="true" /></span>
+                  <b>Edit</b>
+                  <small>Change furniture, surfaces, or details</small>
+                </button>
+                <button onClick={open3dFromPreview}>
+                  <span><Cube aria-hidden="true" /></span>
+                  <b>3D</b>
+                  <small>Create a model from one furniture image</small>
+                </button>
+                <button onClick={openArWorkflow}>
+                  <span><Smartphone aria-hidden="true" /></span>
+                  <b>AR</b>
+                  <small>Place a finished 3D model in your room</small>
                 </button>
               </div>
+              <button className="project-example-link" onClick={startTemplate}><SquaresFour aria-hidden="true" /> Or explore with an example room</button>
               {uploadError ? <p className="album-upload-error" role="alert">{uploadError}</p> : null}
               <p className="album-credit-note">Uploading and choosing a direction are free. We always ask before using credits.</p>
             </div>
@@ -2394,11 +2452,11 @@ function AlbumWorkspace({
                   <SquaresFour size={28} style={{ color: "#8d9b81" }}/>
                   <h3 style={{ margin: 0, fontSize: 14 }}>Upload a photo first</h3>
                   <p style={{ color: "#8f9187", fontSize: 12, maxWidth: 280 }}>After upload, scan for furniture and surfaces. Detection is paid (1 credit) and only runs when you confirm — switching tabs never charges.</p>
-                  <button onClick={() => fileRef.current?.click()} style={{ minHeight: 44, padding: "0 16px", border: "1px solid #34362f", borderRadius: 8, background: "#f4f0e8", color: "#11120f", fontWeight: 700 }}><UploadSimple size={14}/> Upload a photo</button>
+                  <button onClick={() => requestUpload("objects")} style={{ minHeight: 44, padding: "0 16px", border: "1px solid #34362f", borderRadius: 8, background: "#f4f0e8", color: "#11120f", fontWeight: 700 }}><UploadSimple size={14}/> Upload a photo</button>
                   <small style={{ color: "#777970" }}>Room-type inference in Redesign is free. Paid detection happens here only.</small>
                 </div>
               ) : (
-                <DetectedObjects key={`${mode}:${preview}`} hasImage active={editorMode === "objects"} initialObjects={preview === initialDraft?.image ? initialDraft.detectedObjects : undefined} mode={mode} image={preview} onUpload={() => fileRef.current?.click()} onSelect={setSelectedObject} onCreate3d={open3d} onImageChange={async (image, storageWarning) => { setPreview(image); pushHistory(image); setSelectedObject(null); if (storageWarning) { setSaveError(storageWarning); return; } try { if (!versionContext) await persistImage(preview); await persistImage(image, "Object edit"); } catch { setSaveError("Your edit is ready, but saving failed. Save again or download before leaving."); } }} />
+                <DetectedObjects key={`${mode}:${preview}`} hasImage active={editorMode === "objects"} initialObjects={preview === initialDraft?.image ? initialDraft.detectedObjects : undefined} mode={mode} image={preview} onUpload={() => requestUpload("objects")} onSelect={setSelectedObject} onCreate3d={open3d} onImageChange={async (image, storageWarning) => { setPreview(image); pushHistory(image); setSelectedObject(null); if (storageWarning) { setSaveError(storageWarning); return; } try { if (!versionContext) await persistImage(preview); await persistImage(image, "Object edit"); } catch { setSaveError("Your edit is ready, but saving failed. Save again or download before leaving."); } }} />
               )
             ) : null}
             {preview ? (
@@ -2432,9 +2490,16 @@ function AlbumWorkspace({
           <button className="primary-action" onClick={onBack}>Leave project</button>
         </footer>
       </WorkspaceDialog>
-      <WorkspaceDialog open={threeDOpen} onClose={() => setThreeDOpen(false)} title={threeDSource?.objectLabel ? `Create a 3D model of ${threeDSource.objectLabel}` : "3D models"} wide>
+      <WorkspaceDialog open={threeDOpen} onClose={() => setThreeDOpen(false)} title={threeDSource?.objectLabel ? `Create a 3D model of ${threeDSource.objectLabel}` : threeDEntry === "ar" ? "AR preview" : "3D models"} wide>
         <div className="project-3d-dialog-body">
-          <ThreeDWorkspace initialSource={threeDSource} onBusyChange={setThreeDBusy} />
+          {threeDEntry === "ar" ? <div className="project-3d-context"><Smartphone aria-hidden="true" /><div><b>AR starts with a 3D model</b><p>Create or reopen a model below. When it is ready, choose “View in your room” from the preview.</p></div></div> : null}
+          <ThreeDWorkspace initialSource={threeDSource} onBusyChange={setThreeDBusy} onSourceSelected={(image) => {
+            if (preview) return;
+            setPreview(image);
+            originalPreview.current = image;
+            pushHistory(image);
+            void persistImage(image, threeDEntry === "ar" ? "AR furniture source" : "3D furniture source").catch(() => setSaveError("The furniture image opened, but the project could not be saved. Save it before leaving."));
+          }} />
         </div>
       </WorkspaceDialog>
     </section>
@@ -4101,7 +4166,7 @@ function DesignStudio({
   );
 }
 
-function ThreeDWorkspace({ initialSource = null, onBusyChange, onModelReady, compact = false }: { initialSource?: ThreeDSource | null; onBusyChange?: (busy: boolean) => void; onModelReady?: (url: string, poster: string | null) => void; compact?: boolean } = {}) {
+function ThreeDWorkspace({ initialSource = null, onBusyChange, onModelReady, onSourceSelected, compact = false }: { initialSource?: ThreeDSource | null; onBusyChange?: (busy: boolean) => void; onModelReady?: (url: string, poster: string | null) => void; onSourceSelected?: (image: string) => void; compact?: boolean } = {}) {
   const { user } = useUser();
   const trackingKey = user?.id ? `housora:tripo:${user.id}` : null;
   const recentModels = useQuery(api.models.list, {});
@@ -4207,6 +4272,7 @@ function ThreeDWorkspace({ initialSource = null, onBusyChange, onModelReady, com
     const preview = URL.createObjectURL(file);
     setImagePreview(preview);
     setSource({ image: preview, kind: "furniture-upload" });
+    onSourceSelected?.(preview);
     setModelUrl(null);
     setTaskId(null);
     setTrackingToken(null);

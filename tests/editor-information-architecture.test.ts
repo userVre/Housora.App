@@ -7,8 +7,16 @@ const albumWorkspace = source.slice(
   source.indexOf("function AlbumWorkspace("),
   source.indexOf("function RedesignField("),
 );
+const productWorkspace = source.slice(source.indexOf("export function HousoraApp("), source.indexOf("function DesignHome("));
 
 describe("project editor information architecture", () => {
+  it("reopens projects as stable workspaces and supports inline recent renaming", () => {
+    expect(productWorkspace).toContain('key={`${projectDraft?.id || "new-project"}:${projectDraft?.projectId || "draft"}`}');
+    expect(productWorkspace).toContain("onDoubleClick={() => beginRecentRename(design)}");
+    expect(productWorkspace).toContain('className="rail-recent-rename"');
+    expect(productWorkspace).toContain("void saveDesign({ ...draft, id: draftId })");
+  });
+
   it("keeps only peer image workflows in the contextual inspector", () => {
     expect(albumWorkspace).toContain('type EditorMode = "redesign" | "objects"');
     expect(albumWorkspace).toContain("Design room");
@@ -41,5 +49,16 @@ describe("project editor information architecture", () => {
     expect(styles).toContain(".album-bar-actions { display:none; }");
     expect(styles).toContain(".album-mobile-actions { display:block; position:relative; }");
     expect(styles).toContain(".product-shell.is-editor .editor-mode-tabs { top:60px; }");
+  });
+
+  it("starts new projects from four clear workflows", () => {
+    expect(albumWorkspace).toContain('aria-label="Choose a project workflow"');
+    expect(albumWorkspace).toContain("<b>Create</b>");
+    expect(albumWorkspace).toContain("<b>Edit</b>");
+    expect(albumWorkspace).toContain("<b>3D</b>");
+    expect(albumWorkspace).toContain("<b>AR</b>");
+    expect(albumWorkspace).toContain('requestUpload("objects")');
+    expect(albumWorkspace).toContain("openArWorkflow");
+    expect(albumWorkspace).toContain("onSourceSelected");
   });
 });
