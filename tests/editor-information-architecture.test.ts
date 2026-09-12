@@ -65,11 +65,38 @@ describe("project editor information architecture", () => {
 
   it("uses a launcher-only layout and explains each workflow before upload", () => {
     expect(albumWorkspace).toContain('album-workspace-body${preview ? "" : " is-launcher"}');
-    expect(albumWorkspace).toContain('{preview ? <aside className="album-control-panel">');
-    expect(albumWorkspace).toContain("Create a complete space");
-    expect(albumWorkspace).toContain("Detection costs 1 credit only after you confirm");
-    expect(albumWorkspace).toContain("AR needs a finished 3D model");
+    expect(albumWorkspace).toContain('{preview ? <aside className={`album-control-panel');
+    expect(albumWorkspace).toContain("Redesign any space from a photo");
+    expect(albumWorkspace).toContain("create-dropzone");
+    expect(albumWorkspace).toContain("Every option below adapts to this choice");
+    expect(albumWorkspace).toContain("Edit any part of your image");
+    expect(albumWorkspace).toContain("edit-dropzone");
+    expect(albumWorkspace).toContain("<ArWorkspace onCreateModel=");
     expect(styles).toContain(".album-workspace-body.is-launcher");
+  });
+
+  it("keeps 3D creation and AR placement as one clear connected pipeline", () => {
+    expect(albumWorkspace).toContain('selectedWorkflow === "3d"');
+    expect(albumWorkspace).toContain('selectedWorkflow === "ar"');
+    expect(source).toContain("Turn furniture into a 3D model.");
+    expect(source).toContain("Furniture photo → 3D model");
+    expect(source).toContain("AR needs a finished 3D model — not a flat JPG or PNG.");
+    expect(source).toContain("No AR-ready models yet");
+    expect(source).toContain("Create from a furniture photo");
+    expect(source).toContain("<ModelViewer src={selectedModel.url}");
+    expect(styles).toContain(".ar-workspace-layout");
+  });
+
+  it("ships functional Reve-style edit tools and explicit paid confirmations", () => {
+    expect(albumWorkspace).toContain('type CanvasEditTool = "select" | "spotlight" | "draw" | "reframe"');
+    expect(albumWorkspace).toContain('className="edit-canvas-toolbar"');
+    expect(albumWorkspace).toContain('title="Select object (V)"');
+    expect(albumWorkspace).toContain('title="Reframe (R)"');
+    expect(albumWorkspace).toContain("createRegionMask");
+    expect(albumWorkspace).toContain('mask: canvas.toDataURL("image/png")');
+    expect(albumWorkspace).toContain('title={activeTool === "reframe" ? "Apply this reframe?"');
+    expect(styles).toContain(".canvas-spotlight-region");
+    expect(styles).toContain(".canvas-draw-overlay");
   });
 
   it("persists and restores the selected project workflow", () => {
