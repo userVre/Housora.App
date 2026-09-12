@@ -22,6 +22,7 @@ export const save = mutation({
     title: v.string(),
     image: v.string(),
     mode: v.union(v.literal("Interior"), v.literal("Exterior"), v.literal("Garden")),
+    workflow: v.optional(v.union(v.literal("create"), v.literal("edit"), v.literal("3d"), v.literal("ar"))),
     savedAt: v.string(),
     prompt: v.optional(v.string()),
   },

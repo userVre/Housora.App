@@ -115,6 +115,7 @@ function safeUUID() {
 }
 
 type DesignMode = "Interior" | "Exterior" | "Garden";
+type ProjectWorkflow = "create" | "edit" | "3d" | "ar";
 type WorkspacePage =
   | "home"
   | "create"
@@ -137,6 +138,7 @@ type SavedDesign = {
   savedAt: string;
   pinned?: boolean;
   archivedAt?: number;
+  workflow?: ProjectWorkflow;
 };
 type ProjectDraft = {
   detectedObjects?: DetectedObject[];
@@ -147,6 +149,7 @@ type ProjectDraft = {
   image: string;
   prompt?: string;
   mode: DesignMode;
+  workflow?: ProjectWorkflow;
 };
 
 function useDialogFocus(open: boolean, onClose: () => void) {
@@ -587,6 +590,7 @@ export function HousoraApp({
     savedAt: row.savedAt,
     pinned: row.pinned,
     archivedAt: row.archivedAt,
+    workflow: row.workflow as ProjectWorkflow | undefined,
   }));
   const savedReferences: InspirationReference[] = (referenceRows ?? []).map((row) => ({
     title: row.title,
@@ -606,7 +610,7 @@ export function HousoraApp({
     const designId = new URLSearchParams(window.location.search).get("design");
     const row = designRows.find(item => item.designId === designId);
     if (row && projectDraft?.id !== row.designId) {
-      setProjectDraft({ id: row.designId, projectId: row.projectId, roomId: row.roomId, title: row.title, image: row.image, prompt: row.prompt, mode: row.mode });
+      setProjectDraft({ id: row.designId, projectId: row.projectId, roomId: row.roomId, title: row.title, image: row.image, prompt: row.prompt, mode: row.mode, workflow: row.workflow as ProjectWorkflow | undefined });
     }
   }, [activePage, designRows, projectDraft?.id]);
   const [removedDesign, setRemovedDesign] = useState<SavedDesign | null>(null);
@@ -659,6 +663,7 @@ export function HousoraApp({
       mode: design.mode,
       savedAt: new Date().toISOString(),
       prompt: design.prompt,
+      workflow: design.workflow,
     });
     setNotice("Design saved");
     if (new URLSearchParams(window.location.search).get("view") === "album") {
@@ -683,6 +688,7 @@ export function HousoraApp({
       image: removedDesign.image,
       mode: removedDesign.mode,
       savedAt: removedDesign.savedAt,
+      workflow: removedDesign.workflow,
     });
     setRemovedDesign(null);
     setNotice("Design restored");
@@ -716,8 +722,7 @@ export function HousoraApp({
   };
   const startBlankProject = () => {
     const draftId = safeUUID();
-    const title = `Untitled project ${savedDesigns.length + 1}`;
-    setProjectDraft({ id: draftId, title, image: "", prompt: "", mode: "Interior" });
+    setProjectDraft({ id: draftId, title: "New project", image: "", prompt: "", mode: "Interior" });
     navigate("album");
   };
   const startFromReference = (reference: InspirationReference) => {
@@ -728,6 +733,7 @@ export function HousoraApp({
       image: reference.image,
       prompt: reference.prompt,
       mode: "Interior",
+      workflow: "create",
     };
     setProjectDraft(draft);
     navigate("album");
@@ -744,6 +750,7 @@ export function HousoraApp({
       title: design.title,
       image: design.image,
       mode: design.mode,
+      workflow: design.workflow,
     });
     navigate("album", design.id);
   };
@@ -2028,7 +2035,9 @@ function AlbumWorkspace({
   const [prompt, setPrompt] = useState(initialDraft?.prompt ?? "");
   const [preview, setPreview] = useState<string | null>(initialDraft?.image ?? null);
   type EditorMode = "redesign" | "objects";
-  const [editorMode, setEditorMode] = useState<EditorMode>("redesign");
+  const [selectedWorkflow, setSelectedWorkflow] = useState<ProjectWorkflow | null>(initialDraft?.workflow ?? (initialDraft?.image ? "create" : null));
+  const workflowRef = useRef<ProjectWorkflow | null>(initialDraft?.workflow ?? (initialDraft?.image ? "create" : null));
+  const [editorMode, setEditorMode] = useState<EditorMode>(initialDraft?.workflow === "edit" ? "objects" : "redesign");
   const uploadIntentRef = useRef<EditorMode>("redesign");
   const [detailChoices, setDetailChoices] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(Boolean(initialDraft?.image && initialDraft?.projectId && initialDraft.roomId));
@@ -2063,7 +2072,9 @@ function AlbumWorkspace({
   const persistImage = async (image: string, instruction = prompt) => {
     setSaveError("");
     historyLoaded.current = true;
-    const context = await onSaveDesign({ id: designId, title: initialDraft?.title || `${mode} design`, image, mode, prompt: instruction });
+    const workflow = workflowRef.current ?? selectedWorkflow ?? (editorMode === "objects" ? "edit" : "create");
+    const draftTitle = initialDraft?.title && initialDraft.title !== "New project" ? initialDraft.title : `${mode} ${workflow === "edit" ? "edit" : workflow === "3d" ? "3D project" : workflow === "ar" ? "AR project" : "design"}`;
+    const context = await onSaveDesign({ id: designId, title: draftTitle, image, mode, prompt: instruction, workflow });
     setVersionContext(context);
     setSaved(true);
   };
@@ -2171,7 +2182,9 @@ function AlbumWorkspace({
       window.setTimeout(() => setExportStatus(""), 3500);
     }
   };
-  const requestUpload = (intent: EditorMode) => {
+  const requestUpload = (intent: EditorMode, workflow: ProjectWorkflow = intent === "objects" ? "edit" : "create") => {
+    setSelectedWorkflow(workflow);
+    workflowRef.current = workflow;
     uploadIntentRef.current = intent;
     fileRef.current?.click();
   };
@@ -2204,6 +2217,8 @@ function AlbumWorkspace({
     reader.readAsDataURL(file);
   };
   const startTemplate = () => {
+    setSelectedWorkflow("create");
+    workflowRef.current = "create";
     const img = modeData[mode].image;
     setPreview(img);
     pushHistory(img);
@@ -2302,13 +2317,13 @@ function AlbumWorkspace({
           <button className="album-back" onClick={() => preview && !saved ? setLeaveConfirmOpen(true) : onBack()} aria-label="Back to Projects">
             <ArrowLeft /> Back to Projects
           </button>
-          <span className="album-project-title" title={initialDraft?.title ?? "Untitled project"}>{initialDraft?.title ?? "Untitled project"}</span>
+          <span className="album-project-title" title={preview ? initialDraft?.title && initialDraft.title !== "New project" ? initialDraft.title : `${mode} project` : "New project"}>{preview ? initialDraft?.title && initialDraft.title !== "New project" ? initialDraft.title : `${mode} project` : "New project"}</span>
         </div>
         <div className="album-bar-right">
-          <button className="album-models-action" onClick={open3dFromPreview} aria-label="Open 3D models">
+          {preview ? <button className="album-models-action" onClick={open3dFromPreview} aria-label="Open 3D models">
             <Cube /> <span>3D models</span>
             {threeDBusy ? <i aria-hidden="true" /> : null}
-          </button>
+          </button> : null}
           {preview ? (
             <div className="album-bar-actions" aria-label="Project image actions">
               <button className="icon-secondary" aria-label="Compare with original" title="Compare with original" aria-pressed={compareOriginal} onClick={() => setCompareOriginal((value) => !value)}>
@@ -2338,7 +2353,7 @@ function AlbumWorkspace({
       </header>
       <input ref={fileRef} className="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Upload a space photo" onChange={(event) => { upload(event.target.files?.[0]); event.currentTarget.value = ""; }} />
       <p className="visually-hidden" role="alert" aria-live="assertive">{uploadError}</p>
-      <div className="album-workspace-body">
+      <div className={`album-workspace-body${preview ? "" : " is-launcher"}`}>
         <main ref={canvasRef} className="album-canvas" onDrop={(event) => { event.preventDefault(); upload(event.dataTransfer.files[0]); }} onDragOver={(event) => event.preventDefault()}>
           {preview ? (
             <div className={`album-preview tool-${activeTool}`} style={{ width: fit ? `min(100%, calc((100dvh - 230px) * ${previewRatio}))` : undefined, aspectRatio: previewRatio, transform: fit ? undefined : `scale(${zoom})`, transformOrigin: "center center" }} onClick={(event) => {
@@ -2360,28 +2375,47 @@ function AlbumWorkspace({
                 <p>Choose what you want to make. Your project is created automatically after you add an image.</p>
               </div>
               <div className="project-workflow-grid" aria-label="Choose a project workflow">
-                <button onClick={() => requestUpload("redesign")}>
+                <button aria-pressed={selectedWorkflow === "create"} onClick={() => { workflowRef.current = "create"; setSelectedWorkflow("create"); }}>
                   <span><Sparkle aria-hidden="true" /></span>
                   <b>Create</b>
                   <small>Redesign a room from your photo</small>
                 </button>
-                <button onClick={() => requestUpload("objects")}>
+                <button aria-pressed={selectedWorkflow === "edit"} onClick={() => { workflowRef.current = "edit"; setSelectedWorkflow("edit"); }}>
                   <span><Selection aria-hidden="true" /></span>
                   <b>Edit</b>
                   <small>Change furniture, surfaces, or details</small>
                 </button>
-                <button onClick={open3dFromPreview}>
+                <button aria-pressed={selectedWorkflow === "3d"} onClick={() => { workflowRef.current = "3d"; setSelectedWorkflow("3d"); }}>
                   <span><Cube aria-hidden="true" /></span>
                   <b>3D</b>
                   <small>Create a model from one furniture image</small>
                 </button>
-                <button onClick={openArWorkflow}>
+                <button aria-pressed={selectedWorkflow === "ar"} onClick={() => { workflowRef.current = "ar"; setSelectedWorkflow("ar"); }}>
                   <span><Smartphone aria-hidden="true" /></span>
                   <b>AR</b>
                   <small>Place a finished 3D model in your room</small>
                 </button>
               </div>
-              <button className="project-example-link" onClick={startTemplate}><SquaresFour aria-hidden="true" /> Or explore with an example room</button>
+              {selectedWorkflow ? <section className="project-workflow-setup" aria-live="polite">
+                {selectedWorkflow === "create" ? <>
+                  <div><b>Create a complete space</b><p>Upload a room, exterior, or garden photo. Choose the project type now; detailed styles appear after upload.</p></div>
+                  <div className="project-setup-modes" aria-label="Create project type">{(["Interior", "Exterior", "Garden"] as DesignMode[]).map(item => <button key={item} aria-pressed={mode === item} onClick={() => changeMode(item)}>{item}</button>)}</div>
+                  <div className="project-setup-actions"><button className="primary-action" onClick={() => requestUpload("redesign", "create")}><UploadSimple /> Upload space photo</button><button onClick={startTemplate}><SquaresFour /> Try an example</button></div>
+                </> : null}
+                {selectedWorkflow === "edit" ? <>
+                  <div><b>Edit one part of a photo</b><p>Upload your room, then run object detection to select furniture or a surface. Detection costs 1 credit only after you confirm.</p></div>
+                  <ol><li>Upload a room photo</li><li>Detect objects and surfaces</li><li>Select an element and describe the change</li></ol>
+                  <div className="project-setup-actions"><button className="primary-action" onClick={() => requestUpload("objects", "edit")}><UploadSimple /> Upload photo to edit</button></div>
+                </> : null}
+                {selectedWorkflow === "3d" ? <>
+                  <div><b>Create a furniture model</b><p>Use one clear furniture photo on a simple background. You can also create a model from an object detected inside a saved room.</p></div>
+                  <div className="project-setup-actions"><button className="primary-action" onClick={open3dFromPreview}><Cube /> Open 3D workspace</button></div>
+                </> : null}
+                {selectedWorkflow === "ar" ? <>
+                  <div><b>Place a model in your room</b><p>AR needs a finished 3D model. Reopen one from your models, or create it first if your library is empty.</p></div>
+                  <div className="project-setup-actions"><button className="primary-action" onClick={openArWorkflow}><Smartphone /> Choose a model for AR</button><button onClick={() => { workflowRef.current = "3d"; setSelectedWorkflow("3d"); open3dFromPreview(); }}><Cube /> Create a 3D model</button></div>
+                </> : null}
+              </section> : <p className="project-workflow-prompt">Choose one path to see exactly what you need.</p>}
               {uploadError ? <p className="album-upload-error" role="alert">{uploadError}</p> : null}
               <p className="album-credit-note">Uploading and choosing a direction are free. We always ask before using credits.</p>
             </div>
@@ -2406,7 +2440,7 @@ function AlbumWorkspace({
             <button type="submit">Add</button>
           </form> : null}
         </main>
-        <aside className="album-control-panel">
+        {preview ? <aside className="album-control-panel">
           <div className="editor-mode-tabs" role="tablist" aria-label="Image editing mode">
             <button id="editor-tab-redesign" role="tab" aria-controls="editor-panel" aria-selected={editorMode==="redesign"} onClick={() => setEditorMode("redesign")}><Sparkle/> <span>Design room</span></button>
             <button id="editor-tab-objects" role="tab" aria-controls="editor-panel" aria-selected={editorMode==="objects"} onClick={() => setEditorMode("objects")} disabled={!preview} title={!preview ? "Upload a photo first" : undefined} aria-describedby={!preview ? "edit-disabled-reason" : undefined}><Selection/> <span>Edit objects</span></button>
@@ -2480,7 +2514,7 @@ function AlbumWorkspace({
               </div>
             ) : null}
           </div>
-        </aside>
+        </aside> : null}
       </div>
       <CreditConfirmation open={generationConfirmOpen} cost={AI_COSTS.imageEdit} title="Generate your design?" description="Create a new version of this photo. Your original stays available for comparison. Room-type inference is free; this generation costs credits." action="Generate" onCancel={() => setGenerationConfirmOpen(false)} onConfirm={() => void generateDesign()} />
       <WorkspaceDialog open={leaveConfirmOpen} onClose={() => setLeaveConfirmOpen(false)} title="Leave without saving?">

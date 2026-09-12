@@ -96,6 +96,7 @@ export default defineSchema({
     title: v.string(),
     image: v.string(),
     mode: v.union(v.literal("Interior"), v.literal("Exterior"), v.literal("Garden")),
+    workflow: v.optional(v.union(v.literal("create"), v.literal("edit"), v.literal("3d"), v.literal("ar"))),
     savedAt: v.string(),
   })
     .index("by_owner", ["ownerId"])

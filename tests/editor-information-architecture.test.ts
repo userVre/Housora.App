@@ -57,8 +57,24 @@ describe("project editor information architecture", () => {
     expect(albumWorkspace).toContain("<b>Edit</b>");
     expect(albumWorkspace).toContain("<b>3D</b>");
     expect(albumWorkspace).toContain("<b>AR</b>");
-    expect(albumWorkspace).toContain('requestUpload("objects")');
+    expect(albumWorkspace).toContain('workflowRef.current = "edit"');
+    expect(albumWorkspace).toContain('requestUpload("objects", "edit")');
     expect(albumWorkspace).toContain("openArWorkflow");
     expect(albumWorkspace).toContain("onSourceSelected");
+  });
+
+  it("uses a launcher-only layout and explains each workflow before upload", () => {
+    expect(albumWorkspace).toContain('album-workspace-body${preview ? "" : " is-launcher"}');
+    expect(albumWorkspace).toContain('{preview ? <aside className="album-control-panel">');
+    expect(albumWorkspace).toContain("Create a complete space");
+    expect(albumWorkspace).toContain("Detection costs 1 credit only after you confirm");
+    expect(albumWorkspace).toContain("AR needs a finished 3D model");
+    expect(styles).toContain(".album-workspace-body.is-launcher");
+  });
+
+  it("persists and restores the selected project workflow", () => {
+    expect(productWorkspace).toContain("workflow: row.workflow as ProjectWorkflow | undefined");
+    expect(albumWorkspace).toContain("workflowRef.current ?? selectedWorkflow");
+    expect(albumWorkspace).toContain('initialDraft?.workflow === "edit" ? "objects" : "redesign"');
   });
 });
