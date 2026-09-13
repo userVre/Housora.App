@@ -4,9 +4,15 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync("components/housora-app.tsx", "utf8");
 const styles = readFileSync("app/globals.css", "utf8");
 const workflowStyles = readFileSync("app/workflow-studio.css", "utf8");
+const createWorkflow = readFileSync("components/workflows/create-workflow.tsx", "utf8");
+const createStyles = readFileSync("app/workflows/create-workflow.css", "utf8");
+const editWorkflow = readFileSync("components/workflows/edit-workflow.tsx", "utf8");
+const editStyles = readFileSync("app/workflows/edit-workflow.css", "utf8");
+const threeDWorkflow = readFileSync("components/workflows/three-d-workflow.tsx", "utf8");
+const arWorkflow = readFileSync("components/workflows/ar-workflow.tsx", "utf8");
 const albumWorkspace = source.slice(
   source.indexOf("function AlbumWorkspace("),
-  source.indexOf("function RedesignField("),
+  source.indexOf("function ClientsPage("),
 );
 const productWorkspace = source.slice(source.indexOf("export function HousoraApp("), source.indexOf("function DesignHome("));
 
@@ -19,23 +25,30 @@ describe("project editor information architecture", () => {
   });
 
   it("keeps only peer image workflows in the contextual inspector", () => {
-    expect(albumWorkspace).toContain('type EditorMode = "redesign" | "objects"');
-    expect(albumWorkspace).toContain("Design room");
-    expect(albumWorkspace).toContain("Edit objects");
+    expect(albumWorkspace).toContain("CreateWorkflow");
+    expect(albumWorkspace).toContain("EditWorkflow");
+    expect(albumWorkspace).toContain("ThreeDWorkflow");
+    expect(albumWorkspace).toContain("ArWorkflow");
     expect(albumWorkspace).not.toContain("<span>3D models</span></button>");
     expect(albumWorkspace).not.toContain("<span>View in AR</span></button>");
+    expect(albumWorkspace).toContain("headerBackLabel");
+    expect(albumWorkspace).toContain("Back to tools");
+    expect(albumWorkspace).toContain("Back to Projects");
   });
 
   it("opens 3D as a project action and leaves AR inside the model viewer", () => {
-    expect(albumWorkspace).toContain('aria-label="Open 3D models"');
-    expect(albumWorkspace).toContain("<WorkspaceDialog open={threeDOpen}");
-    expect(albumWorkspace).toContain("<ThreeDWorkspace initialSource={threeDSource}");
+    expect(albumWorkspace).toContain("handleHeaderBack");
+    expect(albumWorkspace).toContain("Back to tools");
+    expect(albumWorkspace).not.toContain('aria-label="Open 3D models"');
+    expect(threeDWorkflow).toContain("ThreeDWorkflow");
+    expect(arWorkflow).toContain("ArWorkflow");
+    expect(arWorkflow).toContain("model-viewer");
   });
 
   it("keeps mobile project actions available without crowding the header", () => {
     expect(albumWorkspace).toContain('aria-label="More project actions"');
     expect(albumWorkspace).toContain('id="mobile-project-actions"');
-    expect(albumWorkspace).toContain("Compare with original");
+    expect(albumWorkspace).not.toContain('aria-label="Compare with original"');
     expect(albumWorkspace).toContain("Download image");
     expect(albumWorkspace).toContain("Share design");
   });
@@ -59,56 +72,51 @@ describe("project editor information architecture", () => {
     expect(albumWorkspace).toContain("<b>3D</b>");
     expect(albumWorkspace).toContain("<b>AR</b>");
     expect(albumWorkspace).toContain('workflowRef.current = "edit"');
-    expect(albumWorkspace).toContain('requestUpload("objects", "edit")');
-    expect(albumWorkspace).toContain("openArWorkflow");
-    expect(albumWorkspace).toContain("onSourceSelected");
+    expect(albumWorkspace).toContain('requestUpload("edit")');
+    expect(albumWorkspace).toContain("handleArStart3D");
+    expect(albumWorkspace).toContain("handleCreate3DFromObject");
   });
 
   it("uses a launcher-only layout and explains each workflow before upload", () => {
     expect(albumWorkspace).toContain('album-workspace-body workflow-${selectedWorkflow || "launcher"}');
-    expect(albumWorkspace).toContain('preview && selectedWorkflow === "edit" ? <aside className="album-control-panel is-edit-inspector"');
-    expect(albumWorkspace).toContain("Redesign any space from a photo");
-    expect(albumWorkspace).toContain("create-dropzone");
-    expect(albumWorkspace).toContain("<CreateComposer");
-    expect(albumWorkspace).toContain('className="studio-composer"');
-    expect(albumWorkspace).toContain('["Interior", "Exterior", "Garden"]');
-    expect(albumWorkspace).toContain("Describe the redesign you want, then hit generate");
-    expect(albumWorkspace).toContain("Edit any part of your image");
-    expect(albumWorkspace).toContain("edit-dropzone");
-    expect(albumWorkspace).not.toContain("edit-start-steps");
-    expect(albumWorkspace).not.toContain("edit-credit-note");
-    expect(albumWorkspace).toContain("<ArWorkspace onCreateModel=");
+    expect(createWorkflow).toContain("Redesign any space from a photo");
+    expect(createStyles).toContain("clamp(320px, 38vw, 560px)");
+    expect(createWorkflow).toContain("create-workflow-dropzone");
+    expect(editWorkflow).toContain("edit-workflow-empty-dropzone");
+    expect(editWorkflow).toContain("Drag a photo here");
+    expect(arWorkflow).toContain("Create one from a photo");
     expect(styles).toContain(".album-workspace-body.is-launcher");
-    expect(workflowStyles).toContain(".studio-composer-anchor { position:relative; flex:none;");
   });
 
   it("keeps 3D creation and AR placement as one clear connected pipeline", () => {
     expect(albumWorkspace).toContain('selectedWorkflow === "3d"');
     expect(albumWorkspace).toContain('selectedWorkflow === "ar"');
-    expect(source).toContain("Turn furniture into a 3D model.");
-    expect(source).toContain("Furniture photo → 3D model");
-    expect(source).toContain("AR needs a finished 3D model — not a flat JPG or PNG.");
-    expect(source).toContain("No AR-ready models yet");
-    expect(source).toContain("Create from a furniture photo");
-    expect(source).toContain("<ModelViewer src={selectedModel.url}");
-    expect(styles).toContain(".ar-workspace-layout");
+    expect(albumWorkspace).toContain("arReturnPending");
+    expect(albumWorkspace).toContain("newlyGeneratedModel");
+    expect(albumWorkspace).toContain("createShare");
+    expect(albumWorkspace).toContain("/ar?token=");
+    expect(source).not.toContain("/ar?src=");
+    expect(arWorkflow).not.toContain('document.querySelector("model-viewer")');
+    expect(arWorkflow).toContain("viewerRef");
   });
 
-  it("ships functional Reve-style edit tools and explicit paid confirmations", () => {
-    expect(albumWorkspace).toContain('type CanvasEditTool = "select" | "spotlight" | "draw" | "reframe"');
-    expect(albumWorkspace).toContain('className="edit-canvas-toolbar"');
-    expect(albumWorkspace).toContain('title="Select object (V)"');
-    expect(albumWorkspace).toContain('title="Reframe (R)"');
-    expect(albumWorkspace).toContain("createRegionMask");
-    expect(albumWorkspace).toContain('mask: canvas.toDataURL("image/png")');
-    expect(albumWorkspace).toContain('title={activeTool === "reframe" ? "Apply this reframe?"');
-    expect(styles).toContain(".canvas-spotlight-region");
-    expect(styles).toContain(".canvas-draw-overlay");
+  it("ships functional edit tools and explicit paid confirmations", () => {
+    expect(editWorkflow).toContain('Select (V)');
+    expect(editWorkflow).toContain('Spotlight (S)');
+    expect(editWorkflow).toContain('Draw (D)');
+    expect(editWorkflow).toContain('Reframe (R)');
+    expect(editWorkflow).toContain('Full screen');
+    expect(editWorkflow).toContain("buildCropDataUrl");
+    expect(editWorkflow).toContain("mask");
+    expect(albumWorkspace).toContain("scanConfirmOpen");
+    expect(albumWorkspace).toContain("editConfirmOpen");
+    expect(albumWorkspace).toContain("threeDConfirmOpen");
+    expect(editStyles).toContain(".edit-workflow-toolbar");
   });
 
   it("persists and restores the selected project workflow", () => {
     expect(productWorkspace).toContain("workflow: row.workflow as ProjectWorkflow | undefined");
     expect(albumWorkspace).toContain("workflowRef.current ?? selectedWorkflow");
-    expect(albumWorkspace).toContain('initialDraft?.workflow === "edit" ? "objects" : "redesign"');
+    expect(source).toContain("initialDraft?.workflow");
   });
 });

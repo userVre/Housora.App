@@ -19,8 +19,10 @@ describe("production UI contract", () => {
     }
   });
   test("editor exposes one named canvas toolbar and explains the disabled Edit state", () => {
-    expect(app).toContain('aria-label="Canvas tools"');
-    expect(app).toContain("edit-disabled-reason");
+    const edit = readFileSync(resolve("components/workflows/edit-workflow.tsx"), "utf8");
+    expect(edit).toContain('aria-label="Edit tools"');
+    expect(edit).toContain("edit-workflow-empty-dropzone");
+    expect(edit).toContain("Drag a photo here");
     expect(app).not.toContain("creation-progress\"");
   });
   test("Discover and Saved retain recovery and explicit open actions", () => {

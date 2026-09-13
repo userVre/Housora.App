@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import "../app/projects.css";
 import "../app/saved.css";
@@ -69,6 +69,11 @@ import { prepareImage } from "../lib/prepare-image";
 import { readAiResponse } from "../lib/await-ai-response";
 import { RecentAiTasks } from "./recent-ai-tasks";
 import { guidanceForInvalid, isValidThreeDSource, type ThreeDSource } from "../lib/threeD-validation";
+import { CreateWorkflow } from "./workflows/create-workflow";
+import { EditWorkflow } from "./workflows/edit-workflow";
+import { ThreeDWorkflow } from "./workflows/three-d-workflow";
+import { ArWorkflow } from "./workflows/ar-workflow";
+import { smoothMask } from "../lib/mask-postprocess";
 
 function getInitials(name: string): string {
   const normalized = name.trim();
@@ -2030,17 +2035,13 @@ function AlbumWorkspace({
   onSaveDesign: (design: Omit<SavedDesign, "savedAt">) => Promise<{ projectId: string; roomId: string }>;
   initialDraft?: ProjectDraft | null;
 }) {
-  type CanvasEditTool = "select" | "spotlight" | "draw" | "reframe";
   const [mode, setMode] = useState<DesignMode>(initialDraft?.mode ?? "Interior");
   const [space, setSpace] = useState("Auto-detect");
   const [style, setStyle] = useState("Auto style");
   const [prompt, setPrompt] = useState(initialDraft?.prompt ?? "");
   const [preview, setPreview] = useState<string | null>(initialDraft?.image ?? null);
-  type EditorMode = "redesign" | "objects";
   const [selectedWorkflow, setSelectedWorkflow] = useState<ProjectWorkflow | null>(initialDraft?.workflow ?? (initialDraft?.image ? "create" : null));
   const workflowRef = useRef<ProjectWorkflow | null>(initialDraft?.workflow ?? (initialDraft?.image ? "create" : null));
-  const [editorMode, setEditorMode] = useState<EditorMode>(initialDraft?.workflow === "edit" ? "objects" : "redesign");
-  const uploadIntentRef = useRef<EditorMode>("redesign");
   const [detailChoices, setDetailChoices] = useState<Record<string, string>>({});
   const [outputRatio, setOutputRatio] = useState("auto");
   const [saved, setSaved] = useState(Boolean(initialDraft?.image && initialDraft?.projectId && initialDraft.roomId));
@@ -2048,14 +2049,27 @@ function AlbumWorkspace({
   const [saveError, setSaveError] = useState("");
   const [exportStatus, setExportStatus] = useState("");
   const [uploadError, setUploadError] = useState("");
-  const [uploadDragging, setUploadDragging] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generationConfirmOpen, setGenerationConfirmOpen] = useState(false);
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   const generationLock = useRef(false);
   const [generationError, setGenerationError] = useState("");
-  const [activeTool, setActiveTool] = useState<CanvasEditTool>("select");
+  const [activeTool, setActiveTool] = useState<"select" | "spotlight" | "draw" | "reframe">("select");
   const [selectedObject, setSelectedObject] = useState<DetectedObject | null>(null);
+  const [detectedObjects, setDetectedObjects] = useState<DetectedObject[]>(() => initialDraft?.detectedObjects ?? []);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [scanConfirmOpen, setScanConfirmOpen] = useState(false);
+  const scanPromptedImageRef = useRef<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editConfirmOpen, setEditConfirmOpen] = useState(false);
+  const [pendingEdit, setPendingEdit] = useState<{ object: DetectedObject; instruction: string } | null>(null);
+  const [regionConfirmOpen, setRegionConfirmOpen] = useState(false);
+  const [pendingRegion, setPendingRegion] = useState<{ image: string; mask: string; prompt: string } | null>(null);
+  const [pendingReframe, setPendingReframe] = useState<{ image: string; aspectRatio: string } | null>(null);
+  const [instruction, setInstruction] = useState("");
+  const [regionPrompt, setRegionPrompt] = useState("");
   const [previewRatio, setPreviewRatio] = useState(1.5);
   const [zoom, setZoom] = useState(1);
   const [fit, setFit] = useState(true);
@@ -2073,12 +2087,12 @@ function AlbumWorkspace({
     const selected = images.lastIndexOf(initialDraft?.image || "");
     setHistoryIndex(selected >= 0 ? selected : images.length - 1);
   }, [savedVersions, initialDraft?.image]);
-  const persistImage = async (image: string, instruction = prompt) => {
+  const persistImage = async (image: string, instructionText = prompt) => {
     setSaveError("");
     historyLoaded.current = true;
-    const workflow = workflowRef.current ?? selectedWorkflow ?? (editorMode === "objects" ? "edit" : "create");
+    const workflow = workflowRef.current ?? selectedWorkflow ?? (activeTool !== "select" ? "edit" : "create");
     const draftTitle = initialDraft?.title && initialDraft.title !== "New project" ? initialDraft.title : `${mode} ${workflow === "edit" ? "edit" : workflow === "3d" ? "3D project" : workflow === "ar" ? "AR project" : "design"}`;
-    const context = await onSaveDesign({ id: designId, title: draftTitle, image, mode, prompt: instruction, workflow });
+    const context = await onSaveDesign({ id: designId, title: draftTitle, image, mode, prompt: instructionText, workflow });
     setVersionContext(context);
     setSaved(true);
   };
@@ -2121,49 +2135,70 @@ function AlbumWorkspace({
         e.preventDefault();
         redo();
       }
-      if (selectedWorkflow === "edit" && preview && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        const shortcut = e.key.toLowerCase();
-        const tool: CanvasEditTool | undefined = shortcut === "v" ? "select" : shortcut === "s" ? "spotlight" : shortcut === "d" ? "draw" : shortcut === "r" ? "reframe" : undefined;
-        if (tool) { e.preventDefault(); setActiveTool(tool); }
-      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [historyIndex, history, preview, selectedWorkflow]);
+  }, [historyIndex, history, preview]);
   useEffect(() => {
     if (!preview || saved || saving) return;
     const warnBeforeUnload = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener("beforeunload", warnBeforeUnload);
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
   }, [preview, saved, saving]);
+
+  // 3D / AR shared state
   const [threeDSource, setThreeDSource] = useState<ThreeDSource | null>(null);
+  const [threeDConfirmOpen, setThreeDConfirmOpen] = useState(false);
+  const [pendingThreeD, setPendingThreeD] = useState<{ source: ThreeDSource; imagePreview: string } | null>(null);
+  const [threeDStatus, setThreeDStatus] = useState<"idle" | "uploading" | "queued" | "running" | "success" | "failed">("idle");
+  const [threeDModelUrl, setThreeDModelUrl] = useState<string | null>(null);
+  const [threeDModelPoster, setThreeDModelPoster] = useState<string | null>(null);
+  const [threeDError, setThreeDError] = useState<string | null>(null);
   const [threeDBusy, setThreeDBusy] = useState(false);
-  const [threeDOpen, setThreeDOpen] = useState(false);
-  const [threeDEntry, setThreeDEntry] = useState<"3d" | "ar">("3d");
-  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
-  const open3d = (object: DetectedObject) => {
-    setThreeDEntry("3d");
-    setThreeDSource({ image: object.thumbnail, kind: "sam-crop", objectLabel: object.label, objectBox: object.box });
-    setThreeDOpen(true);
+  const [arReturnPending, setArReturnPending] = useState(false);
+  const [taskId, setTaskId] = useState<string | null>(null);
+  const [trackingToken, setTrackingToken] = useState<string | null>(null);
+  const [pollAttempt, setPollAttempt] = useState(0);
+  const [trackingPaused, setTrackingPaused] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  const { user: threeDUser } = useUser();
+  const createModelShare = useMutation(api.models.createShare);
+  const revokeModelShare = useMutation(api.models.revokeShare);
+  const recentModelsRaw = useQuery(api.models.list, {});
+  const [newlyGeneratedModel, setNewlyGeneratedModel] = useState<{ id: string; url: string; title: string; createdAt: number | string; poster: string | null; thumbnail: string | null } | null>(null);
+  const queryModels = (recentModelsRaw ?? []).filter(m => Boolean(m.url)).map(m => ({ id: m.taskId, url: m.url as string, title: `Furniture model ${m.taskId.slice(0,6)}`, createdAt: m.createdAt, poster: null as string | null, thumbnail: null as string | null }));
+  const completedModels = newlyGeneratedModel ? [newlyGeneratedModel, ...queryModels.filter(m => m.id !== newlyGeneratedModel.id)] : queryModels;
+  const [selectedArModelId, setSelectedArModelId] = useState<string | null>(null);
+  const selectedArModel = completedModels.find(m => m.id === selectedArModelId) ?? completedModels[0] ?? null;
+  useEffect(() => {
+    if (completedModels.length && !selectedArModelId) setSelectedArModelId(completedModels[0].id);
+  }, [completedModels, selectedArModelId]);
+
+  useEffect(() => { workflowRef.current = selectedWorkflow; }, [selectedWorkflow]);
+
+  // Auto-start segmentation after Edit image is saved (honest, with credit confirmation)
+  useEffect(() => {
+    if (selectedWorkflow === "edit" && preview && scanPromptedImageRef.current !== preview && detectedObjects.length === 0 && !isScanning && !scanError && !scanConfirmOpen) {
+      const timer = setTimeout(() => {
+        scanPromptedImageRef.current = preview;
+        setScanConfirmOpen(true);
+      }, 700);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedWorkflow, preview, detectedObjects.length, isScanning, scanError, scanConfirmOpen]);
+
+  const handleHeaderBack = () => {
+    if (selectedWorkflow) {
+      workflowRef.current = null;
+      setSelectedWorkflow(null);
+      return;
+    }
+    if (preview && !saved) setLeaveConfirmOpen(true);
+    else onBack();
   };
-  const open3dFromPreview = () => {
-    setThreeDEntry("3d");
-    setThreeDSource(null);
-    setThreeDOpen(true);
-  };
-  const openArWorkflow = () => {
-    setThreeDEntry("ar");
-    setThreeDSource(null);
-    setThreeDOpen(true);
-  };
-  const [compareOriginal, setCompareOriginal] = useState(false);
-  const [editRegion, setEditRegion] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
-  const [drawPoints, setDrawPoints] = useState<Array<{ x: number; y: number }>>([]);
-  const [regionInstruction, setRegionInstruction] = useState("");
-  const [regionConfirmOpen, setRegionConfirmOpen] = useState(false);
-  const [regionEditing, setRegionEditing] = useState(false);
-  const [regionError, setRegionError] = useState("");
-  const gestureStart = useRef<{ x: number; y: number } | null>(null);
+  const headerBackLabel = selectedWorkflow ? "Back to tools" : "Back to Projects";
+
   const originalPreview = useRef<string | null>(initialDraft?.image ?? null);
   const canvasRef = useRef<HTMLElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -2195,10 +2230,11 @@ function AlbumWorkspace({
       window.setTimeout(() => setExportStatus(""), 3500);
     }
   };
-  const requestUpload = (intent: EditorMode, workflow: ProjectWorkflow = intent === "objects" ? "edit" : "create") => {
-    setSelectedWorkflow(workflow);
-    workflowRef.current = workflow;
-    uploadIntentRef.current = intent;
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const requestUpload = (intent: "create" | "edit" = "create") => {
+    const w: ProjectWorkflow = intent === "edit" ? "edit" : "create";
+    setSelectedWorkflow(w);
+    workflowRef.current = w;
     fileRef.current?.click();
   };
   const upload = (file?: File) => {
@@ -2219,91 +2255,15 @@ function AlbumWorkspace({
       pushHistory(img);
       originalPreview.current = String(reader.result);
       setSelectedObject(null);
-      setEditorMode(workflowRef.current === "edit" ? "objects" : uploadIntentRef.current);
-      uploadIntentRef.current = "redesign";
-      setCompareOriginal(false);
-      setActiveTool("select");
-      setEditRegion(null);
-      setDrawPoints([]);
-      setRegionInstruction("");
+      setDetectedObjects([]);
+      setScanError(null);
+      setEditError(null);
       setSaveError("");
       setZoom(1); setFit(true);
       void persistImage(img, prompt).catch(() => setSaveError("The image opened, but the project could not be saved. Use Save this design to retry."));
     };
     reader.onerror = () => setUploadError("This image could not be opened. Try another photo.");
     reader.readAsDataURL(file);
-  };
-  const canvasPoint = (event: React.PointerEvent<HTMLDivElement>) => {
-    const bounds = event.currentTarget.getBoundingClientRect();
-    return { x: Math.max(0, Math.min(100, ((event.clientX - bounds.left) / bounds.width) * 100)), y: Math.max(0, Math.min(100, ((event.clientY - bounds.top) / bounds.height) * 100)) };
-  };
-  const startCanvasGesture = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (selectedWorkflow !== "edit" || (activeTool !== "spotlight" && activeTool !== "draw")) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const point = canvasPoint(event);
-    gestureStart.current = point;
-    if (activeTool === "spotlight") setEditRegion({ x: point.x, y: point.y, width: 0, height: 0 });
-    else setDrawPoints([point]);
-  };
-  const moveCanvasGesture = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!gestureStart.current) return;
-    const point = canvasPoint(event);
-    if (activeTool === "spotlight") {
-      const start = gestureStart.current;
-      setEditRegion({ x: Math.min(start.x, point.x), y: Math.min(start.y, point.y), width: Math.abs(point.x - start.x), height: Math.abs(point.y - start.y) });
-    } else if (activeTool === "draw") setDrawPoints(points => [...points, point]);
-  };
-  const endCanvasGesture = () => { gestureStart.current = null; };
-  const createRegionMask = async (source: string) => {
-    const pixels = await prepareImage(source);
-    const bitmap = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const element = new window.Image();
-      element.onload = () => resolve(element);
-      element.onerror = reject;
-      element.src = pixels;
-    });
-    const canvas = document.createElement("canvas");
-    canvas.width = bitmap.naturalWidth;
-    canvas.height = bitmap.naturalHeight;
-    const context = canvas.getContext("2d");
-    if (!context) throw new Error("Your browser could not prepare this selection.");
-    context.fillStyle = "black"; context.fillRect(0, 0, canvas.width, canvas.height);
-    context.fillStyle = "white"; context.strokeStyle = "white"; context.lineCap = "round"; context.lineJoin = "round";
-    if (activeTool === "spotlight" && editRegion && editRegion.width > 1 && editRegion.height > 1) {
-      context.fillRect(editRegion.x / 100 * canvas.width, editRegion.y / 100 * canvas.height, editRegion.width / 100 * canvas.width, editRegion.height / 100 * canvas.height);
-    } else if (activeTool === "draw" && drawPoints.length > 1) {
-      context.lineWidth = Math.max(18, Math.min(canvas.width, canvas.height) * 0.045); context.beginPath();
-      drawPoints.forEach((point, index) => index === 0 ? context.moveTo(point.x / 100 * canvas.width, point.y / 100 * canvas.height) : context.lineTo(point.x / 100 * canvas.width, point.y / 100 * canvas.height));
-      context.stroke();
-    } else throw new Error("Select or draw the part you want to change first.");
-    return { image: pixels, mask: canvas.toDataURL("image/png") };
-  };
-  const applyRegionEdit = async () => {
-    if (!preview || !regionInstruction.trim() || regionEditing) return;
-    setRegionConfirmOpen(false); setRegionEditing(true); setRegionError("");
-    try {
-      const prepared = await createRegionMask(preview);
-      const response = await fetch("/api/ai/edit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...prepared, prompt: `Edit only the marked region: ${regionInstruction.trim()}. Preserve everything outside the mask, the camera perspective, architecture and lighting.`, requestId: safeUUID(), confirmed: true, projectId: versionContext?.projectId, roomId: versionContext?.roomId }), signal: AbortSignal.timeout(295_000) });
-      const result = await readAiResponse(response);
-      if (!response.ok || !result.image) throw new Error(result.error || "The selected-area edit failed.");
-      setPreview(result.image); pushHistory(result.image); setSelectedObject(null); setEditRegion(null); setDrawPoints([]); setRegionInstruction(""); setActiveTool("select");
-      await persistImage(result.image, `Region edit: ${regionInstruction.trim()}`);
-    } catch (reason) { setRegionError(reason instanceof Error ? reason.message : "The selected-area edit failed."); }
-    finally { setRegionEditing(false); }
-  };
-  const applyReframe = async () => {
-    if (!preview || regionEditing) return;
-    setRegionConfirmOpen(false); setRegionEditing(true); setRegionError("");
-    try {
-      const image = await prepareImage(preview);
-      const aspectRatio = Math.abs(previewRatio - 1) < .01 ? "1:1" : Math.abs(previewRatio - 4/3) < .01 ? "4:3" : Math.abs(previewRatio - 3/4) < .01 ? "3:4" : Math.abs(previewRatio - 16/9) < .01 ? "16:9" : "auto";
-      const response = await fetch("/api/ai/edit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image, prompt: "Reframe this photograph naturally for the requested aspect ratio. Preserve the same room, architecture, objects, materials and lighting. Extend or crop the composition seamlessly without redesigning it.", aspectRatio, requestId: safeUUID(), confirmed: true, projectId: versionContext?.projectId, roomId: versionContext?.roomId }), signal: AbortSignal.timeout(295_000) });
-      const result = await readAiResponse(response);
-      if (!response.ok || !result.image) throw new Error(result.error || "Reframing failed.");
-      setPreview(result.image); pushHistory(result.image); setZoom(1); setFit(true); setActiveTool("select");
-      await persistImage(result.image, `Reframed to ${aspectRatio}`);
-    } catch (reason) { setRegionError(reason instanceof Error ? reason.message : "Reframing failed."); }
-    finally { setRegionEditing(false); }
   };
   const startTemplate = () => {
     setSelectedWorkflow("create");
@@ -2312,7 +2272,6 @@ function AlbumWorkspace({
     setPreview(img);
     pushHistory(img);
     originalPreview.current = img;
-    setEditorMode("redesign");
     setSaved(false);
     setZoom(1); setFit(true);
     void persistImage(img, prompt).catch(() => setSaveError("The example opened, but the project could not be saved. Use Save this design to retry."));
@@ -2372,8 +2331,7 @@ function AlbumWorkspace({
       setPreview(result.image);
       pushHistory(result.image);
       setSelectedObject(null);
-      setEditorMode("redesign");
-      setCompareOriginal(false);
+      setDetectedObjects([]);
       try {
         if (result.storageWarning) throw new Error(result.storageWarning);
         await persistImage(result.image, finalPrompt);
@@ -2395,29 +2353,245 @@ function AlbumWorkspace({
     setStyle("Auto style");
     setDetailChoices({});
   };
-  const spaceLabel = mode === "Interior" ? "Room type" : mode === "Exterior" ? "Building type" : "Garden area";
-  const detectedCountHint = preview ? null : "Upload a photo to unlock object editing";
-  const saveStateLabel = saving ? "Saving…" : saveError ? "Save failed" : saved ? "Saved to Projects" : preview ? "Not saved yet" : "No image yet";
-  const saveStateDetail = saving ? "Saving your design…" : saveError ? saveError : saved ? "Saved to Projects and added to Saved designs." : preview ? "Save this version before leaving if you want to keep it." : "";
+
+  const doScan = async () => {
+    if (!preview || isScanning) return;
+    setScanConfirmOpen(false);
+    setIsScanning(true);
+    setScanError(null);
+    try {
+      const pixels = await prepareImage(preview);
+      const response = await fetch("/api/ai/segment", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: pixels, autoDetect: true, mode, confirmed: true, requestId: safeUUID() }),
+        signal: AbortSignal.timeout(295_000),
+      });
+      const result = await readAiResponse(response);
+      if (!response.ok) throw new Error(result.error || "Detection failed. Please try again.");
+      if (!Array.isArray(result.objects)) throw new Error("Detection returned an invalid result. Contact support.");
+      let processed = result.objects as DetectedObject[];
+      try {
+        processed = await Promise.all(processed.map(async (o) => {
+          try { const smoothed = await smoothMask(o.mask, { feather: 1.6, closeRadius: 2 }); return { ...o, mask: smoothed }; } catch { return o; }
+        }));
+      } catch {}
+      setDetectedObjects(processed);
+      setSelectedObject(null);
+    } catch (reason) {
+      const raw = reason instanceof Error ? reason.message : "Detection failed.";
+      const friendly = raw.includes("temporarily unavailable") || raw.includes("not configured")
+        ? "Object detection is temporarily unavailable. Your credits were not charged. Please save your design and try again later."
+        : raw;
+      setScanError(friendly);
+    } finally { setIsScanning(false); }
+  };
+  const doEditObject = async () => {
+    if (!pendingEdit || !preview || isEditing) return;
+    setEditConfirmOpen(false);
+    setIsEditing(true);
+    setEditError(null);
+    try {
+      const pixels = await prepareImage(preview);
+      const response = await fetch("/api/ai/edit", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: pixels,
+          mask: pendingEdit.object.mask,
+          prompt: `Edit only the ${pendingEdit.object.label} inside the normalized bounding box ${JSON.stringify(pendingEdit.object.box)}: ${pendingEdit.instruction.trim()}. Preserve other objects, room architecture, perspective and lighting.`,
+          requestId: safeUUID(), confirmed: true,
+          projectId: versionContext?.projectId, roomId: versionContext?.roomId,
+        }),
+        signal: AbortSignal.timeout(295_000),
+      });
+      const result = await readAiResponse(response);
+      if (!response.ok || !result.image) throw new Error(result.error || "Image editing failed.");
+      setPreview(result.image); pushHistory(result.image); setSelectedObject(null); setDetectedObjects([]);
+      await persistImage(result.image, `Object edit: ${pendingEdit.instruction.trim()}`);
+    } catch (reason) { setEditError(reason instanceof Error ? reason.message : "Image editing failed."); }
+    finally { setIsEditing(false); setPendingEdit(null); }
+  };
+  const doRegionEdit = async () => {
+    if (!pendingRegion || !preview || isEditing) return;
+    setRegionConfirmOpen(false);
+    setIsEditing(true);
+    setEditError(null);
+    try {
+      const response = await fetch("/api/ai/edit", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: pendingRegion.image, mask: pendingRegion.mask, prompt: `Edit only the marked region: ${pendingRegion.prompt.trim()}. Preserve everything outside the mask, the camera perspective, architecture and lighting.`, requestId: safeUUID(), confirmed: true, projectId: versionContext?.projectId, roomId: versionContext?.roomId }),
+        signal: AbortSignal.timeout(295_000),
+      });
+      const result = await readAiResponse(response);
+      if (!response.ok || !result.image) throw new Error(result.error || "The selected-area edit failed.");
+      setPreview(result.image); pushHistory(result.image); setSelectedObject(null);
+      await persistImage(result.image, `Region edit: ${pendingRegion.prompt.trim()}`);
+    } catch (reason) { setEditError(reason instanceof Error ? reason.message : "The selected-area edit failed."); }
+    finally { setIsEditing(false); setPendingRegion(null); }
+  };
+  const doReframe = async () => {
+    if (!pendingReframe || !preview || isEditing) return;
+    setRegionConfirmOpen(false);
+    setIsEditing(true);
+    setEditError(null);
+    try {
+      const image = await prepareImage(preview);
+      const response = await fetch("/api/ai/edit", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image, prompt: "Reframe this photograph naturally for the requested aspect ratio. Preserve the same room, architecture, objects, materials and lighting. Extend or crop the composition seamlessly without redesigning it.", aspectRatio: pendingReframe.aspectRatio, requestId: safeUUID(), confirmed: true, projectId: versionContext?.projectId, roomId: versionContext?.roomId }),
+        signal: AbortSignal.timeout(295_000),
+      });
+      const result = await readAiResponse(response);
+      if (!response.ok || !result.image) throw new Error(result.error || "Reframing failed.");
+      setPreview(result.image); pushHistory(result.image);
+      await persistImage(result.image, `Reframed to ${pendingReframe.aspectRatio}`);
+    } catch (reason) { setEditError(reason instanceof Error ? reason.message : "Reframing failed."); }
+    finally { setIsEditing(false); setPendingReframe(null); }
+  };
+
+  const trackingKey = threeDUser?.id ? `housora:tripo:${threeDUser.id}` : null;
+  useEffect(() => {
+    if (!trackingKey) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem(trackingKey) || "null");
+      if (saved?.taskId && saved?.trackingToken && Date.now() - saved.createdAt < 23 * 60 * 60_000) {
+        setTaskId(saved.taskId); setTrackingToken(saved.trackingToken); setThreeDStatus("queued");
+      }
+    } catch {}
+  }, [trackingKey]);
+  useEffect(() => { return () => { if (threeDModelUrl?.startsWith("blob:")) URL.revokeObjectURL(threeDModelUrl); }; }, [threeDModelUrl]);
+  useEffect(() => {
+    if (!taskId) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let failures = 0;
+    const startedAt = Date.now();
+    const readTask = async () => {
+      try {
+        const query = trackingToken ? `?trackingToken=${encodeURIComponent(trackingToken)}` : "";
+        const response = await fetch(`/api/tripo/tasks/${encodeURIComponent(taskId)}${query}`, { cache: "no-store", signal: AbortSignal.timeout(180_000) });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Could not check the 3D model.");
+        if (cancelled) return;
+        failures = 0;
+        setThreeDError(null);
+        setProgress(result.progress || 0);
+        if (result.status === "success") {
+          if (!result.modelUrl) throw new Error("Tripo completed without a model file.");
+          setThreeDModelUrl(result.modelUrl);
+          setThreeDModelPoster(result.previewUrl || null);
+          setThreeDStatus("success");
+          setThreeDBusy(false);
+          if (trackingKey) { try { localStorage.removeItem(trackingKey); } catch {} }
+          if (arReturnPending) {
+            setArReturnPending(false);
+            setSelectedWorkflow("ar");
+            workflowRef.current = "ar";
+          }
+          // Auto-select newly generated model even when older models exist
+          if (taskId && result.modelUrl) {
+            const newModel = { id: taskId, url: result.modelUrl, title: `Furniture model ${taskId.slice(0,6)}`, createdAt: Date.now(), poster: result.previewUrl || null, thumbnail: null };
+            setNewlyGeneratedModel(newModel);
+            setSelectedArModelId(taskId);
+          }
+          return;
+        }
+        if (["failed", "banned", "expired", "cancelled"].includes(result.status)) {
+          setThreeDError(result.error || `Tripo ended with status: ${result.status}.`);
+          setThreeDStatus("failed");
+          setThreeDBusy(false);
+          setTaskId(null);
+          if (trackingKey) { try { localStorage.removeItem(trackingKey); } catch {} }
+          return;
+        }
+        setThreeDStatus(result.status === "running" ? "running" : "queued");
+        setThreeDBusy(true);
+        if (Date.now() - startedAt > 15 * 60_000) {
+          setTrackingPaused(true);
+          setThreeDError("This model is taking longer than expected. Check its status without creating a second request.");
+          return;
+        }
+        timer = setTimeout(readTask, 5000);
+      } catch {
+        if (!cancelled) {
+          failures += 1;
+          setThreeDError("Connection interrupted. Your model may still be running; no new generation will be submitted.");
+          if (failures < 4) timer = setTimeout(readTask, 5000 * failures);
+          else setTrackingPaused(true);
+        }
+      }
+    };
+    readTask();
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
+  }, [taskId, trackingToken, pollAttempt, trackingKey, arReturnPending]);
+  const handleThreeDGenerate = async (source: ThreeDSource, imagePreview: string) => {
+    setPendingThreeD({ source, imagePreview });
+    setThreeDConfirmOpen(true);
+  };
+  const doThreeDGenerate = async () => {
+    if (!pendingThreeD || threeDBusy) return;
+    setThreeDConfirmOpen(false);
+    const { source, imagePreview } = pendingThreeD;
+    const validation = isValidThreeDSource(source);
+    if (!validation.valid || !imagePreview) { setThreeDError(validation.reason || "Choose a furniture image first."); return; }
+    setThreeDBusy(true);
+    setThreeDStatus("uploading");
+    setThreeDError(null);
+    setProgress(0);
+    try {
+      const form = new FormData();
+      const pixels = await prepareImage(imagePreview);
+      const blob = await (await fetch(pixels)).blob();
+      form.append("image", blob, "furniture.jpg");
+      form.append("confirmed", "true");
+      form.append("requestId", safeUUID());
+      form.append("sourceKind", source.kind);
+      if (source.objectBox) form.append("sourceBox", JSON.stringify(source.objectBox));
+      const response = await fetch("/api/tripo/generate", { method: "POST", body: form });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not start 3D generation.");
+      if (!result.taskId || !result.trackingToken) throw new Error("The 3D service returned an incomplete task. Contact support before trying again.");
+      setTaskId(result.taskId);
+      setTrackingToken(result.trackingToken);
+      if (trackingKey) { try { localStorage.setItem(trackingKey, JSON.stringify({ taskId: result.taskId, trackingToken: result.trackingToken, createdAt: Date.now() })); } catch {} }
+      setThreeDStatus("queued");
+    } catch (reason) {
+      setThreeDError(reason instanceof Error ? reason.message : "Could not start 3D generation.");
+      setThreeDStatus("failed");
+      setThreeDBusy(false);
+    } finally { setPendingThreeD(null); }
+  };
+
+  const handleCreate3DFromObject = async (payload: { object: DetectedObject; cropDataUrl: string }) => {
+    setThreeDSource({ image: payload.cropDataUrl, kind: "sam-crop", objectLabel: payload.object.label, objectBox: payload.object.box });
+    setSelectedWorkflow("3d");
+    workflowRef.current = "3d";
+    setThreeDStatus("idle");
+    setThreeDModelUrl(null);
+    setThreeDError(null);
+  };
+
+  const handleArStart3D = () => {
+    setArReturnPending(true);
+    setThreeDSource(null);
+    setSelectedWorkflow("3d");
+    workflowRef.current = "3d";
+    setThreeDStatus("idle");
+    setThreeDModelUrl(null);
+    setThreeDError(null);
+  };
+
   return (
     <section className="album-workspace" aria-label="Project editor">
       <header className="album-workspace-bar">
         <div className="album-bar-left">
-          <button className="album-back" onClick={() => preview && !saved ? setLeaveConfirmOpen(true) : onBack()} aria-label="Back to Projects">
-            <ArrowLeft /> Back to Projects
+          <button className="album-back" onClick={handleHeaderBack} aria-label={headerBackLabel}>
+            <ArrowLeft /> {headerBackLabel}
           </button>
           <span className="album-project-title" title={preview ? initialDraft?.title && initialDraft.title !== "New project" ? initialDraft.title : `${mode} project` : "New project"}>{preview ? initialDraft?.title && initialDraft.title !== "New project" ? initialDraft.title : `${mode} project` : "New project"}</span>
         </div>
         <div className="album-bar-right">
-          {preview ? <button className="album-models-action" onClick={open3dFromPreview} aria-label="Open 3D models">
-            <Cube /> <span>3D models</span>
-            {threeDBusy ? <i aria-hidden="true" /> : null}
-          </button> : null}
           {preview ? (
             <div className="album-bar-actions" aria-label="Project image actions">
-              <button className="icon-secondary" aria-label="Compare with original" title="Compare with original" aria-pressed={compareOriginal} onClick={() => setCompareOriginal((value) => !value)}>
-                <ImagesSquare />
-              </button>
               <button className="icon-secondary" aria-label="Download image" title="Download image" onClick={() => void exportImage(false)}>
                 <DownloadSimple />
               </button>
@@ -2432,7 +2606,6 @@ function AlbumWorkspace({
                 <DotsThree aria-hidden="true" />
               </button>
               {headerMenuOpen ? <div id="mobile-project-actions" className="album-mobile-action-menu" aria-label="Project image actions">
-                <button aria-pressed={compareOriginal} onClick={() => { setCompareOriginal((value) => !value); setHeaderMenuOpen(false); }}><ImagesSquare aria-hidden="true" />{compareOriginal ? "Show current design" : "Compare with original"}</button>
                 <button onClick={() => { setHeaderMenuOpen(false); void exportImage(false); }}><DownloadSimple aria-hidden="true" />Download image</button>
                 <button onClick={() => { setHeaderMenuOpen(false); void exportImage(true); }}><ShareNetwork aria-hidden="true" />Share design</button>
               </div> : null}
@@ -2442,204 +2615,158 @@ function AlbumWorkspace({
       </header>
       <input ref={fileRef} className="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Upload a space photo" onChange={(event) => { upload(event.target.files?.[0]); event.currentTarget.value = ""; }} />
       <p className="visually-hidden" role="alert" aria-live="assertive">{uploadError}</p>
-      <div className={`album-workspace-body workflow-${selectedWorkflow || "launcher"}${preview ? "" : " is-launcher"}${selectedWorkflow === "create" ? " is-create-studio" : ""}${preview && selectedWorkflow === "edit" ? " is-edit-studio" : ""}`}>
-        <main ref={canvasRef} className="album-canvas" onDrop={(event) => { event.preventDefault(); if (selectedWorkflow === "3d" || selectedWorkflow === "ar") return; upload(event.dataTransfer.files[0]); }} onDragOver={(event) => event.preventDefault()}>
-          {preview && selectedWorkflow !== "3d" && selectedWorkflow !== "ar" ? (
-            <div className={`album-preview tool-${activeTool}`} style={{ width: fit ? `min(100%, calc((100dvh - 230px) * ${previewRatio}))` : undefined, aspectRatio: previewRatio, transform: fit ? undefined : `scale(${zoom})`, transformOrigin: "center center" }} onPointerDown={startCanvasGesture} onPointerMove={moveCanvasGesture} onPointerUp={endCanvasGesture} onPointerCancel={endCanvasGesture}>
-              <Image src={compareOriginal && originalPreview.current ? originalPreview.current : preview} alt="Current project space" width={1536} height={1024} onLoad={event => setPreviewRatio(event.currentTarget.naturalWidth / event.currentTarget.naturalHeight)} priority unoptimized={preview.startsWith("data:") || preview.startsWith("http")} style={{ width: "100%", height: "auto", display: "block", objectFit: "contain" }} />
-              <span>{compareOriginal ? "Original space" : `${mode} · ${space}`}</span>
-              {editRegion ? <i className="canvas-spotlight-region" style={{ left: `${editRegion.x}%`, top: `${editRegion.y}%`, width: `${editRegion.width}%`, height: `${editRegion.height}%` }} aria-label="Spotlight edit region" /> : null}
-              {drawPoints.length > 1 ? <svg className="canvas-draw-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Drawn edit region"><polyline points={drawPoints.map(point => `${point.x},${point.y}`).join(" ")} /></svg> : null}
-              {activeTool === "reframe" ? <i className="canvas-reframe-frame" aria-label="Reframe preview" /> : null}
-              {selectedObject && !compareOriginal && editorMode === "objects" ? <div className="detected-object-box" style={{ left: `${selectedObject.box[0] * 100}%`, top: `${selectedObject.box[1] * 100}%`, width: `${(selectedObject.box[2] - selectedObject.box[0]) * 100}%`, height: `${(selectedObject.box[3] - selectedObject.box[1]) * 100}%` }}><b>{selectedObject.label}</b></div> : null}
+      <div className={`album-workspace-body workflow-${selectedWorkflow || "launcher"}${preview ? "" : " is-launcher"}`}>
+        {selectedWorkflow === "create" ? (
+          <CreateWorkflow
+            preview={preview}
+            mode={mode}
+            space={space}
+            style={style}
+            prompt={prompt}
+            details={detailChoices}
+            aspectRatio={outputRatio}
+            ready={Boolean(preview)}
+            busy={generating}
+            error={generationError || saveError || uploadError}
+            onModeChange={changeMode}
+            onSpaceChange={setSpace}
+            onStyleChange={setStyle}
+            onPromptChange={setPrompt}
+            onDetailChange={(label, value) => setDetailChoices(c => ({ ...c, [label]: value }))}
+            onAspectRatioChange={setOutputRatio}
+            onUpload={upload}
+            onGenerate={() => setGenerationConfirmOpen(true)}
+            onUseExample={startTemplate}
+          />
+        ) : selectedWorkflow === "edit" ? (
+          <EditWorkflow
+            image={preview}
+            detectedObjects={detectedObjects}
+            selectedObjectId={selectedObject?.id ?? null}
+            onSelectObject={setSelectedObject}
+            onReplaceImage={() => requestUpload("edit")}
+            onScan={() => setScanConfirmOpen(true)}
+            isScanning={isScanning}
+            scanError={scanError}
+            activeTool={activeTool}
+            onActiveToolChange={setActiveTool}
+            instruction={instruction}
+            onInstructionChange={setInstruction}
+            onEditObject={(payload) => { setPendingEdit(payload); setEditConfirmOpen(true); }}
+            onCreate3D={handleCreate3DFromObject}
+            onRegionEdit={(payload) => { setPendingRegion(payload); setRegionConfirmOpen(true); }}
+            regionPrompt={regionPrompt}
+            onRegionPromptChange={setRegionPrompt}
+            onReframe={(payload) => { setPendingReframe(payload); setRegionConfirmOpen(true); }}
+            history={history}
+            historyIndex={historyIndex}
+            onSelectHistory={(idx) => { setHistoryIndex(idx); setPreview(history[idx]); setSaved(false); }}
+            onUndo={undo}
+            onRedo={redo}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            isEditing={isEditing || isScanning}
+            editError={editError || scanError}
+          />
+        ) : selectedWorkflow === "3d" ? (
+          <ThreeDWorkflow
+            initialSource={threeDSource}
+            status={threeDStatus}
+            modelUrl={threeDModelUrl}
+            modelPoster={threeDModelPoster}
+            error={threeDError}
+            busy={threeDBusy}
+            onUpload={(file) => {
+              // Single blob/data URL: read as data URL, set source, and persist as real project for Recent
+              const reader = new FileReader();
+              reader.onload = () => {
+                const dataUrl = String(reader.result);
+                setThreeDSource({ image: dataUrl, kind: "furniture-upload" });
+                setThreeDModelUrl(null);
+                setThreeDError(null);
+                setThreeDStatus("idle");
+                // Save as real project and add to Recent (like Create/Edit)
+                setPreview(dataUrl);
+                pushHistory(dataUrl);
+                originalPreview.current = dataUrl;
+                void persistImage(dataUrl, prompt).catch(() => setSaveError("The furniture image was saved for preview but project persistence failed."));
+              };
+              reader.onerror = () => setThreeDError("This image could not be opened. Try another photo.");
+              reader.readAsDataURL(file);
+            }}
+            onGenerate={handleThreeDGenerate}
+            onReset={() => {
+              setThreeDSource(null);
+              setThreeDModelUrl(null);
+              setThreeDStatus("idle");
+              setThreeDError(null);
+              setTaskId(null);
+              setTrackingToken(null);
+            }}
+          />
+        ) : selectedWorkflow === "ar" ? (
+          <ArWorkflow
+            completedModels={completedModels}
+            selectedModel={selectedArModel}
+            onSelectModel={(m) => setSelectedArModelId(m.id)}
+            onStartImageTo3D={handleArStart3D}
+            onOpenAr={(m) => {
+              return createModelShare({ taskId: m.id }).then((token) => {
+                window.location.assign(`/ar?token=${encodeURIComponent(token)}`);
+              });
+            }}
+            onCopyPhoneLink={async (m) => {
+              try {
+                const token = await createModelShare({ taskId: m.id });
+                const url = `${window.location.origin}/ar?token=${encodeURIComponent(token)}`;
+                await navigator.clipboard.writeText(url);
+              } catch (error) {
+                throw error;
+              }
+            }}
+          />
+        ) : (
+          <div className="album-empty">
+            <div>
+              <span className="eyebrow">Your space, reimagined</span>
+              <h1>Start with your space</h1>
+              <p>Choose what you want to make. Your project is created automatically after you add an image.</p>
             </div>
-          ) : (
-            selectedWorkflow === "3d" ? <div className="workflow-full-start three-d-start-view">
-              <button className="create-back-to-tools" onClick={() => { workflowRef.current = null; setSelectedWorkflow(null); }}><ArrowLeft /> All project tools</button>
-              <ThreeDWorkspace onBusyChange={setThreeDBusy} onSourceSelected={(image) => {
-                void asDataUrl(image)
-                  .then(dataUrl => persistImage(dataUrl, "3D furniture source"))
-                  .catch(() => setSaveError("The furniture image opened, but the project could not be saved."));
-              }} />
-            </div> : selectedWorkflow === "ar" ? <div className="workflow-full-start ar-start-view">
-              <button className="create-back-to-tools" onClick={() => { workflowRef.current = null; setSelectedWorkflow(null); }}><ArrowLeft /> All project tools</button>
-              <ArWorkspace onCreateModel={() => { workflowRef.current = "3d"; setSelectedWorkflow("3d"); }} />
-            </div> : selectedWorkflow === "edit" ? <div className="edit-start-view">
-              <button className="create-back-to-tools" onClick={() => { workflowRef.current = null; setSelectedWorkflow(null); }}><ArrowLeft /> All project tools</button>
-              <header className="edit-start-heading">
-                <span className="eyebrow">Precise AI editing</span>
-                <h1>Edit any part of your image</h1>
-                <p>Upload one photo, then select an object, spotlight a region, draw over an area, or reframe the composition.</p>
-              </header>
-              <button className={`edit-dropzone${uploadDragging ? " is-dragging" : ""}`} onClick={() => requestUpload("objects", "edit")} onDragEnter={() => setUploadDragging(true)} onDragLeave={() => setUploadDragging(false)} onDrop={() => setUploadDragging(false)}>
-                <UploadSimple aria-hidden="true" /><b>Drag a photo here</b><span>or click to browse</span><small>JPG, PNG or WEBP · up to 10 MB</small>
+            <div className="project-workflow-grid" aria-label="Choose a project workflow">
+              <button aria-pressed="false" onClick={() => { workflowRef.current = "create"; setSelectedWorkflow("create"); }}>
+                <span><Sparkle aria-hidden="true" /></span>
+                <b>Create</b>
+                <small>Redesign a room from your photo</small>
               </button>
-
-
-              {uploadError ? <p className="album-upload-error" role="alert">{uploadError}</p> : null}
-            </div> : selectedWorkflow === "create" ? <div className="create-start-view create-upload-first">
-              <button className="create-back-to-tools" onClick={() => { workflowRef.current = null; setSelectedWorkflow(null); }}><ArrowLeft /> All project tools</button>
-              <header className="create-start-heading">
-                <h1>Redesign any space from a photo</h1>
-                <p>Start with a picture of your space, then choose the exact design direction below.</p>
-              </header>
-              <button className={`create-dropzone create-hero-dropzone${uploadDragging ? " is-dragging" : ""}`} onClick={() => requestUpload("redesign", "create")} onDragEnter={() => setUploadDragging(true)} onDragLeave={() => setUploadDragging(false)} onDrop={() => setUploadDragging(false)}>
-                <span className="create-upload-mark"><UploadSimple aria-hidden="true" /></span>
-                <b>Drag a photo of your {mode === "Interior" ? "room" : mode === "Exterior" ? "building" : "garden"} here</b>
-                <span>or click to browse</span>
-                <small>JPG, PNG or WEBP · up to 10 MB</small>
+              <button aria-pressed="false" onClick={() => { workflowRef.current = "edit"; setSelectedWorkflow("edit"); }}>
+                <span><Selection aria-hidden="true" /></span>
+                <b>Edit</b>
+                <small>Change furniture, surfaces, or details</small>
               </button>
-              <button className="project-example-link" onClick={startTemplate}><SquaresFour /> Just looking around? <u>Try an example</u></button>
-              {uploadError ? <p className="album-upload-error" role="alert">{uploadError}</p> : null}
-            </div> : <div className="album-empty">
-              <div>
-                <span className="eyebrow">Your space, reimagined</span>
-                <h1>Start with your space</h1>
-                <p>Choose what you want to make. Your project is created automatically after you add an image.</p>
-              </div>
-              <div className="project-workflow-grid" aria-label="Choose a project workflow">
-                <button aria-pressed="false" onClick={() => { workflowRef.current = "create"; setSelectedWorkflow("create"); }}>
-                  <span><Sparkle aria-hidden="true" /></span>
-                  <b>Create</b>
-                  <small>Redesign a room from your photo</small>
-                </button>
-                <button aria-pressed="false" onClick={() => { workflowRef.current = "edit"; setSelectedWorkflow("edit"); }}>
-                  <span><Selection aria-hidden="true" /></span>
-                  <b>Edit</b>
-                  <small>Change furniture, surfaces, or details</small>
-                </button>
-                <button aria-pressed="false" onClick={() => { workflowRef.current = "3d"; setSelectedWorkflow("3d"); }}>
-                  <span><Cube aria-hidden="true" /></span>
-                  <b>3D</b>
-                  <small>Create a model from one furniture image</small>
-                </button>
-                <button aria-pressed="false" onClick={() => { workflowRef.current = "ar"; setSelectedWorkflow("ar"); }}>
-                  <span><Smartphone aria-hidden="true" /></span>
-                  <b>AR</b>
-                  <small>Place a finished 3D model in your room</small>
-                </button>
-              </div>
-              <p className="project-workflow-prompt">Choose one path to see exactly what you need.</p>
-              {uploadError ? <p className="album-upload-error" role="alert">{uploadError}</p> : null}
-              <p className="album-credit-note">Uploading and choosing a direction are free. We always ask before using credits.</p>
+              <button aria-pressed="false" onClick={() => { workflowRef.current = "3d"; setSelectedWorkflow("3d"); }}>
+                <span><Cube aria-hidden="true" /></span>
+                <b>3D</b>
+                <small>Create a model from one furniture image</small>
+              </button>
+              <button aria-pressed="false" onClick={() => { workflowRef.current = "ar"; setSelectedWorkflow("ar"); }}>
+                <span><Smartphone aria-hidden="true" /></span>
+                <b>AR</b>
+                <small>Place a finished 3D model in your room</small>
+              </button>
             </div>
-          )}
-          {preview && selectedWorkflow === "edit" ? <div className="edit-canvas-toolbar" role="toolbar" aria-label="Edit tools">
-            <button className={activeTool === "select" ? "active" : ""} aria-pressed={activeTool === "select"} onClick={() => setActiveTool("select")} title="Select object (V)"><CursorClick /><span>Select</span><kbd>V</kbd></button>
-            <button className={activeTool === "spotlight" ? "active" : ""} aria-pressed={activeTool === "spotlight"} onClick={() => { setActiveTool("spotlight"); setDrawPoints([]); }} title="Spotlight a region (S)"><Selection /><span>Spotlight</span><kbd>S</kbd></button>
-            <button className={activeTool === "draw" ? "active" : ""} aria-pressed={activeTool === "draw"} onClick={() => { setActiveTool("draw"); setEditRegion(null); }} title="Draw an edit mask (D)"><ScribbleLoop /><span>Draw</span><kbd>D</kbd></button>
-            <button className={activeTool === "reframe" ? "active" : ""} aria-pressed={activeTool === "reframe"} onClick={() => setActiveTool("reframe")} title="Reframe (R)"><CornersOut /><span>Reframe</span><kbd>R</kbd></button>
-            <i aria-hidden="true" />
-            <button onClick={() => void canvasRef.current?.requestFullscreen()} title="View fullscreen"><CornersOut /><span>Full screen</span></button>
-          </div> : preview && selectedWorkflow !== "create" ? <div className="canvas-tool-dock" role="toolbar" aria-label="Canvas tools">
-            <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo"><ArrowCounterClockwise /></button>
-            <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><ArrowRight /></button>
-            <span aria-hidden="true" />
-            <button onClick={() => { setFit(true); setZoom(1); }} title={fit ? "Fitted view" : "Fit to view"} aria-label="Fit to view" className={fit ? "active" : ""}><CornersOut /></button>
-            <button onClick={() => { setFit(false); setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2))); }} disabled={fit && zoom===1 ? false : zoom<=0.5} aria-label="Zoom out">−</button>
-            <span style={{ minWidth: 44, textAlign: "center", fontSize: 11, color: "#ddd" }}>{fit ? "Fit" : `${Math.round(zoom*100)}%`}</span>
-            <button onClick={() => { setFit(false); setZoom(z => Math.min(2.5, +(z + 0.25).toFixed(2))); }} aria-label="Zoom in">+</button>
-            <span aria-hidden="true" />
-            <button className={compareOriginal ? "active" : ""} onClick={() => setCompareOriginal(v => !v)} title="Compare with original" aria-pressed={compareOriginal} aria-label="Compare with original"><ImagesSquare /></button>
-            <button onClick={() => void canvasRef.current?.requestFullscreen()} title="View fullscreen" aria-label="View fullscreen"><CornersOut /></button>
-            <span aria-hidden="true" />
-            <button onClick={() => void exportImage(false)} title="Download" aria-label="Download"><DownloadSimple /></button>
-          </div> : null}
-          {exportStatus ? <div role="status" aria-live="polite" style={{ position: "absolute", bottom: 64, left: "50%", transform: "translateX(-50%)", background: "rgba(24,24,22,0.96)", color: "#f4f0e8", border: "1px solid #34362f", borderRadius: 10, padding: "8px 12px", fontSize: 12, zIndex: 5 }}>{exportStatus}</div> : null}
-        </main>
-        {preview && selectedWorkflow === "edit" ? <aside className="album-control-panel is-edit-inspector">
-          {selectedWorkflow === "edit" ? <header className="edit-inspector-heading"><div><span>Reference image</span><b>Objects & regions</b></div><small>Select a detected layer or mark the canvas.</small></header> : <div className="editor-mode-tabs" role="tablist" aria-label="Image editing mode">
-            <button id="editor-tab-redesign" role="tab" aria-controls="editor-panel" aria-selected={editorMode==="redesign"} onClick={() => setEditorMode("redesign")}><Sparkle/> <span>Design room</span></button>
-            <button id="editor-tab-objects" role="tab" aria-controls="editor-panel" aria-selected={editorMode==="objects"} onClick={() => setEditorMode("objects")} disabled={!preview} title={!preview ? "Upload a photo first" : undefined} aria-describedby={!preview ? "edit-disabled-reason" : undefined}><Selection/> <span>Edit objects</span></button>
-          </div>}
-          {!preview ? <p id="edit-disabled-reason" className="visually-hidden">Upload a photo to edit objects. Choosing a room type is free.</p> : null}
-          <div id="editor-panel" className="album-panel-content" role="tabpanel" aria-labelledby={editorMode === "redesign" ? "editor-tab-redesign" : "editor-tab-objects"}>
-            {editorMode === "redesign" ? (
-              <>
-                {!preview ? <div className="editor-getting-started"><span>1</span><div><strong>Add a room photo</strong><p>Use the large buttons on the canvas. Your redesign settings will appear here afterwards.</p></div></div> : null}
-                {preview ? <p className="album-help">Choose a direction, then generate a new version. You can edit objects or create a 3D model at any time.</p> : null}
-                {preview ? <div className="create-secondary-group">
-                  <div className="album-mode-switch" aria-label="Project type">
-                    {(["Interior", "Exterior", "Garden"] as DesignMode[]).map((item) => (
-                      <button key={item} className={mode === item ? "selected" : ""} onClick={() => changeMode(item)} aria-pressed={mode === item}>{item}</button>
-                    ))}
-                  </div>
-                  <RedesignField label={spaceLabel} value={space} values={modeData[mode].spaces} onChange={setSpace} hint="Free · automatic room-type inference. Change if needed." />
-                  <StyleField label="Design style" value={style} values={modeData[mode].styles} onChange={setStyle} mode={mode} />
-                  <label className="prompt-field album-prompt">
-                    <span>Describe the direction <small>Optional</small></span>
-                    <textarea name="design-direction" autoComplete="off" value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder={modeData[mode].prompt} rows={3} />
-                  </label>
-                  <details className="album-customize-details">
-                    <summary><span><b>Customize details</b><small>Materials, lighting, openings, and more</small></span><CaretDown/></summary>
-                    <AdvancedGroups mode={mode} choices={detailChoices} onChange={(label, value) => setDetailChoices(c => ({ ...c, [label]: value }))} onResetGroup={(keys) => setDetailChoices(c => { const n={...c}; keys.forEach(k=>delete n[k]); return n; })} />
-                  </details>
-                </div> : null}
-                {generationError ? <p className="integration-error" role="alert">{generationError}</p> : null}
-                {preview ? <div className="album-sticky-action">
-                  <button className="primary-action" onClick={() => setGenerationConfirmOpen(true)} disabled={generating || !preview} style={{ width: "100%", justifyContent: "center", minHeight: 46, opacity: !preview ? 0.5 : 1 }} title={!preview ? "Upload a photo to generate" : undefined}>{generating ? <><span className="spinner"/> Creating your design…</> : <><Sparkle size={14}/> Generate · {AI_COSTS.imageEdit} credits</>}</button>
-                  <small className="album-action-hint">You will confirm before spending credits</small>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between", fontSize: 11, color: saveError ? "#d89585" : saved ? "#a9ba9d" : "#8f9187" }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 6 }}>{saving ? <span className="spinner" style={{ width: 12, height: 12 }}/> : saved ? <Check size={12}/> : null}{saveStateLabel}</span>
-                    {preview ? <button onClick={async () => { setSaving(true); setSaveError(""); try { await persistImage(preview); } catch (e) { setSaveError(e instanceof Error ? e.message : "Could not save."); } finally { setSaving(false); }}} disabled={saving || saved} style={{ border: "1px solid #34362f", background: saved ? "#2a2a26" : "#1f1f1d", color: "#f4f0e8", borderRadius: 6, padding: "6px 10px", fontSize: 11, opacity: saving || saved ? 0.7 : 1 }}>{saving ? "Saving…" : saved ? "Saved" : "Save to Projects"}</button> : null}
-                  </div>
-                  {saveStateDetail ? <small style={{ color: saveError ? "#d89585" : "#aaa99f", lineHeight: 1.4 }}>{saveStateDetail}</small> : null}
-                </div> : null}
-              </>
-            ) : null}
-            {editorMode === "objects" ? (
-              !preview ? (
-                <div className="objects-empty" style={{ minHeight: 320, display: "grid", placeItems: "center", textAlign: "center", gap: 10, padding: 20, border: "1px dashed #3a3c36", borderRadius: 12, background: "#1a1b17" }}>
-                  <SquaresFour size={28} style={{ color: "#8d9b81" }}/>
-                  <h3 style={{ margin: 0, fontSize: 14 }}>Upload a photo first</h3>
-                  <p style={{ color: "#8f9187", fontSize: 12, maxWidth: 280 }}>After upload, scan for furniture and surfaces. Detection is paid (1 credit) and only runs when you confirm — switching tabs never charges.</p>
-                  <button onClick={() => requestUpload("objects")} style={{ minHeight: 44, padding: "0 16px", border: "1px solid #34362f", borderRadius: 8, background: "#f4f0e8", color: "#11120f", fontWeight: 700 }}><UploadSimple size={14}/> Upload a photo</button>
-                  <small style={{ color: "#777970" }}>Room-type inference in Redesign is free. Paid detection happens here only.</small>
-                </div>
-              ) : (
-                <DetectedObjects key={`${mode}:${preview}`} hasImage active={editorMode === "objects"} initialObjects={preview === initialDraft?.image ? initialDraft.detectedObjects : undefined} mode={mode} image={preview} onUpload={() => requestUpload("objects")} onSelect={object => { setSelectedObject(object); if (object) setActiveTool("select"); }} onCreate3d={open3d} onImageChange={async (image, storageWarning) => { setPreview(image); pushHistory(image); setSelectedObject(null); if (storageWarning) { setSaveError(storageWarning); return; } try { if (!versionContext) await persistImage(preview); await persistImage(image, "Object edit"); } catch { setSaveError("Your edit is ready, but saving failed. Save again or download before leaving."); } }} />
-              )
-            ) : null}
-            {selectedWorkflow === "edit" && (activeTool === "spotlight" || activeTool === "draw" || activeTool === "reframe") ? <section className="region-edit-panel" aria-live="polite">
-              <div><span>{activeTool === "spotlight" ? <Selection /> : activeTool === "draw" ? <ScribbleLoop /> : <CornersOut />}</span><div><b>{activeTool === "spotlight" ? "Spotlight a region" : activeTool === "draw" ? "Draw over an area" : "Reframe image"}</b><small>{activeTool === "reframe" ? "Choose a format and adjust the canvas view." : "Mark only the pixels you want Housora to change."}</small></div></div>
-              {activeTool === "reframe" ? <><div className="reframe-options" aria-label="Aspect ratio"><button onClick={() => setPreviewRatio(1)} aria-pressed={previewRatio === 1}>1:1</button><button onClick={() => setPreviewRatio(4/3)} aria-pressed={Math.abs(previewRatio-4/3)<.01}>4:3</button><button onClick={() => setPreviewRatio(3/4)} aria-pressed={Math.abs(previewRatio-3/4)<.01}>3:4</button><button onClick={() => setPreviewRatio(16/9)} aria-pressed={Math.abs(previewRatio-16/9)<.01}>16:9</button></div><label className="reframe-scale"><span>Scale <b>{Math.round(zoom * 100)}%</b></span><input type="range" min="50" max="200" value={Math.round(zoom * 100)} onChange={event => { setFit(false); setZoom(Number(event.target.value)/100); }} /></label><button className="primary-action" disabled={regionEditing} onClick={() => setRegionConfirmOpen(true)}>{regionEditing ? <><span className="spinner" /> Reframing…</> : <>Apply reframe <ArrowUp /></>}</button><small>You will confirm the {AI_COSTS.imageEdit}-credit generation first.</small></> : <>
-                <label className="region-prompt"><span>Describe the change</span><textarea value={regionInstruction} onChange={event => setRegionInstruction(event.target.value)} placeholder={activeTool === "spotlight" ? "For example: replace this area with built-in oak shelves" : "For example: remove everything I marked"} rows={3} /></label>
-                <button className="primary-action" disabled={regionEditing || !regionInstruction.trim() || (activeTool === "spotlight" ? !editRegion || editRegion.width <= 1 || editRegion.height <= 1 : drawPoints.length < 2)} onClick={() => setRegionConfirmOpen(true)}>{regionEditing ? <><span className="spinner" /> Applying edit…</> : <>Apply edit <ArrowUp /></>}</button>
-                <small>You will confirm the {AI_COSTS.imageEdit}-credit edit before it runs.</small>
-              </>}
-              {regionError ? <p className="integration-error" role="alert">{regionError}</p> : null}
-            </section> : null}
-            {preview ? (
-              <div className="version-history-panel" aria-label="Version history" style={{ borderTop: "1px solid #2a2b27", paddingTop: 12, display: "grid", gap: 8 }}>
-                <div className="version-history-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
-                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}><ClockCounterClockwise size={14}/> {history.length} {history.length === 1 ? "version" : "versions"}</span>
-                  <span style={{ display: "flex", gap: 6 }}>
-                    <button onClick={undo} disabled={!canUndo} style={{ minHeight: 32, padding: "0 10px", border: "1px solid #34362f", borderRadius: 6, background: "transparent", color: canUndo ? "#f4f0e8" : "#5a5b55" }}>Undo</button>
-                    <button onClick={redo} disabled={!canRedo} style={{ minHeight: 32, padding: "0 10px", border: "1px solid #34362f", borderRadius: 6, background: "transparent", color: canRedo ? "#f4f0e8" : "#5a5b55" }}>Redo</button>
-                  </span>
-                </div>
-                <div className="version-history-strip" role="list" style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
-                  {history.map((img, idx) => (
-                    <button key={`${idx}-${img.slice(-18)}`} role="listitem" onClick={() => { setHistoryIndex(idx); setPreview(img); setSaved(false); setZoom(1); setFit(true); }} title={`Preview version ${idx+1}${idx===historyIndex ? " (current)" : ""}`} aria-label={`Preview version ${idx+1}`} style={{ flex: "none", border: idx===historyIndex ? "2px solid #f4f0e8" : "1px solid #34362f", borderRadius: 8, padding: 2, background: "transparent", opacity: idx===historyIndex ? 1 : 0.85 }}>
-                      <img src={img} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 6, display: "block" }} />
-                    </button>
-                  ))}
-                </div>
-                <small className="version-history-help">Select a thumbnail to preview an earlier version.</small>
-                {historyIndex !== history.length - 1 ? <button onClick={() => { setPreview(history[historyIndex]); setSaved(false); }} style={{ minHeight: 36, border: "1px solid #34362f", borderRadius: 8, background: "#1f1f1d", color: "#f4f0e8", fontSize: 12 }}>Restore this preview as current</button> : null}
-              </div>
-            ) : null}
+            <p className="project-workflow-prompt">Choose one path to see exactly what you need.</p>
+            {uploadError ? <p className="album-upload-error" role="alert">{uploadError}</p> : null}
+            <p className="album-credit-note">Uploading and choosing a direction are free. We always ask before using credits.</p>
           </div>
-        </aside> : null}
-        {selectedWorkflow === "create" ? <CreateComposer
-          mode={mode} space={space} style={style} prompt={prompt} details={detailChoices} ratio={outputRatio}
-          onMode={changeMode} onSpace={setSpace} onStyle={setStyle} onPrompt={setPrompt} onRatio={setOutputRatio}
-          onDetail={(label, value) => setDetailChoices(current => ({ ...current, [label]: value }))}
-          onUpload={() => requestUpload("redesign", "create")} onGenerate={() => setGenerationConfirmOpen(true)}
-          ready={Boolean(preview)} busy={generating} error={generationError || saveError} /> : null}
+        )}
+        {exportStatus ? <div role="status" aria-live="polite" style={{ position: "absolute", bottom: 64, left: "50%", transform: "translateX(-50%)", background: "rgba(24,24,22,0.96)", color: "#f4f0e8", border: "1px solid #34362f", borderRadius: 10, padding: "8px 12px", fontSize: 12, zIndex: 5 }}>{exportStatus}</div> : null}
       </div>
       <CreditConfirmation open={generationConfirmOpen} cost={AI_COSTS.imageEdit} title="Generate your design?" description="Create a new version of this photo. Your original stays available for comparison. Room-type inference is free; this generation costs credits." action="Generate" onCancel={() => setGenerationConfirmOpen(false)} onConfirm={() => void generateDesign()} />
-      <CreditConfirmation open={regionConfirmOpen} cost={AI_COSTS.imageEdit} title={activeTool === "reframe" ? "Apply this reframe?" : "Apply this local edit?"} description={activeTool === "reframe" ? "Generate a naturally extended or cropped version in the selected format. Your original remains in version history." : "Only the spotlighted or drawn region is sent as the edit mask. The rest of your photo is preserved, and your original remains in version history."} action={activeTool === "reframe" ? "Apply reframe" : "Apply edit"} onCancel={() => setRegionConfirmOpen(false)} onConfirm={() => void (activeTool === "reframe" ? applyReframe() : applyRegionEdit())} />
+      <CreditConfirmation open={scanConfirmOpen} cost={AI_COSTS.detection} title="Detect objects in this photo?" description="Scan this photo to find furniture and surfaces. Failed or empty scans return the detection credit." action="Detect objects" onCancel={() => setScanConfirmOpen(false)} onConfirm={() => void doScan()} />
+      <CreditConfirmation open={editConfirmOpen} cost={AI_COSTS.imageEdit} title={pendingEdit?.object.label ? `Edit ${pendingEdit.object.label}?` : "Apply edit?"} description="Only the masked object will be edited. Outside-mask pixels are preserved." action="Edit object" onCancel={() => { setEditConfirmOpen(false); setPendingEdit(null); }} onConfirm={() => void doEditObject()} />
+      <CreditConfirmation open={regionConfirmOpen && Boolean(pendingRegion)} cost={AI_COSTS.imageEdit} title="Apply this local edit?" description="Only the spotlighted or drawn region is sent as the edit mask. The rest of your photo is preserved, and your original remains in version history." action="Apply edit" onCancel={() => { setRegionConfirmOpen(false); setPendingRegion(null); }} onConfirm={() => void doRegionEdit()} />
+      <CreditConfirmation open={regionConfirmOpen && Boolean(pendingReframe)} cost={AI_COSTS.imageEdit} title="Apply this reframe?" description="Generate a naturally extended or cropped version in the selected format. Your original remains in version history." action="Apply reframe" onCancel={() => { setRegionConfirmOpen(false); setPendingReframe(null); }} onConfirm={() => void doReframe()} />
+      <CreditConfirmation open={threeDConfirmOpen} cost={AI_COSTS.model3d} title="Create this 3D model?" description="Use this image to create a textured 3D model. Failed generations return your Housora credits. AI models are approximations, not measured replicas." action="Create 3D" onCancel={() => { setThreeDConfirmOpen(false); setPendingThreeD(null); }} onConfirm={() => void doThreeDGenerate()} />
       <WorkspaceDialog open={leaveConfirmOpen} onClose={() => setLeaveConfirmOpen(false)} title="Leave without saving?">
         <p className="workspace-dialog-copy">This version has not been saved to Projects. Stay here to save it, or leave and discard these unsaved changes.</p>
         <footer>
@@ -2647,170 +2774,14 @@ function AlbumWorkspace({
           <button className="primary-action" onClick={onBack}>Leave project</button>
         </footer>
       </WorkspaceDialog>
-      <WorkspaceDialog open={threeDOpen} onClose={() => setThreeDOpen(false)} title={threeDSource?.objectLabel ? `Create a 3D model of ${threeDSource.objectLabel}` : threeDEntry === "ar" ? "AR preview" : "3D models"} wide>
-        <div className="project-3d-dialog-body">
-          {threeDEntry === "ar" ? <div className="project-3d-context"><Smartphone aria-hidden="true" /><div><b>AR starts with a 3D model</b><p>Create or reopen a model below. When it is ready, choose “View in your room” from the preview.</p></div></div> : null}
-          <ThreeDWorkspace initialSource={threeDSource} onBusyChange={setThreeDBusy} onSourceSelected={(image) => {
-            if (preview) return;
-            void asDataUrl(image).then(dataUrl => {
-              setPreview(dataUrl);
-              originalPreview.current = dataUrl;
-              pushHistory(dataUrl);
-              return persistImage(dataUrl, threeDEntry === "ar" ? "AR furniture source" : "3D furniture source");
-            }).catch(() => setSaveError("The furniture image opened, but the project could not be saved. Save it before leaving."));
-          }} />
-        </div>
-      </WorkspaceDialog>
     </section>
   );
 }
-function CreateComposer({ mode, space, style, prompt, details, ratio, onMode, onSpace, onStyle, onPrompt, onDetail, onRatio, onUpload, onGenerate, ready, busy, error }: {
-  mode: DesignMode; space: string; style: string; prompt: string; details: Record<string,string>; ratio: string;
-  onMode: (mode: DesignMode) => void; onSpace: (value: string) => void; onStyle: (value: string) => void;
-  onPrompt: (value: string) => void; onDetail: (label: string, value: string) => void; onRatio: (value: string) => void;
-  onUpload: () => void; onGenerate: () => void; ready: boolean; busy: boolean; error: string;
-}) {
-  const [menu, setMenu] = useState<string | null>(null);
-  const root = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const close = (event: PointerEvent) => { if (!root.current?.contains(event.target as Node)) setMenu(null); };
-    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") { root.current?.querySelector<HTMLButtonElement>('[aria-expanded="true"]')?.focus(); setMenu(null); } };
-    document.addEventListener("pointerdown", close); document.addEventListener("keydown", escape);
-    return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", escape); };
-  }, []);
-  const spaceLabel = mode === "Interior" ? "Room type" : mode === "Exterior" ? "Building type" : "Garden area";
-  const atmosphere = mode === "Interior" ? "Color palette" : "Lighting";
-  const toggle = (key: string) => setMenu(current => current === key ? null : key);
-  const choose = (action: () => void) => { action(); setMenu(null); };
-  const options = menu === "space" ? modeData[mode].spaces : menu === "style" ? modeData[mode].styles : menu === "atmosphere" ? detailOptions[mode].find(detail => detail.label === atmosphere)?.values || [] : ["auto","1:1","4:3","3:4","16:9","9:16","3:2","2:3"];
-  const title = menu === "mode" ? "Design type" : menu === "space" ? spaceLabel : menu === "style" ? "Design style" : menu === "atmosphere" ? atmosphere : menu === "details" ? "Details" : "Aspect ratio";
-  return <div className="studio-composer-anchor" ref={root}>
-    {menu ? <section id="create-options" className={`studio-options ${menu === "mode" || menu === "style" ? "is-visual" : ""}`} aria-label={title}>
-      <header><b>{title}</b><button aria-label="Close options" onClick={() => setMenu(null)}><X /></button></header>
-      {menu === "mode" ? <div className="studio-mode-images">{(["Interior","Exterior","Garden"] as DesignMode[]).map(item => <button key={item} aria-pressed={mode === item} onClick={() => choose(() => onMode(item))}><Image src={modeData[item].image} width={300} height={200} alt="" unoptimized /><span>{item} design</span></button>)}</div>
-      : menu === "details" ? <div className="studio-detail-options">{detailOptions[mode].map(detail => <fieldset key={detail.label}><legend>{detail.label}</legend><div>{detail.values.map(value => <button key={value} aria-pressed={(details[detail.label] || detail.values[0]) === value} onClick={() => onDetail(detail.label,value)}>{value}</button>)}</div></fieldset>)}</div>
-      : <div className={menu === "style" ? "studio-style-images" : "studio-option-list"}>{options.map(value => {
-        const selected = menu === "space" ? space : menu === "style" ? style : menu === "atmosphere" ? details[atmosphere] || "Auto" : ratio;
-        return <button key={value} aria-pressed={selected === value} onClick={() => choose(() => menu === "space" ? onSpace(value) : menu === "style" ? onStyle(value) : menu === "atmosphere" ? onDetail(atmosphere,value) : onRatio(value))}>
-          {menu === "style" ? <Image src={value.startsWith("Auto") ? modeData[mode].image : `/pictures/${mode.toLowerCase()}-design-style-${value.toLowerCase().replaceAll(" ","-")}.png`} width={180} height={120} alt="" unoptimized onError={event => { event.currentTarget.src = modeData[mode].image; }} /> : null}
-          <span>{value === "auto" ? "Auto" : value}</span>{selected === value ? <Check /> : null}
-        </button>;
-      })}</div>}
-    </section> : null}
-    <div className="studio-composer">
-      <textarea aria-label="Describe the redesign" value={prompt} onChange={event => onPrompt(event.target.value)} placeholder="Describe the redesign you want, then hit generate…" rows={2} disabled={busy} />
-      <div className="studio-composer-row">
-        <button className="studio-add-photo" aria-label={ready ? "Replace photo" : "Upload photo"} onClick={onUpload} disabled={busy}><Plus /></button>
-        <button aria-expanded={menu === "mode"} aria-controls="create-options" onClick={() => toggle("mode")}><SquaresFour />{mode} design</button>
-        <button aria-expanded={menu === "space"} aria-controls="create-options" onClick={() => toggle("space")}><House />{space === "Auto-detect" ? spaceLabel : space}</button>
-        <button aria-expanded={menu === "style"} aria-controls="create-options" onClick={() => toggle("style")}><Sparkle />{style}</button>
-        <button aria-expanded={menu === "atmosphere"} aria-controls="create-options" onClick={() => toggle("atmosphere")}><Eye />{details[atmosphere] || atmosphere}</button>
-        <button aria-expanded={menu === "details"} aria-controls="create-options" onClick={() => toggle("details")}><GearSix />Details</button>
-        <button aria-expanded={menu === "ratio"} aria-controls="create-options" onClick={() => toggle("ratio")}><CornersOut />{ratio === "auto" ? "Auto" : ratio}</button>
-        <button className="studio-generate" aria-label={busy ? "Generating redesign" : "Generate redesign"} title={ready ? `Generate · ${AI_COSTS.imageEdit} credits` : "Add a photo first"} disabled={!ready || busy} onClick={onGenerate}>{busy ? <span className="spinner" /> : <ArrowUp />}</button>
-      </div>
-      {error ? <p className="integration-error" role="alert">{error}</p> : null}
-    </div>
-  </div>;
-}
 
-function RedesignField({ label, value, values, onChange, hint }: { label: string; value: string; values: string[]; onChange: (v: string) => void; hint?: string }) {
-  return (
-    <fieldset style={{ border: "1px solid var(--night-line)", borderRadius: 10, padding: 10, background: "#181915" }}>
-      <legend style={{ padding: "0 6px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#8f9187", fontWeight: 700 }}>{label}</legend>
-      {hint ? <small style={{ display: "block", color: "#777970", fontSize: 11, marginBottom: 6 }}>{hint}</small> : null}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-        {values.map(item => (
-          <button key={item} type="button" onClick={() => onChange(item)} aria-pressed={value===item} style={{ minHeight: 34, padding: "0 10px", borderRadius: 999, border: value===item ? "1px solid #f4f0e8" : "1px solid #3a3c36", background: value===item ? "#f4f0e8" : "#1f1f1d", color: value===item ? "#11120f" : "#d6d5cf", fontSize: 12, fontWeight: value===item ? 700 : 500 }}>{item}</button>
-        ))}
-      </div>
-    </fieldset>
-  );
-}
-function StyleField({ label, value, values, onChange, mode }: { label: string; value: string; values: string[]; onChange: (v: string) => void; mode: DesignMode }) {
-  const imageFor = (item: string) => {
-    if (item.startsWith("Auto")) return modeData[mode].image;
-    const slug = item.toLowerCase().replace(/ /g, "-");
-    const prefix = mode.toLowerCase();
-    return `/pictures/${prefix}-design-style-${slug}.png`;
-  };
-  return (
-    <fieldset style={{ border: "1px solid var(--night-line)", borderRadius: 10, padding: 10, background: "#181915" }}>
-      <legend style={{ padding: "0 6px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#8f9187", fontWeight: 700 }}>{label}</legend>
-      <small style={{ display: "block", color: "#aaa99f", fontSize: 11, marginBottom: 8 }}>Choose a style, or let Housora suggest one for your space.</small>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(118px, 1fr))", gap: 8 }}>
-        {values.map(item => (
-          <button key={item} type="button" onClick={() => onChange(item)} aria-pressed={value===item} style={{ border: value===item ? "2px solid #f4f0e8" : "1px solid #34362f", borderRadius: 10, overflow: "hidden", background: value===item ? "#23241f" : "#1f1f1d", color: "#f4f0e8", textAlign: "left", padding: 0 }}>
-            <span style={{ position: "relative", display: "block", height: 72, overflow: "hidden", background: "#0f0f0e" }}>
-              <Image src={imageFor(item)} alt="" width={120} height={72} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { (e.currentTarget as HTMLImageElement).src = modeData[mode].image; }} unoptimized />
-            </span>
-            <span style={{ display: "grid", padding: "6px 8px", gap: 2 }}><b style={{ fontSize: 12, lineHeight: 1.2 }}>{item}</b><small style={{ fontSize: 10, color: "#8f9187" }}>{item.startsWith("Auto") ? "Let Housora choose" : `${mode} direction`}</small></span>
-          </button>
-        ))}
-      </div>
-    </fieldset>
-  );
-}
-function AdvancedGroups({ mode, choices, onChange, onResetGroup }: { mode: DesignMode; choices: Record<string, string>; onChange: (label: string, value: string) => void; onResetGroup: (keys: string[]) => void }) {
-  const groups: Record<DesignMode, { id: string; label: string; keys: string[] }[]> = {
-    Interior: [
-      { id: "palette", label: "Palette & light", keys: ["Color palette", "Lighting"] },
-      { id: "surfaces", label: "Surfaces", keys: ["Wall finish", "Floor material"] },
-      { id: "openings", label: "Openings & circulation", keys: ["Window style", "Door style", "Staircase style"] },
-    ],
-    Exterior: [
-      { id: "palette", label: "Palette & light", keys: ["Color palette", "Lighting"] },
-      { id: "facade", label: "Facade & roof", keys: ["Facade material", "Roof style"] },
-      { id: "openings", label: "Openings & landscape", keys: ["Window style", "Door style", "Landscape level"] },
-    ],
-    Garden: [
-      { id: "greenery", label: "Greenery & paving", keys: ["Greenery", "Paving", "Boundary"] },
-      { id: "atmosphere", label: "Atmosphere", keys: ["Lighting", "Climate", "Maintenance"] },
-      { id: "furnishing", label: "Furnishing", keys: ["Outdoor furniture"] },
-    ],
-  };
-  const [open, setOpen] = useState<Record<string, boolean>>({});
-  const isAuto = (v: string) => v === "Auto" || v === "Auto style" || v === "Auto-detect" || v === "Keep existing" || v.startsWith("Auto");
-  return (
-    <div style={{ display: "grid", gap: 8 }}>
-      {groups[mode].map(group => {
-        const vals = group.keys.map(k => choices[k] || detailOptions[mode].find(d => d.label===k)?.values[0] || "Auto");
-        const summary = vals.every(v => isAuto(v)) ? "Defaults" : vals.filter(v => !isAuto(v)).join(" · ");
-        const expanded = !!open[group.id];
-        return (
-          <div key={group.id} style={{ border: "1px solid #34362f", borderRadius: 10, background: "#1a1b17", overflow: "hidden" }}>
-            <button onClick={() => setOpen(o => ({ ...o, [group.id]: !o[group.id] }))} aria-expanded={expanded} style={{ width: "100%", minHeight: 46, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "0 12px", background: "transparent", border: 0, color: "#f4f0e8", textAlign: "left" }}>
-              <span style={{ display: "grid", gap: 2 }}><b style={{ fontSize: 12 }}>{group.label}</b><small style={{ fontSize: 11, color: "#8f9187" }}>{summary}</small></span>
-              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span onClick={(e) => { e.stopPropagation(); onResetGroup(group.keys); }} role="button" tabIndex={0} onKeyDown={e => { if (e.key==="Enter" || e.key===" ") { e.preventDefault(); (e.target as HTMLElement).click(); }}} style={{ fontSize: 11, color: "#a9ba9d", textDecoration: "underline", cursor: "pointer" }}>Reset</span>
-                <CaretDown size={14} style={{ transform: expanded ? "rotate(180deg)" : undefined, transition: "transform 0.15s" }}/>
-              </span>
-            </button>
-            {expanded ? (
-              <div style={{ display: "grid", gap: 12, padding: "0 12px 12px", borderTop: "1px solid #2a2b27" }}>
-                {group.keys.map(label => {
-                  const detail = detailOptions[mode].find(d => d.label===label);
-                  if (!detail) return null;
-                  const val = choices[label] || detail.values[0];
-                  return (
-                    <fieldset key={label} style={{ border: 0, padding: 0, margin: 0 }}>
-                      <legend style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "#aaa99f", fontWeight: 700, marginBottom: 6 }}>{label}</legend>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {detail.values.map(opt => (
-                          <button key={opt} type="button" onClick={() => onChange(label, opt)} aria-pressed={val===opt} style={{ minHeight: 32, padding: "0 10px", borderRadius: 999, border: val===opt ? "1px solid #f4f0e8" : "1px solid #3a3c36", background: val===opt ? "#f4f0e8" : "#1f1f1d", color: val===opt ? "#11120f" : "#d6d5cf", fontSize: 11 }}>{opt}</button>
-                        ))}
-                      </div>
-                    </fieldset>
-                  );
-                })}
-              </div>
-            ) : null}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+
+
+
+
 function ClientsPage({
   onInvite,
   onOpen,
@@ -4375,6 +4346,8 @@ function DesignStudio({
   );
 }
 
+
+
 function ThreeDWorkspace({ initialSource = null, onBusyChange, onModelReady, onSourceSelected, compact = false }: { initialSource?: ThreeDSource | null; onBusyChange?: (busy: boolean) => void; onModelReady?: (url: string, poster: string | null) => void; onSourceSelected?: (image: string) => void; compact?: boolean } = {}) {
   const { user } = useUser();
   const trackingKey = user?.id ? `housora:tripo:${user.id}` : null;
@@ -4634,13 +4607,36 @@ function ThreeDWorkspace({ initialSource = null, onBusyChange, onModelReady, onS
   );
 }
 
+
+
 function ArWorkspace({ onCreateModel }: { onCreateModel: () => void }) {
   const recentModels = useQuery(api.models.list, {});
+  const createArShare = useMutation(api.models.createShare);
   const readyModels = recentModels?.filter(model => Boolean(model.url)) ?? [];
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState("");
   const selectedModel = readyModels.find(model => model.taskId === selectedTaskId) ?? readyModels[0] ?? null;
-  const arUrl = selectedModel?.url ? `/ar?src=${encodeURIComponent(selectedModel.url)}` : "";
+  const openSecureAr = async () => {
+    if (!selectedModel) return;
+    setCopyStatus("");
+    try {
+      const token = await createArShare({ taskId: selectedModel.taskId });
+      window.location.assign(`/ar?token=${encodeURIComponent(token)}`);
+    } catch {
+      setCopyStatus("Could not create a secure AR link. Try again.");
+    }
+  };
+  const copySecureAr = async () => {
+    if (!selectedModel) return;
+    setCopyStatus("");
+    try {
+      const token = await createArShare({ taskId: selectedModel.taskId });
+      await navigator.clipboard.writeText(`${window.location.origin}/ar?token=${encodeURIComponent(token)}`);
+      setCopyStatus("Secure AR link copied.");
+    } catch {
+      setCopyStatus("Could not copy a secure AR link. Try again.");
+    }
+  };
   return <section className="ar-workspace" aria-labelledby="ar-workspace-title">
     <header className="ar-workspace-heading">
       <span className="eyebrow"><Smartphone /> Augmented reality</span>
@@ -4658,12 +4654,14 @@ function ArWorkspace({ onCreateModel }: { onCreateModel: () => void }) {
         <button className="ar-create-another" onClick={onCreateModel}><Plus /> Create from a furniture photo</button>
       </aside>
       <div className="ar-preview-stage">
-        {selectedModel?.url ? <><ModelViewer src={selectedModel.url} /><div className="ar-preview-actions"><a className="primary-action" href={arUrl}><Smartphone /> Open AR view</a><button onClick={async () => { try { await navigator.clipboard.writeText(`${window.location.origin}${arUrl}`); setCopyStatus("AR link copied."); } catch { setCopyStatus("Could not copy the link. Open AR view instead."); } }}><CopySimple /> Copy phone link</button></div><p role="status" aria-live="polite">{copyStatus}</p></> : <div className="ar-preview-placeholder"><Smartphone /><h3>Choose a model</h3><p>You will preview it here before opening the camera.</p></div>}
+        {selectedModel?.url ? <><ModelViewer src={selectedModel.url} /><div className="ar-preview-actions"><button className="primary-action" onClick={() => void openSecureAr()}><Smartphone /> Open AR view</button><button onClick={() => void copySecureAr()}><CopySimple /> Copy phone link</button></div><p role="status" aria-live="polite">{copyStatus}</p></> : <div className="ar-preview-placeholder"><Smartphone /><h3>Choose a model</h3><p>You will preview it here before opening the camera.</p></div>}
       </div>
     </div>}
     <footer className="ar-how-it-works"><span><b>1</b> Choose a 3D model</span><ArrowRight /><span><b>2</b> Open on your phone</span><ArrowRight /><span><b>3</b> Tap a floor to place it</span></footer>
   </section>;
 }
+
+
 
 function ExportWorkspace() {
   const [exporting, setExporting] = useState(false);

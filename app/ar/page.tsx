@@ -9,11 +9,10 @@ import { api } from "../../convex/_generated/api";
 
 function ARView() {
   const sp = useSearchParams();
-  const src = sp.get("src");
   const token = sp.get("token");
   const poster = sp.get("poster");
   const shared = useQuery(api.models.getSharedModel, token ? { token } : "skip");
-  const resolvedSrc = token ? shared?.url : src;
+  const resolvedSrc = token ? shared?.url : null;
   const pending = Boolean(token) && shared === undefined;
   const valid = Boolean(resolvedSrc && /^https:\/\//i.test(resolvedSrc));
   if (pending) return <main className="ar-page"><div className="model-viewer-loading" role="status"><Loader2 className="spin" aria-hidden />Loading shared model…</div></main>;

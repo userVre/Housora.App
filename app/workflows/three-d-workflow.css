@@ -1,0 +1,393 @@
+/* Three-D workflow — isolated two-column desktop, single-column mobile */
+
+.three-d-workflow {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+  width: 100%;
+  min-height: calc(100dvh - 80px);
+  padding: 24px;
+  background: var(--night, #11120f);
+  color: var(--night-text, #f4f0e8);
+  box-sizing: border-box;
+  align-items: start;
+}
+
+.three-d-workflow * {
+  box-sizing: border-box;
+}
+
+/* Stage: flexible preview */
+.three-d-workflow__stage {
+  min-width: 0;
+  min-height: 420px;
+  display: grid;
+  place-items: center;
+  background: #0f0f0e;
+  border: 1px solid #34362f;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+}
+
+.three-d-workflow__preview {
+  position: relative;
+  width: 100%;
+  max-height: calc(100dvh - 160px);
+  display: grid;
+  place-items: center;
+  margin: 0;
+  background: #0f0f0e;
+}
+
+.three-d-workflow__preview img {
+  max-height: calc(100dvh - 160px);
+  object-fit: contain;
+}
+
+.three-d-workflow__preview figcaption {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(17, 18, 15, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font: 600 11px var(--font-body, system-ui);
+}
+
+.three-d-workflow__viewer {
+  width: 100%;
+  height: 100%;
+  min-height: 460px;
+  background: #0f0f0e;
+}
+
+.three-d-workflow__empty {
+  width: 100%;
+  min-height: 420px;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  padding: 32px 20px;
+  text-align: center;
+  background: transparent;
+  border: 2px dashed #50514b;
+  border-radius: 16px;
+  color: var(--night-text, #f4f0e8);
+  cursor: pointer;
+  transition: border-color 0.16s, background 0.16s;
+}
+
+.three-d-workflow__empty:hover {
+  border-color: #6a6c63;
+  background: #1a1b18;
+}
+
+.three-d-workflow__empty.is-dragging {
+  border-color: #eab083;
+  background: #252620;
+}
+
+.three-d-workflow__empty-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #1e1f1c;
+  border: 1px solid #34362f;
+}
+
+.three-d-workflow__empty b {
+  font: 700 15px var(--font-body);
+}
+
+.three-d-workflow__empty span {
+  color: var(--night-muted, #aaa99f);
+  font-size: 13px;
+}
+
+.three-d-workflow__empty small {
+  color: #7f8178;
+  font-size: 11px;
+}
+
+.three-d-workflow__generating {
+  position: absolute;
+  inset: auto 12px 12px 12px;
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(17, 18, 15, 0.92);
+  border: 1px solid #34362f;
+  text-align: left;
+}
+
+.three-d-workflow__generating b {
+  font: 700 13px var(--font-body);
+}
+
+.three-d-workflow__generating small {
+  color: var(--night-muted, #aaa99f);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.three-d-workflow__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #5a5b55;
+  border-top-color: #f4f0e8;
+  border-radius: 50%;
+  animation: three-d-spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes three-d-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Control panel: 320px */
+.three-d-workflow__panel {
+  width: 320px;
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  background: #1b1c18;
+  border: 1px solid #34362f;
+  border-radius: 16px;
+  align-content: start;
+}
+
+.three-d-workflow__panel-head {
+  display: grid;
+  gap: 8px;
+}
+
+.three-d-workflow__title {
+  margin: 0;
+  font: 700 20px/1.2 var(--font-body, system-ui);
+}
+
+.three-d-workflow__subtitle {
+  margin: 0;
+  color: var(--night-muted, #aaa99f);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.three-d-workflow__instructions {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #151612;
+  border: 1px solid #2a2b27;
+}
+
+.three-d-workflow__instructions b {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--night-muted);
+}
+
+.three-d-workflow__instructions ul {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 4px;
+  color: #d6d5cf;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.three-d-workflow__guidance {
+  margin: 4px 0 0;
+  color: #8f9187;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.three-d-workflow__steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.three-d-workflow__steps li {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #2a2b27;
+  background: #151612;
+  font-size: 12px;
+}
+
+.three-d-workflow__steps li span {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #2a2b27;
+  color: #aaa99f;
+  font-weight: 700;
+  font-size: 11px;
+  flex: none;
+}
+
+.three-d-workflow__steps li.is-active {
+  border-color: #cf8752;
+  background: #392714;
+  color: #ffad6d;
+}
+
+.three-d-workflow__steps li.is-active span {
+  background: #cf8752;
+  color: #11120f;
+}
+
+.three-d-workflow__steps li.is-complete {
+  border-color: #34362f;
+  background: #1f1f1d;
+  color: #a9ba9d;
+}
+
+.three-d-workflow__steps li.is-complete span {
+  background: #2f3a2b;
+  color: #a9ba9d;
+}
+
+.three-d-workflow__error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #2a1a16;
+  border: 1px solid #4a2a22;
+  color: #e8a090;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.three-d-workflow__hint {
+  margin: 0;
+  color: #e8a090;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.three-d-workflow__actions {
+  display: grid;
+  gap: 12px;
+}
+
+.three-d-workflow__button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid #34362f;
+  font: 700 13px var(--font-body);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.three-d-workflow__button svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.three-d-workflow__button:disabled,
+.three-d-workflow__button[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.three-d-workflow__button--primary {
+  background: #f4f0e8;
+  color: #11120f;
+  border-color: #f4f0e8;
+}
+
+.three-d-workflow__button--secondary {
+  background: #22231f;
+  color: #f4f0e8;
+}
+
+.three-d-workflow__button--ghost {
+  background: transparent;
+  color: #aaa99f;
+}
+
+.three-d-workflow__note {
+  margin: 0;
+  color: #777970;
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.three-d-workflow__button:focus-visible,
+.three-d-workflow__empty:focus-visible,
+.three-d-workflow__steps li:focus-visible {
+  outline: 2px solid #eab083;
+  outline-offset: 2px;
+}
+
+/* Single-column mobile */
+@media (max-width: 900px) {
+  .three-d-workflow {
+    grid-template-columns: 1fr;
+    padding: 16px;
+    gap: 16px;
+    min-height: calc(100dvh - 152px);
+  }
+
+  .three-d-workflow__panel {
+    width: 100%;
+  }
+
+  .three-d-workflow__stage {
+    min-height: 320px;
+  }
+
+  .three-d-workflow__empty {
+    min-height: 320px;
+  }
+
+  .three-d-workflow__viewer {
+    min-height: 360px;
+  }
+}
+
+@media (max-width: 560px) {
+  .three-d-workflow {
+    padding: 12px;
+  }
+
+  .three-d-workflow__panel {
+    padding: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .three-d-workflow * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+.three-d-workflow, .three-d-workflow * { max-width: 100%; box-sizing: border-box; }
