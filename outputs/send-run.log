@@ -1,0 +1,58 @@
+RETRY Thuma TransportError attempt 1
+RETRY Thuma TimeoutError attempt 2
+RETRY Thuma TimeoutError attempt 3
+SENT Thuma -> partnerships@thuma.co
+SENT Lulu and Georgia -> press@luluandgeorgia.com
+SENT Schoolhouse -> marketing@schoolhouse.com
+SENT Pottery Barn -> pr@potterybarn.com
+SENT Barker and Stonehouse -> social@barkerandstonehouse.co.uk
+SENT Oak Furnitureland -> press@oakfurnitureland.co.uk
+SENT Feather & Black -> press@featherandblack.com
+SENT Walker Edison -> socialmedia@walkeredison.com
+SENT Furniture Choice -> press@furniturechoice.co.uk
+SENT Furniture Village -> furniturevillage@coolblue.co.uk
+SENT Dunelm -> press@dunelm.com
+SENT Darlings of Chelsea -> press@darlingsofchelsea.co.uk
+SENT Hinkley Lighting -> marketing@hinkley.com
+SENT Heathfield & Co -> marketing@heathfield.co.uk
+SENT Vaughan Designs -> press@vaughandesigns.com
+SENT Laura Ashley Lighting -> az@azpr.co.uk
+RETRY Bella Figura gaierror attempt 1
+SENT Bella Figura -> charlie@bella-figura.com
+SENT Benuta -> presse@benuta.com
+SENT Kukoon Rugs -> marketing@kukoon.com
+SENT Asiatic Carpets -> marketing@asiatic.co.uk
+SENT King & McGaw -> marketing@kingandmcgaw.com
+SENT JUNIQE -> press@juniqe.com
+SENT Fy! -> press@iamfy.co
+SENT William Wood Mirrors -> marketing@williamwoodmirrors.co.uk
+SENT Emma Bridgewater -> pressoffice@emmabridgewater.co.uk
+SENT Neptune -> pr@neptune.com
+SENT Burleigh Pottery -> marketing@burgessandleigh.co.uk
+SENT Hawkins New York -> press@hawkinsnewyork.com
+SENT Heath Ceramics -> press@heathceramics.com
+SENT NEST New York -> mediarequests@nestnewyork.com
+SENT Quince -> community@onequince.com
+SENT Pendleton Woolen Mills -> caitlin.taylor@penwool.com
+RETRY The Sill SSLEOFError attempt 1
+SENT The Sill -> press@thesill.com
+SENT ChappyWrap -> partners@chappywrap.com
+SENT Room AI -> press@roomai.com
+SENT Decorilla -> press@decorilla.com
+SENT Annie Sloan -> katherine.r@anniesloan.com
+SENT ecobee -> press@ecobee.com
+SENT Hygge & West -> support@hyggeandwest.com
+SENT A-Street Prints -> customercare@astreetprints.com
+SENT Arthouse -> customerservices@esselleretail.com
+SENT Mylands -> info@mylands.com
+SENT Renwil -> info@renwil.com
+SENT Matouk -> customercare@matouk.com
+SENT Peacock Alley -> knicholson@peacockalley.com
+SENT Christy -> info@christyhome.com
+SENT Lenox -> info@lenox.com
+SENT Juliska -> hello@juliska.com
+SENT Simon Pearce -> press@simonpearce.com
+SENT La-Z-Boy -> marketingpartnershipinquiries@la-z-boy.com
+SENT St Eval Candle Company -> marketing@st-eval.com
+SENT Price's Candles -> sales@prices-candles.co.uk
+ALL DONE

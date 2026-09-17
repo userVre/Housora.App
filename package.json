@@ -8,6 +8,9 @@
     "start": "node node_modules/next/dist/bin/next start",
     "test": "vitest run && node --test tests/ai-routes.test.cjs tests/security.test.cjs tests/security.integration.test.cjs",
     "test:browser": "node tests/object-panel.browser.cjs && node tests/pricing.browser.cjs",
+    "test:visual": "node tests/verify-workflows-layout.cjs",
+    "test:integrated": "node tests/integrated-routes.cjs && node tests/app-journeys.cjs && node tests/app-residuals.cjs",
+    "verify": "npm run typecheck && npm test && npm run test:browser && npm run test:visual && npm run test:integrated && npm run build",
     "typecheck": "tsc --noEmit --skipLibCheck",
     "check:legal": "node scripts/check-legal.mjs",
     "check:readiness": "npm run typecheck && npm run check:legal && npm run build"

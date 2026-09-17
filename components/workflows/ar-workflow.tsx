@@ -107,7 +107,7 @@ function ArPreview({ model, viewerRef }: { model: ArModel; viewerRef?: React.Ref
         tone-mapping="aces"
         style={{ width: "100%", height: "100%" }}
       />
-      <p className="ar-workflow__preview-caption">Drag to rotate · pinch to zoom · AR uses real floor detection — no simulated camera.</p>
+      <p className="ar-workflow__preview-caption">Drag to rotate · pinch to zoom · uses your phone&rsquo;s floor detection in AR.</p>
     </div>
   );
 }
@@ -256,9 +256,11 @@ export function ArWorkflow({
             <button type="button" className="ar-workflow__button ar-workflow__button--secondary" onClick={handleCopy}>
               Copy phone link
             </button>
-            <p className="ar-workflow__feedback" role="status" aria-live="polite">
-              {copyFeedback || "\u00A0"}
-            </p>
+            {copyFeedback ? (
+              <p className="ar-workflow__feedback" role="status" aria-live="polite">
+                {copyFeedback}
+              </p>
+            ) : null}
           </div>
 
           <div className="ar-workflow__camera-note" role="note">
@@ -287,7 +289,7 @@ export function ArWorkflow({
               <b>Place and scale</b>
             </li>
           </ol>
-          <p className="ar-workflow__desktop-note">On desktop without AR support, the interactive 3D preview and Copy phone link remain fully usable — scan the link on your phone to place the model.</p>
+          <p className="ar-workflow__desktop-note">On desktop without AR support, the interactive 3D preview and Copy phone link remain fully usable — scan the link on your phone to place the model in your room.</p>
         </div>
       ) : (
         <div className="ar-workflow__selected ar-workflow__selected--empty" aria-label="AR preview placeholder">
@@ -297,7 +299,7 @@ export function ArWorkflow({
               <span>Select a completed model to see its interactive 3D preview before opening AR.</span>
             </p>
           </div>
-          <p className="ar-workflow__desktop-note">On desktop, you can still rotate the 3D preview and copy a phone link to view it in your room — no camera simulation is used.</p>
+          <p className="ar-workflow__desktop-note">On desktop, you can still rotate the 3D preview and copy a phone link to view it in your room.</p>
         </div>
       )}
     </section>

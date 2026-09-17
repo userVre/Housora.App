@@ -78,7 +78,7 @@ export function PricingPage() {
         <button aria-pressed={annual} className={annual ? "active" : ""} onClick={() => setAnnual(true)}>Yearly <small>Save 2 months</small></button>
       </div>
     </header>
-    <p className="billing-disclosure" role="note">Yearly plans are billed upfront for 12 months — Creator $190, Studio $490. Included credits refresh monthly; purchased credits expire after 12 months and are used by nearest expiry.</p>
+    <p className="billing-disclosure" role="note">{annual ? "Yearly plans are billed upfront for 12 months — Creator $190, Studio $490. Included credits refresh monthly; purchased credits expire after 12 months and are used by nearest expiry." : "Monthly plans renew each month and included credits refresh monthly. Purchased credits expire after 12 months and are used by nearest expiry after plan credits."}</p>
     {checkoutReturned ? <p className="checkout-success" role="status"><Check aria-hidden size={16} /> Checkout complete. We’re confirming your purchase with Whop; your balance updates automatically.</p> : null}
     <section className="plan-grid" aria-label="Plans">
       {plans.map((plan, index) => {
@@ -235,53 +235,39 @@ export function SettingsPage({ onPricing }: { onPricing: () => void }) {
           {!isLoading && tab === "AI defaults" ? (
             <SettingsSection icon={<Sparkle aria-hidden size={18} />} title="AI defaults" description="Choose how Housora starts each new project.">
               <Select label="Default design mode" value={form.defaultMode} values={["Interior", "Exterior", "Garden"]} onChange={(v) => set("defaultMode", v)} />
-              <Toggle
-                label="Confirm high-cost actions (required)"
-                hint={`Housora always asks before spending credits. A 3D model costs ${AI_COSTS.model3d} credits; image generations and edits cost ${AI_COSTS.imageEdit}; detection costs ${AI_COSTS.detection}.`}
-                checked
-                onChange={() => undefined}
-                disabled
-              />
-              <p className="settings-hint">This preference is saved. Today, every paid action still shows a confirmation with live balance, cost, and remaining credits before any charge. Turning this off does not skip confirmations — no spending consent is weakened.</p>
-              <p className="settings-hint settings-hint--muted">Your choice will be used when starting a new project.</p>
+              <p className="settings-hint">We ask before spending credits. A 3D model costs {AI_COSTS.model3d} credits; image generations and edits cost {AI_COSTS.imageEdit}; detection costs {AI_COSTS.detection}. Every paid action shows a confirmation with live balance, cost and remaining credits first.</p>
             </SettingsSection>
           ) : null}
           {!isLoading && tab === "Team" ? (
             <SettingsSection icon={<Users aria-hidden size={18} />} title="Team & sharing" description="Sharing and invites will be added in a future release.">
-              <div className="unavailable-card" role="status" aria-live="polite">
-                <span aria-hidden><Users size={18} /></span>
-                <h3>Team invites unavailable</h3>
-                <p>Housora currently runs as a personal workspace. Email invites, roles, and shared project permissions are not yet available. No invitations can be sent from this screen today. Project sharing links for viewers exist at the project level where supported.</p>
-              </div>
+              <p className="settings-hint" role="status">Team invites — coming soon. Housora currently runs as a personal workspace.</p>
             </SettingsSection>
           ) : null}
           {!isLoading && tab === "Notifications" ? (
-            <SettingsSection icon={<Bell aria-hidden size={18} />} title="Notifications" description="Store your preferences. No messages are sent yet.">
-              <Toggle label="Generation updates" hint="Save preference for when a longer render finishes. No email or push is sent yet." checked={form.generationNotifications} onChange={(v) => set("generationNotifications", v)} />
-              <Toggle label="Low-credit alerts" hint="Save preference for balance warnings. No alerts are delivered yet." checked={form.creditNotifications} onChange={(v) => set("creditNotifications", v)} />
-              <Toggle label="Collaboration updates" hint="Save preference for invites, comments, and approvals. No notifications are delivered yet." checked={form.collaborationNotifications} onChange={(v) => set("collaborationNotifications", v)} />
-              <p className="settings-hint">Preferences are stored now and will take effect only after delivery is connected. Until then, you won’t receive emails or push notifications for these items.</p>
-              <p className="settings-hint settings-hint--muted">You can change these preferences at any time.</p>
+            <SettingsSection icon={<Bell aria-hidden size={18} />} title="Notifications" description="No messages are sent yet.">
+              <Toggle label="Generation updates — not available yet" hint="No email or push is sent when a render finishes." checked={false} onChange={() => undefined} disabled />
+              <Toggle label="Low-credit alerts — not available yet" hint="No balance warnings are delivered." checked={false} onChange={() => undefined} disabled />
+              <Toggle label="Collaboration updates — not available yet" hint="No invite, comment or approval messages are sent." checked={false} onChange={() => undefined} disabled />
+              <p className="settings-hint">These settings will become available once delivery is connected. Until then, nothing is sent.</p>
             </SettingsSection>
           ) : null}
           {!isLoading && tab === "Billing" ? (
             <SettingsSection icon={<CreditCard aria-hidden size={18} />} title="Billing and credits" description="Plan and purchased credits are tracked separately and spent in one order.">
               <div className="billing-summary--compact" role="group" aria-label="Credit balances">
                 <span><small>Current plan</small><b>{balance ? balance.plan.replaceAll("_", " ") : "Loading…"}</b></span>
-                <span><small>Plan credits</small><b style={{ fontVariantNumeric: "tabular-nums" }}>{balance ? `${(balance.subscription ?? 0).toLocaleString()}` : "—"}</b><small style={{ letterSpacing: 0, textTransform: "none" }}>{balance ? `${(balance.subscription ?? 0) === 1 ? "credit" : "credits"} · renews with plan` : ""}</small></span>
+                <span><small>Plan credits</small><b style={{ fontVariantNumeric: "tabular-nums" }}>{balance ? `${(balance.subscription ?? 0).toLocaleString()}` : "—"}</b><small style={{ letterSpacing: 0, textTransform: "none" }}>{balance ? (balance.plan === "free" ? "one-time starter credits" : `${(balance.subscription ?? 0) === 1 ? "credit" : "credits"} · renews with plan`) : ""}</small></span>
                 <span><small>Purchased credits</small><b style={{ fontVariantNumeric: "tabular-nums" }}>{balance ? `${(balance.purchased ?? 0).toLocaleString()}` : "—"}</b><small style={{ letterSpacing: 0, textTransform: "none" }}>{balance ? "credits · expire after 12 months" : ""}</small></span>
               </div>
               <p className="settings-hint">Total available: <b style={{ color: "#efede6" }}>{balance ? `${(balance.total ?? 0).toLocaleString()} credits` : "—"}</b> — plan credits are used first, then purchased credits by nearest expiry.</p>
               <button className="primary-action" onClick={onPricing} aria-label="View plans and add credits">View plans and add credits</button>
               <p className="settings-note">Manage cancellation, payment method, and invoices in your Whop customer portal (access via your Whop purchase receipt or the Whop support channels). Housora never receives your card details. Do not use unofficial links.</p>
-              <p className="settings-hint settings-hint--muted">Balances are formatted with tabular numbers for easy comparison. Purchased credits remain available for 12 months after purchase.</p>
+              <p className="settings-hint settings-hint--muted">Purchased credits remain available for 12 months after purchase.</p>
             </SettingsSection>
           ) : null}
           {!isLoading && tab === "Privacy & data" ? (
             <SettingsSection icon={<ShieldCheck aria-hidden size={18} />} title="Privacy and data" description="Optional analytics remain off unless you enable them.">
               <Toggle label="Product analytics" hint="Share interaction events that help improve Housora. Prompts, uploaded images, and photo content are excluded." checked={form.analyticsConsent} onChange={(v) => { set("analyticsConsent", v); if (!v) set("replayConsent", false); }} />
               <Toggle label="Session replay" hint="Session replay is currently unavailable. No recordings are created." checked={false} onChange={() => undefined} disabled />
-              {!form.analyticsConsent ? <p className="settings-hint">Enable Product analytics first — session replay cannot remain on when analytics is off.</p> : null}
               <p className="settings-hint settings-hint--muted">Analytics are optional. Session replay is currently unavailable.</p>
               <div className="settings-legal">
                 <Link href="/privacy">Privacy Policy</Link>

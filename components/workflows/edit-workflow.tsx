@@ -41,7 +41,7 @@ export type EditWorkflowProps = {
   onInstructionChange?: (value: string) => void;
   /** Edit the selected object. Parent must call /api/ai/edit with { image, mask, prompt } and preserve outside-mask pixels. */
   onEditObject?: (payload: { object: DetectedObject; instruction: string }) => void | Promise<void>;
-  /** Create 3D from the actual detected crop. Must receive cropDataUrl — no auto-generation on select. */
+  /** Create 3D from the actual detected crop. Must receive cropDataUrl — selection alone never starts generation. */
   onCreate3D?: (payload: { object: DetectedObject; cropDataUrl: string }) => void | Promise<void>;
   /** Spotlight rectangle edit — mask is white rect on black, same contract as object edit. */
   onSpotlightEdit?: (payload: { image: string; mask: string; prompt: string }) => void | Promise<void>;
@@ -72,7 +72,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     const img = new window.Image();
     img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("Image could not be loaded"));
+    img.onerror = () => reject(new Error("That photo could not be opened. Try another JPG, PNG or WEBP file."));
     img.src = src;
   });
 }
@@ -93,7 +93,7 @@ async function buildCropDataUrl(imageSrc: string, box: [number, number, number, 
   canvas.width = sw;
   canvas.height = sh;
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas unavailable");
+  if (!ctx) throw new Error("This browser could not prepare the selected area. Try refreshing.");
   // Draw cropped image
   ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
   // If mask is provided, apply it to create transparent background outside the object
@@ -102,7 +102,7 @@ async function buildCropDataUrl(imageSrc: string, box: [number, number, number, 
     maskCanvas.width = sw;
     maskCanvas.height = sh;
     const mCtx = maskCanvas.getContext("2d", { willReadFrequently: true });
-    if (!mCtx) throw new Error("Mask canvas unavailable");
+    if (!mCtx) throw new Error("This browser could not prepare the selected area. Try refreshing.");
     mCtx.drawImage(maskImg, sx, sy, sw, sh, 0, 0, sw, sh);
     const maskPixels = mCtx.getImageData(0, 0, sw, sh);
     maskLuminanceToAlpha(maskPixels.data);
@@ -114,11 +114,24 @@ async function buildCropDataUrl(imageSrc: string, box: [number, number, number, 
   return canvas.toDataURL("image/png");
 }
 
+export type DrawStroke = {
+  points: Array<{ x: number; y: number }>;
+  /** Line width as a fraction of the smaller image dimension. */
+  widthFactor: number;
+  erase: boolean;
+};
+
+export const DRAW_BRUSH_SIZES = [
+  { id: "small", label: "Small", widthFactor: 0.02 },
+  { id: "medium", label: "Medium", widthFactor: 0.04 },
+  { id: "large", label: "Large", widthFactor: 0.07 },
+] as const;
+
 async function buildMaskDataUrl(
   imageSrc: string,
   mode: "spotlight" | "draw",
   region: { x: number; y: number; width: number; height: number } | null,
-  points: Array<{ x: number; y: number }>,
+  strokes: DrawStroke[],
 ): Promise<string> {
   const img = await loadImage(imageSrc);
   const w = img.naturalWidth;
@@ -127,7 +140,7 @@ async function buildMaskDataUrl(
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas unavailable");
+  if (!ctx) throw new Error("This browser could not prepare the marked area. Try refreshing.");
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, w, h);
   ctx.fillStyle = "white";
@@ -140,21 +153,77 @@ async function buildMaskDataUrl(
     const rw = (region.width / 100) * w;
     const rh = (region.height / 100) * h;
     ctx.fillRect(x, y, rw, rh);
-  } else if (mode === "draw" && points.length > 1) {
-    const lineW = Math.max(14, Math.min(w, h) * 0.04);
-    ctx.lineWidth = lineW;
-    ctx.beginPath();
-    points.forEach((p, i) => {
-      const px = (p.x / 100) * w;
-      const py = (p.y / 100) * h;
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    });
-    ctx.stroke();
+  } else if (mode === "draw" && strokes.some((s) => s.points.length > 1)) {
+    const unit = Math.min(w, h);
+    for (const stroke of strokes) {
+      if (stroke.points.length < 2) continue;
+      ctx.globalCompositeOperation = stroke.erase ? "destination-out" : "source-over";
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = Math.max(4, unit * stroke.widthFactor);
+      ctx.beginPath();
+      stroke.points.forEach((p, i) => {
+        const px = (p.x / 100) * w;
+        const py = (p.y / 100) * h;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+    }
+    ctx.globalCompositeOperation = "source-over";
   } else {
     throw new Error(mode === "spotlight" ? "Drag to spotlight a region first." : "Draw over the area you want to change first.");
   }
   return canvas.toDataURL("image/png");
+}
+
+/** Crop frame geometry (percent of canvas) for each reframe ratio. */
+export function reframeFrameStyle(ratio: string): React.CSSProperties {
+  const frames: Record<string, { w: number; h: number }> = {
+    "1:1": { w: 88, h: 88 },
+    "4:3": { w: 88, h: 66 },
+    "3:4": { w: 66, h: 88 },
+    "16:9": { w: 88, h: 49.5 },
+  };
+  const box = frames[ratio];
+  if (!box) return { inset: "6%" };
+  return {
+    left: `${(100 - box.w) / 2}%`,
+    top: `${(100 - box.h) / 2}%`,
+    width: `${box.w}%`,
+    height: `${box.h}%`,
+  };
+}
+
+/** Floating chip linking the canvas selection to the inspector prompt.
+ * Position is clamped in JS so no invalid CSS (e.g. max() with mixed units) is needed. */
+function SpotlightChip({
+  region,
+  onFocusPrompt,
+  onClear,
+}: {
+  region: { x: number; y: number; width: number; height: number };
+  onFocusPrompt: () => void;
+  onClear: () => void;
+}) {
+  const left = Math.min(Math.max(region.x, 0), 84);
+  const above = region.y - 14;
+  const top = Math.max(above, 1);
+  return (
+    <span className="ew-region-chip" style={{ left: `${left}%`, top: `${top}%` }}>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onFocusPrompt();
+        }}
+      >
+        Region selected — describe it below
+      </button>
+      <button type="button" aria-label="Clear spotlight region" onClick={(e) => { e.stopPropagation(); onClear(); }}>
+        ×
+      </button>
+    </span>
+  );
 }
 
 export function EditWorkflow(props: EditWorkflowProps) {
@@ -230,13 +299,19 @@ export function EditWorkflow(props: EditWorkflowProps) {
   );
 
   const [spotlightRegion, setSpotlightRegion] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
-  const [drawPoints, setDrawPoints] = useState<Array<{ x: number; y: number }>>([]);
+  const [drawStrokes, setDrawStrokes] = useState<DrawStroke[]>([]);
+  const [livePoints, setLivePoints] = useState<Array<{ x: number; y: number }>>([]);
+  const [brushSizeId, setBrushSizeId] = useState<string>("medium");
+  const [eraserOn, setEraserOn] = useState(false);
+  const activeStroke = useRef<DrawStroke | null>(null);
   const [reframeRatio, setReframeRatio] = useState<string>("auto");
   const [localError, setLocalError] = useState("");
   const [emptyDragging, setEmptyDragging] = useState(false);
   const emptyFileRef = useRef<HTMLInputElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const gestureStart = useRef<{ x: number; y: number } | null>(null);
+  const regionPromptRef = useRef<HTMLTextAreaElement>(null);
+  const brushSize = DRAW_BRUSH_SIZES.find((b) => b.id === brushSizeId) ?? DRAW_BRUSH_SIZES[1];
 
   // Keep selected valid when objects change
   useEffect(() => {
@@ -258,7 +333,10 @@ export function EditWorkflow(props: EditWorkflowProps) {
       if (map[k]) {
         e.preventDefault();
         setActiveTool(map[k]);
-        if (map[k] === "spotlight") setDrawPoints([]);
+        if (map[k] === "spotlight") {
+          setDrawStrokes([]);
+          activeStroke.current = null;
+        }
         if (map[k] === "draw") setSpotlightRegion(null);
       }
     };
@@ -286,14 +364,19 @@ export function EditWorkflow(props: EditWorkflowProps) {
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (!image) return;
       if (activeTool === "spotlight" || activeTool === "draw") {
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        try {
+          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        } catch {
+          // Non-active or synthetic pointers (and some browsers) reject capture.
+          // The gesture still completes via pointerup on the canvas or window.
+        }
         const p = canvasPoint(e);
         gestureStart.current = p;
         if (activeTool === "spotlight") setSpotlightRegion({ x: p.x, y: p.y, width: 0, height: 0 });
-        else setDrawPoints([p]);
+        else activeStroke.current = { points: [p], widthFactor: brushSize.widthFactor, erase: eraserOn };
       }
     },
-    [activeTool, canvasPoint, image],
+    [activeTool, brushSize.widthFactor, canvasPoint, eraserOn, image],
   );
 
   const onPointerMove = useCallback(
@@ -308,14 +391,23 @@ export function EditWorkflow(props: EditWorkflowProps) {
           width: Math.abs(p.x - s.x),
           height: Math.abs(p.y - s.y),
         });
-      } else if (activeTool === "draw") {
-        setDrawPoints((prev) => [...prev, p]);
+      } else if (activeTool === "draw" && activeStroke.current) {
+        activeStroke.current.points.push(p);
+        setLivePoints([...activeStroke.current.points]);
       }
     },
     [activeTool, canvasPoint],
   );
 
   const onPointerUp = useCallback(() => {
+    if (activeStroke.current) {
+      const finished = activeStroke.current;
+      activeStroke.current = null;
+      setLivePoints([]);
+      if (finished.points.length > 1) {
+        setDrawStrokes((prev) => [...prev, { points: [...finished.points], widthFactor: finished.widthFactor, erase: finished.erase }]);
+      }
+    }
     gestureStart.current = null;
   }, []);
 
@@ -345,18 +437,18 @@ export function EditWorkflow(props: EditWorkflowProps) {
     setLocalError("");
     const tool = activeTool === "spotlight" ? "spotlight" : "draw";
     try {
-      const mask = await buildMaskDataUrl(image, tool, spotlightRegion, drawPoints);
+      const mask = await buildMaskDataUrl(image, tool, spotlightRegion, drawStrokes);
       if (onRegionEdit) await onRegionEdit({ image, mask, prompt: regionPrompt.trim(), tool });
       else if (tool === "spotlight" && onSpotlightEdit) await onSpotlightEdit({ image, mask, prompt: regionPrompt.trim() });
       else if (tool === "draw" && onDrawEdit) await onDrawEdit({ image, mask, prompt: regionPrompt.trim() });
       else {
-        // No handler — surface error without fake result
-        throw new Error("Region edit handler not configured");
+        // No handler — surface error without inventing a result
+        throw new Error("Editing is not available right now. Try again in a moment.");
       }
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : "Region edit failed");
     }
-  }, [activeTool, drawPoints, image, onDrawEdit, onRegionEdit, onSpotlightEdit, regionPrompt, spotlightRegion]);
+  }, [activeTool, drawStrokes, image, onDrawEdit, onRegionEdit, onSpotlightEdit, regionPrompt, spotlightRegion]);
 
   const handleReframe = useCallback(async () => {
     if (!image || !onReframe) return;
@@ -370,11 +462,71 @@ export function EditWorkflow(props: EditWorkflowProps) {
 
   const requestFullscreen = useCallback(() => {
     if (onFullscreen) onFullscreen();
-    else void wrapRef.current?.requestFullscreen().catch(() => {});
+    else {
+      const el = wrapRef.current as unknown as (HTMLElement & { requestFullscreen?: () => Promise<void> }) | null;
+      if (el?.requestFullscreen) void el.requestFullscreen().catch(() => setLocalError("Full screen is not available in this browser. You can keep editing here."));
+      else setLocalError("Full screen is not available in this browser. You can keep editing here.");
+    }
   }, [onFullscreen]);
 
+  const clearRegion = useCallback(() => {
+    setSpotlightRegion(null);
+    setDrawStrokes([]);
+    setLivePoints([]);
+    activeStroke.current = null;
+    gestureStart.current = null;
+    setLocalError("");
+  }, []);
+
   const canApplySpotlight = Boolean(spotlightRegion && spotlightRegion.width > 1 && spotlightRegion.height > 1 && regionPrompt.trim());
-  const canApplyDraw = drawPoints.length > 2 && Boolean(regionPrompt.trim());
+  const canApplyDraw = drawStrokes.some((s) => s.points.length > 1 && !s.erase) && Boolean(regionPrompt.trim());
+  const visibleStrokes: DrawStroke[] = livePoints.length > 1
+    ? [...drawStrokes, { points: livePoints, widthFactor: brushSize.widthFactor, erase: eraserOn }]
+    : drawStrokes;
+
+  // E09: before upload, show only a simple drag-and-upload screen — no tools,
+  // scan, versions or prompt until a valid image is loaded.
+  if (!image) {
+    return (
+      <section className="edit-workflow is-empty" aria-label="Edit workflow">
+        <button
+          type="button"
+          className={`edit-workflow-empty-dropzone${emptyDragging ? " is-dragging" : ""}`}
+          onClick={() => (onUpload ? emptyFileRef.current?.click() : onReplaceImage?.())}
+          onDragEnter={(e) => { e.preventDefault(); setEmptyDragging(true); }}
+          onDragLeave={(e) => { e.preventDefault(); setEmptyDragging(false); }}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            setEmptyDragging(false);
+            const f = e.dataTransfer.files[0];
+            if (!f) return;
+            if (onUpload) onUpload(f);
+            else onReplaceImage?.();
+          }}
+          aria-label="Upload a photo for precise editing"
+        >
+          <UploadSimple aria-hidden style={{ width: 28, height: 28, color: "#ffad6d" }} />
+          <b>Drag a photo here</b>
+          <span>or click to browse — start precise editing</span>
+          <small>JPG, PNG or WEBP · Up to 10 MB</small>
+        </button>
+        <input
+          ref={emptyFileRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="visually-hidden"
+          aria-label="Choose a photo for editing"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f && onUpload) onUpload(f);
+            else if (f) onReplaceImage?.();
+            e.currentTarget.value = "";
+          }}
+        />
+      </section>
+    );
+  }
 
   return (
     <section className="edit-workflow" aria-label="Edit workflow">
@@ -382,7 +534,7 @@ export function EditWorkflow(props: EditWorkflowProps) {
         <div className="edit-workflow-canvas-inner">
           <div
             ref={wrapRef}
-            className={`edit-workflow-image-wrap${!image ? " is-empty" : ""}`}
+            className="edit-workflow-image-wrap"
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -429,73 +581,45 @@ export function EditWorkflow(props: EditWorkflowProps) {
                     aria-label="Spotlight region"
                   />
                 ) : null}
-                {activeTool === "draw" && drawPoints.length > 1 ? (
+                {activeTool === "draw" && visibleStrokes.length > 0 ? (
                   <svg className="ew-draw-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                    <polyline points={drawPoints.map((p) => `${p.x},${p.y}`).join(" ")} />
+                    {visibleStrokes.map((stroke, i) =>
+                      stroke.points.length > 1 ? (
+                        <polyline
+                          key={i}
+                          points={stroke.points.map((p) => `${p.x},${p.y}`).join(" ")}
+                          className={stroke.erase ? "is-eraser" : undefined}
+                        />
+                      ) : null,
+                    )}
                   </svg>
                 ) : null}
-                {activeTool === "reframe" ? <span className="ew-reframe-frame" aria-label="Reframe preview frame" /> : null}
+                {activeTool === "reframe" ? (
+                  <span className="ew-reframe-frame" style={reframeFrameStyle(reframeRatio)} aria-label={`Reframe preview frame, ${reframeRatio}`} />
+                ) : null}
                 {/* Clickable hit areas for all detected objects when in select mode and none selected — enables row sync */}
                 {activeTool === "select" && !selectedObject
                   ? detectedObjects.map((obj) => (
                       <button
                         key={`hit-${obj.id}`}
                         type="button"
-                        className="ew-box"
+                        className="ew-box ew-box-hit"
                         style={{
                           left: `${obj.box[0] * 100}%`,
                           top: `${obj.box[1] * 100}%`,
                           width: `${(obj.box[2] - obj.box[0]) * 100}%`,
                           height: `${(obj.box[3] - obj.box[1]) * 100}%`,
-                          opacity: 0.001,
-                          borderColor: "transparent",
-                          background: "transparent",
                         }}
                         aria-label={`Select ${obj.label}`}
                         onClick={() => selectObject(obj)}
                       />
                     ))
                   : null}
+                {activeTool === "spotlight" && spotlightRegion && spotlightRegion.width > 1 && spotlightRegion.height > 1 ? (
+                  <SpotlightChip region={spotlightRegion} onFocusPrompt={() => regionPromptRef.current?.focus()} onClear={clearRegion} />
+                ) : null}
               </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className={`edit-workflow-empty-dropzone${emptyDragging ? " is-dragging" : ""}`}
-                  onClick={() => (onUpload ? emptyFileRef.current?.click() : onReplaceImage?.())}
-                  onDragEnter={(e) => { e.preventDefault(); setEmptyDragging(true); }}
-                  onDragLeave={(e) => { e.preventDefault(); setEmptyDragging(false); }}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setEmptyDragging(false);
-                    const f = e.dataTransfer.files[0];
-                    if (!f) return;
-                    if (onUpload) onUpload(f);
-                    else onReplaceImage?.();
-                  }}
-                  aria-label="Upload a photo for precise editing"
-                >
-                  <UploadSimple aria-hidden style={{ width: 28, height: 28, color: "#ffad6d" }} />
-                  <b>Drag a photo here</b>
-                  <span>or click to browse — start precise editing</span>
-                  <small>JPG, PNG or WEBP · Up to 10 MB</small>
-                </button>
-                <input
-                  ref={emptyFileRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="visually-hidden"
-                  aria-label="Choose a photo for editing"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f && onUpload) onUpload(f);
-                    else if (f) onReplaceImage?.();
-                    e.currentTarget.value = "";
-                  }}
-                />
-              </>
-            )}
+            ) : null}
           </div>
 
           <div className="edit-workflow-toolbar" role="toolbar" aria-label="Edit tools">
@@ -504,30 +628,30 @@ export function EditWorkflow(props: EditWorkflowProps) {
               aria-pressed={activeTool === "select"}
               onClick={() => setActiveTool("select")}
               title="Select (V)"
-              aria-label="Select tool"
+              aria-label="Select tool, shortcut V"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
                 <path d="M4 4l7 14 2-5 5-2z" />
               </svg>
               <span>Select</span>
-              <kbd>V</kbd>
             </button>
             <button
               type="button"
               aria-pressed={activeTool === "spotlight"}
               onClick={() => {
                 setActiveTool("spotlight");
-                setDrawPoints([]);
+                setDrawStrokes([]);
+                setLivePoints([]);
+                activeStroke.current = null;
               }}
               title="Spotlight (S)"
-              aria-label="Spotlight tool"
+              aria-label="Spotlight tool, shortcut S"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
                 <rect x="4" y="4" width="16" height="16" rx="2" />
                 <path d="M8 12h8M12 8v8" />
               </svg>
               <span>Spotlight</span>
-              <kbd>S</kbd>
             </button>
             <button
               type="button"
@@ -537,26 +661,24 @@ export function EditWorkflow(props: EditWorkflowProps) {
                 setSpotlightRegion(null);
               }}
               title="Draw (D)"
-              aria-label="Draw tool"
+              aria-label="Draw tool, shortcut D"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
                 <path d="M3 17c3-1 6-4 8-8l3-3 4 4-3 3c-4 2-7 5-8 8z" />
               </svg>
               <span>Draw</span>
-              <kbd>D</kbd>
             </button>
             <button
               type="button"
               aria-pressed={activeTool === "reframe"}
               onClick={() => setActiveTool("reframe")}
               title="Reframe (R)"
-              aria-label="Reframe tool"
+              aria-label="Reframe tool, shortcut R"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
                 <path d="M7 3H3v4M17 3h4v4M7 21H3v-4M17 21h4v-4" />
               </svg>
               <span>Reframe</span>
-              <kbd>R</kbd>
             </button>
             <span className="ew-toolbar-sep" aria-hidden="true" />
             <button type="button" onClick={requestFullscreen} aria-label="Full screen" title="Full screen">
@@ -579,7 +701,7 @@ export function EditWorkflow(props: EditWorkflowProps) {
           {/* 1. Objects & regions */}
           <header className="ew-inspector-title">
             <b>Objects &amp; regions</b>
-            <small>Select a detected layer or mark the canvas. Only real segmentation appears here.</small>
+            <small>Select a detected layer or mark the canvas.</small>
           </header>
 
           {/* 2. Current image and Replace image */}
@@ -622,7 +744,7 @@ export function EditWorkflow(props: EditWorkflowProps) {
           ) : detectedObjects.length === 0 ? (
             <div className="ew-tool-prompt">
               <h4>No objects yet</h4>
-              <p className="ew-hint">Scan this photo for furniture and surfaces. Only actual detections will appear below.</p>
+              <p className="ew-hint">Scan this photo for furniture and surfaces. Detections will appear below.</p>
               {onScan ? (
                 <button type="button" className="ew-secondary" onClick={onScan} disabled={Boolean(isScanning)}>
                   Scan · 1 credit
@@ -649,7 +771,7 @@ export function EditWorkflow(props: EditWorkflowProps) {
                   <span>
                     <b>{obj.label}</b>
                     <small>
-                      Object {idx + 1} · {Math.round(obj.score * 100)}%
+                      Object {idx + 1}
                     </small>
                   </span>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
@@ -660,8 +782,10 @@ export function EditWorkflow(props: EditWorkflowProps) {
             </div>
           )}
 
-          {/* 5. Selected-object or active-tool prompt */}
-          {selectedObject ? (
+          {/* 5. Selected-object or active-tool prompt.
+              Manual tools take precedence: a selected object must never hide
+              the Spotlight/Draw prompt for the region just marked. */}
+          {selectedObject && activeTool === "select" ? (
             <section className="ew-selected-panel" aria-label="Selected object actions">
               <h4>Selected: {selectedObject.label}</h4>
               <label htmlFor="ew-describe">Describe changes</label>
@@ -680,7 +804,7 @@ export function EditWorkflow(props: EditWorkflowProps) {
               >
                 {isEditing ? "Editing…" : "Apply edit"}
               </button>
-              <p className="ew-hint">Only the masked pixels are sent. Outside-mask pixels are preserved by the server.</p>
+              <p className="ew-hint">Only the selected object changes. Everything else stays the same.</p>
               {onCreate3D ? (
                 <button type="button" className="ew-create3d" onClick={handleCreate3D}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
@@ -689,7 +813,7 @@ export function EditWorkflow(props: EditWorkflowProps) {
                   </svg>
                   <span>
                     <b>Create 3D from this object</b>
-                    <small>Passes the actual crop — no auto-generation</small>
+                    <small>Uses the selected area directly</small>
                   </span>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true" width="16" height="16">
                     <path d="M9 18l6-6-6-6" />
@@ -701,11 +825,46 @@ export function EditWorkflow(props: EditWorkflowProps) {
             <section className="ew-tool-prompt" aria-label={activeTool === "spotlight" ? "Spotlight edit" : "Draw edit"}>
               <h4>{activeTool === "spotlight" ? "Spotlight rectangle" : "Draw mask"}</h4>
               <p className="ew-hint">
-                {activeTool === "spotlight" ? "Drag a rectangle on the canvas." : "Draw a freehand mask on the canvas."} Then describe the change. No fake result — a real mask is sent.
+                {activeTool === "spotlight" ? "Drag a rectangle on the canvas." : "Draw a freehand mask on the canvas."} Then describe the change. Only the marked area is sent for editing.
               </p>
+              {activeTool === "draw" ? (
+                <div className="ew-brush-row" role="group" aria-label="Brush controls">
+                  {DRAW_BRUSH_SIZES.map((size) => (
+                    <button
+                      key={size.id}
+                      type="button"
+                      aria-pressed={brushSizeId === size.id}
+                      title={`${size.label} brush`}
+                      onClick={() => {
+                        setBrushSizeId(size.id);
+                        setEraserOn(false);
+                      }}
+                    >
+                      {size.label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    aria-pressed={eraserOn}
+                    title="Eraser — remove parts of the mask"
+                    onClick={() => setEraserOn((v) => !v)}
+                  >
+                    Eraser
+                  </button>
+                  <button
+                    type="button"
+                    title="Undo last stroke"
+                    disabled={drawStrokes.length === 0}
+                    onClick={() => setDrawStrokes((prev) => prev.slice(0, -1))}
+                  >
+                    Undo
+                  </button>
+                </div>
+              ) : null}
               <label htmlFor="ew-region-prompt">Describe changes</label>
               <textarea
                 id="ew-region-prompt"
+                ref={regionPromptRef}
                 value={regionPrompt}
                 onChange={(e) => setRegionPrompt(e.target.value)}
                 placeholder={activeTool === "spotlight" ? "For example: replace this area with built-in oak shelves" : "For example: remove everything I marked"}
@@ -716,10 +875,8 @@ export function EditWorkflow(props: EditWorkflowProps) {
                   type="button"
                   className="ew-secondary"
                   onClick={() => {
-                    setSpotlightRegion(null);
-                    setDrawPoints([]);
+                    clearRegion();
                     setRegionPrompt("");
-                    setLocalError("");
                   }}
                 >
                   Clear
@@ -734,7 +891,7 @@ export function EditWorkflow(props: EditWorkflowProps) {
                   {isEditing ? "Applying…" : "Apply edit"}
                 </button>
               </div>
-              <p className="ew-hint">Mask is white on black. Pixels outside the mask are preserved.</p>
+              <p className="ew-hint">Only the marked area changes. Everything else stays the same.</p>
             </section>
           ) : activeTool === "reframe" ? (
             <section className="ew-tool-prompt" aria-label="Reframe">
@@ -758,10 +915,15 @@ export function EditWorkflow(props: EditWorkflowProps) {
                   </button>
                 ))}
               </div>
-              <button type="button" className="ew-primary" onClick={handleReframe} disabled={!onReframe || Boolean(isEditing)}>
-                {isEditing ? "Reframing…" : "Apply reframe"}
-              </button>
-              <p className="ew-hint">No synthetic preview — parent applies via existing callback.</p>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button type="button" className="ew-secondary" onClick={() => setActiveTool("select")}>
+                  Cancel
+                </button>
+                <button type="button" className="ew-primary" onClick={handleReframe} disabled={!onReframe || Boolean(isEditing)} style={{ flex: 1 }}>
+                  {isEditing ? "Reframing…" : "Apply reframe"}
+                </button>
+              </div>
+              <p className="ew-hint">The reframed result appears in your project when ready.</p>
             </section>
           ) : null}
 
@@ -771,10 +933,10 @@ export function EditWorkflow(props: EditWorkflowProps) {
               <span>Version history</span>
               {history && history.length > 0 ? (
                 <span className="ew-history-actions">
-                  <button type="button" onClick={onUndo} disabled={!canUndo && historyIndex !== undefined ? historyIndex <= 0 : !onUndo}>
+                  <button type="button" onClick={onUndo} disabled={canUndo !== undefined ? !canUndo : historyIndex !== undefined ? historyIndex <= 0 : !onUndo}>
                     Undo
                   </button>
-                  <button type="button" onClick={onRedo} disabled={!canRedo && historyIndex !== undefined ? historyIndex !== undefined && history !== undefined && historyIndex >= history.length - 1 : !onRedo}>
+                  <button type="button" onClick={onRedo} disabled={canRedo !== undefined ? !canRedo : historyIndex !== undefined && history ? historyIndex >= history.length - 1 : !onRedo}>
                     Redo
                   </button>
                 </span>
@@ -800,7 +962,7 @@ export function EditWorkflow(props: EditWorkflowProps) {
                 <p className="ew-hint">Tap a thumbnail to preview. Current is highlighted.</p>
               </>
             ) : (
-              <p className="ew-hint">Edits will appear here. Nothing is fabricated.</p>
+              <p className="ew-hint">Edits will appear here.</p>
             )}
           </section>
         </div>

@@ -9,3 +9,8 @@ __pycache__/
 .venv-modal/
 tsconfig.tsbuildinfo
 outputs/*.png
+# Google OAuth secrets - never commit (blocked by GitHub push protection)
+computer-use/gmail-api/credentials.json
+computer-use/gmail-api/token.json
+**/credentials.json
+**/token.json

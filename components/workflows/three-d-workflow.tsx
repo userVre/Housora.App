@@ -61,6 +61,8 @@ export type ThreeDWorkflowProps = {
   onViewAr?: (modelUrl: string, poster: string | null) => void;
   /** Notify when internal source changes (e.g., file → furniture-upload) */
   onSourceChange?: (source: ThreeDSource | null) => void;
+  /** Shown when the user arrived from AR — preserves the return-to-AR intent through generation. */
+  returnIntent?: string | null;
 };
 
 function honestLabel(status: ThreeDWorkflowStatus): string {
@@ -68,6 +70,17 @@ function honestLabel(status: ThreeDWorkflowStatus): string {
   if (status === "queued") return "Queued — preparing your model…";
   if (status === "running") return "Building your 3D model…";
   return status;
+}
+
+/** Keep return-to-AR intent user-friendly: never render raw ids, slugs or long payloads. */
+function friendlyReturnIntent(value: string | null): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (trimmed.length > 120 || /[/\\:_#?]{1}/.test(trimmed) || /\b(id|slug|model|design)[-_=:]/i.test(trimmed)) {
+    return "You’ll return to AR when this model is ready.";
+  }
+  return trimmed;
 }
 
 export function ThreeDWorkflow({
@@ -84,6 +97,7 @@ export function ThreeDWorkflow({
   onRetry,
   onViewAr,
   onSourceChange,
+  returnIntent = null,
 }: ThreeDWorkflowProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const submitting = useRef(false);
@@ -224,6 +238,7 @@ export function ThreeDWorkflow({
   const completed = effectiveStatus === "success" && Boolean(effectiveModelUrl);
   const hasError = effectiveStatus === "failed" || Boolean(effectiveError);
   const generating = busy && !completed;
+  const returnNote = friendlyReturnIntent(returnIntent);
 
   return (
     <section
@@ -254,6 +269,11 @@ export function ThreeDWorkflow({
         {completed && effectiveModelUrl ? (
           <div className="three-d-workflow__viewer">
             <ModelViewer src={effectiveModelUrl} poster={effectivePoster} />
+            {effectiveSource?.kind === "sam-crop" && effectiveSource.objectLabel ? (
+              <p className="three-d-workflow__preview-caption" role="note">
+                From: {effectiveSource.objectLabel} · isolated crop
+              </p>
+            ) : null}
           </div>
         ) : effectivePreview ? (
           <figure className="three-d-workflow__preview" aria-label="Furniture preview for 3D">
@@ -327,26 +347,25 @@ export function ThreeDWorkflow({
           <p className="three-d-workflow__subtitle">
             {completed
               ? "Drag to rotate. Use View in AR on your phone to place it in your room."
-              : empty
-                ? "Use one clear furniture photo. A detected-object crop from Edit works too."
-                : generating
-                  ? "Housora is building your model — no fake percentages."
-                  : hasError
-                    ? "Your image was kept. Fix the issue and try again."
-                    : "Upload one complete piece of furniture, not a full-room photo."}
+              : "Upload one clearly visible object on a simple background."}
           </p>
+          {returnNote && !completed ? (
+            <p className="three-d-workflow__return" role="status">
+              {returnNote}
+            </p>
+          ) : null}
         </header>
 
-        {/* Compact instructions — always visible, not an oversized modal */}
-        <div className="three-d-workflow__instructions" aria-label="How to get a good 3D model">
-          <b>For best results</b>
+        {/* Optional tips stay collapsed — one upload, preview and Generate remain primary */}
+        <details className="three-d-workflow__tips">
+          <summary>Tips for a good model</summary>
           <ul>
             <li>One object, fully visible, plain background</li>
-            <li>Crop from Edit uses the real SAM mask — no re-upload needed</li>
+            <li>A crop from Edit is used directly — no re-upload needed</li>
             <li>Room photos with multiple items give poor 3D results</li>
           </ul>
           <p className="three-d-workflow__guidance">{guidanceForInvalid()}</p>
-        </div>
+        </details>
 
         <ol className="three-d-workflow__steps" aria-label="Progress">
           <li className={effectivePreview ? "is-complete" : "is-active"}>
@@ -485,7 +504,7 @@ export function ThreeDWorkflow({
         </div>
 
         <p className="three-d-workflow__note">
-          12 credits are charged only after you confirm in the parent dialog. Duplicate requests are blocked while a model is building. Dimensions are approximate.
+          12 credits are charged only after you confirm. Duplicate requests are blocked while a model is building. Dimensions are approximate.
         </p>
       </aside>
     </section>

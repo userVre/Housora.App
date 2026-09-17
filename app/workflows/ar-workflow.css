@@ -127,7 +127,7 @@
 }
 
 .ar-workflow__thumb-placeholder {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.08em;
   color: var(--ar-muted);
@@ -147,7 +147,7 @@
 }
 
 .ar-workflow__model-meta small {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ar-muted);
 }
 
@@ -218,7 +218,7 @@
   padding: 10px 14px;
   border-top: 1px solid var(--ar-line);
   color: var(--ar-muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   background: #1b1c18;
 }
@@ -395,7 +395,7 @@
 .ar-workflow__desktop-note {
   margin: 0;
   color: var(--ar-muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.6;
   text-align: center;
 }

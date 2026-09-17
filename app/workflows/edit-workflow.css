@@ -12,6 +12,14 @@
 
 .edit-workflow * { box-sizing: border-box; }
 
+/* E09 empty state: only the simple drag-and-upload screen, centered */
+.edit-workflow.is-empty {
+  display: grid;
+  place-items: center;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 24px;
+}
+
 @media (min-width: 1501px) {
   .edit-workflow { grid-template-columns: minmax(0, 1fr) 400px; }
   .edit-workflow-inspector { width: 400px; }
@@ -63,16 +71,6 @@
   display: block;
 }
 
-.edit-workflow-image-wrap.is-empty {
-  min-height: 320px;
-  border: 1px dashed #34362f;
-  color: var(--night-muted, #aaa99f);
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  text-align: center;
-}
-
 .edit-workflow-empty p { margin: 6px 0 0; color: #8f9187; font-size: 12px; }
 
 /* Canvas overlays */
@@ -108,11 +106,34 @@
   padding: 3px 7px;
   background: #11120f;
   color: #f4f0e8;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: capitalize;
   border-radius: 0 0 6px 0;
   line-height: 1;
+}
+
+/* Invisible hit areas for unselected objects: transparent until hover/focus,
+   so only one persistent selection highlight is ever shown. */
+.ew-box-hit {
+  opacity: 0;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ew-box-hit:hover {
+  opacity: 1;
+  border-color: rgba(244, 240, 232, 0.65);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ew-box-hit:focus-visible {
+  opacity: 1;
+  border-color: #eab083;
+  background: rgba(255, 255, 255, 0.06);
+  outline: 2px solid #eab083;
+  outline-offset: 2px;
 }
 
 .ew-spotlight-rect {
@@ -141,6 +162,92 @@
   opacity: 0.95;
 }
 
+.ew-draw-svg polyline.is-eraser {
+  stroke: #f0a08e;
+  stroke-dasharray: 3 2;
+  opacity: 0.9;
+}
+
+/* Floating region chip linking the canvas selection to the inspector prompt */
+.ew-region-chip {
+  position: absolute;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100% - 16px);
+  padding: 3px 3px 3px 10px;
+  border-radius: 999px;
+  background: rgba(17, 18, 15, 0.92);
+  border: 1px solid #4a6496;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+}
+
+.ew-region-chip button {
+  border: 0;
+  background: transparent;
+  color: #f4f0e8;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ew-region-chip button:last-child {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #2a2b27;
+  font-size: 14px;
+  flex: none;
+}
+
+.ew-region-chip button:focus-visible {
+  outline: 2px solid #eab083;
+  outline-offset: 2px;
+}
+
+/* Compact brush controls, visible only while Draw is active */
+.ew-brush-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ew-brush-row button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #3b3d36;
+  border-radius: 999px;
+  background: #11120f;
+  color: #d6d4ca;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ew-brush-row button[aria-pressed="true"] {
+  background: #33466d;
+  border-color: #4a6496;
+  color: #fff;
+}
+
+.ew-brush-row button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ew-brush-row button:focus-visible {
+  outline: 2px solid #eab083;
+  outline-offset: 2px;
+}
+
 .ew-reframe-frame {
   position: absolute;
   inset: 6%;
@@ -167,24 +274,28 @@
 }
 
 .edit-workflow-toolbar button {
-  width: 44px;
+  width: auto;
+  min-width: 44px;
   height: 44px;
-  display: grid;
-  place-items: center;
-  gap: 1px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
   border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
   color: #e2ded7;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
   position: relative;
   flex: none;
+  white-space: nowrap;
 }
 
-.edit-workflow-toolbar button svg { width: 18px; height: 18px; }
+.edit-workflow-toolbar button svg { width: 20px; height: 20px; flex: none; }
 
 .edit-workflow-toolbar button[aria-pressed="true"] {
   background: #33466d;
@@ -195,14 +306,6 @@
 .edit-workflow-toolbar button:focus-visible {
   outline: 2px solid #eab083;
   outline-offset: 2px;
-}
-
-.edit-workflow-toolbar kbd {
-  font-family: var(--font-body, "Manrope", system-ui, sans-serif);
-  font-size: 8px;
-  font-weight: 700;
-  color: #9aa0b5;
-  line-height: 1;
 }
 
 .edit-workflow-toolbar .ew-toolbar-sep {
@@ -260,8 +363,8 @@
 }
 
 .ew-inspector-title small {
-  color: #9aa09a;
-  font-size: 11px;
+  color: #a8a9a0;
+  font-size: 12px;
   line-height: 1.4;
 }
 
@@ -294,7 +397,7 @@
 .ew-current-image-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 .ew-current-image b { display: block; font-size: 12px; }
-.ew-current-image small { display: block; color: #aaa99f; font-size: 11px; margin-top: 2px; }
+.ew-current-image small { display: block; color: #aaa99f; font-size: 12px; margin-top: 2px; }
 .ew-current-image svg { width: 16px; height: 16px; color: #aaa99f; }
 
 /* Detected heading */
@@ -323,7 +426,7 @@
   border-radius: 999px;
   background: #2f302b;
   color: #e7e5df;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .ew-detected-head button {
@@ -339,10 +442,15 @@
   cursor: pointer;
 }
 
-/* Real rows */
+/* Real rows — the objects list scrolls independently of the docked prompt */
 .ew-object-list {
   display: grid;
   gap: 6px;
+  max-height: 300px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding-right: 2px;
 }
 
 .ew-object-row {
@@ -377,10 +485,10 @@
 .ew-object-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
 
 .ew-object-row b { display: block; font-size: 12px; text-transform: capitalize; }
-.ew-object-row small { display: block; color: #9aa09a; font-size: 11px; margin-top: 2px; }
-.ew-object-row svg { width: 16px; height: 16px; color: #9aa09a; }
+.ew-object-row small { display: block; color: #a8a9a0; font-size: 12px; margin-top: 2px; }
+.ew-object-row svg { width: 16px; height: 16px; color: #a8a9a0; }
 
-/* Selected / active-tool prompt */
+/* Selected / active-tool prompt — docked at the bottom of the inspector */
 .ew-selected-panel,
 .ew-tool-prompt {
   display: grid;
@@ -389,13 +497,17 @@
   border: 1px solid #2f302b;
   border-radius: 14px;
   background: #22231f;
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  box-shadow: 0 -12px 28px rgba(10, 10, 9, 0.55);
 }
 
 .ew-selected-panel h4,
 .ew-tool-prompt h4 { margin: 0; font-size: 12px; text-transform: capitalize; }
 
 .ew-selected-panel label,
-.ew-tool-prompt label { font-size: 11px; font-weight: 700; color: #d6d4ca; }
+.ew-tool-prompt label { font-size: 12px; font-weight: 700; color: #d6d4ca; }
 
 .ew-selected-panel textarea,
 .ew-tool-prompt textarea {
@@ -452,7 +564,7 @@
   padding: 0 14px;
 }
 
-.ew-hint { color: #9aa09a; font-size: 11px; line-height: 1.45; }
+.ew-hint { color: #a8a9a0; font-size: 12px; line-height: 1.45; }
 
 .ew-create3d {
   display: flex;
@@ -469,7 +581,7 @@
 }
 
 .ew-create3d b { display: block; font-size: 12px; }
-.ew-create3d small { display: block; color: #9aa09a; font-size: 11px; }
+.ew-create3d small { display: block; color: #a8a9a0; font-size: 12px; }
 
 /* Reframe controls */
 .ew-reframe-row {
@@ -485,7 +597,7 @@
   border-radius: 999px;
   background: #11120f;
   color: #d6d4ca;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -508,7 +620,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #d6d4ca;
 }
@@ -522,7 +634,7 @@
   border-radius: 8px;
   background: transparent;
   color: #f4f0e8;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -558,7 +670,7 @@
 
 .ew-error {
   color: #e8a090;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -584,7 +696,7 @@
 .edit-workflow-empty-dropzone.is-dragging { border-color: #eab083; background: #252620; }
 .edit-workflow-empty-dropzone b { display: block; font-size: 16px; font-weight: 700; }
 .edit-workflow-empty-dropzone span { color: var(--night-muted, #aaa99f); font-size: 13px; }
-.edit-workflow-empty-dropzone small { display: block; margin-top: 4px; color: #7f8178; font-size: 11px; }
+.edit-workflow-empty-dropzone small { display: block; margin-top: 4px; color: #a8a9a0; font-size: 12px; }
 
 /* Mobile: inspector becomes bottom sheet */
 @media (max-width: 900px) {
@@ -633,6 +745,14 @@
 @media (max-width: 560px) {
   .edit-workflow-canvas { padding: 12px 10px 10px; }
   .edit-workflow-inspector { border-radius: 16px 16px 0 0; }
+  /* Keep every tool reachable: scroll the bar, never clip buttons or scroll the page. */
+  .edit-workflow-toolbar {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    overscroll-behavior-x: contain;
+  }
 }
 
 /* Focus visible */

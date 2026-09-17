@@ -621,6 +621,22 @@ export function HousoraApp({
   }, [activePage, designRows, projectDraft?.id]);
   const [removedDesign, setRemovedDesign] = useState<SavedDesign | null>(null);
   const [notice, setNotice] = useState("");
+  const noticeTimer = useRef<number | null>(null);
+  const showNotice = (message: string, duration = 3200) => {
+    setNotice(message);
+    if (noticeTimer.current) window.clearTimeout(noticeTimer.current);
+    if (duration > 0) {
+      noticeTimer.current = window.setTimeout(() => setNotice(""), duration);
+    }
+  };
+  const dismissNotice = () => {
+    if (noticeTimer.current) window.clearTimeout(noticeTimer.current);
+    setNotice("");
+    setRemovedDesign(null);
+  };
+  useEffect(() => () => {
+    if (noticeTimer.current) window.clearTimeout(noticeTimer.current);
+  }, []);
   const [recentMenuOpen, setRecentMenuOpen] = useState<string | null>(null);
   const [renamingRecentId, setRenamingRecentId] = useState<string | null>(null);
   const [recentRename, setRecentRename] = useState("");
@@ -671,20 +687,18 @@ export function HousoraApp({
       prompt: design.prompt,
       workflow: design.workflow,
     });
-    setNotice("Design saved");
     if (new URLSearchParams(window.location.search).get("view") === "album") {
       const url = new URL(window.location.href);
       url.searchParams.set("design", design.id);
       window.history.replaceState(window.history.state, "", url);
     }
-    window.setTimeout(() => setNotice(""), 3200);
+    showNotice("Design saved");
     return context;
   };
   const unsaveDesign = async (id: string) => {
     setRemovedDesign(savedDesigns.find((item) => item.id === id) ?? null);
     await removeDesignRecord({ designId: id });
-    setNotice("Removed from Saved");
-    window.setTimeout(() => setNotice(""), 3200);
+    showNotice("Removed from Saved");
   };
   const restoreDesign = async () => {
     if (!removedDesign) return;
@@ -697,22 +711,28 @@ export function HousoraApp({
       workflow: removedDesign.workflow,
     });
     setRemovedDesign(null);
-    setNotice("Design restored");
+    showNotice("Design restored");
   };
   const saveReference = async (reference: InspirationReference) => {
     const exists = savedReferences.some((item) => item.title === reference.title);
     await saveReferenceRecord({
-      ...reference,
+      title: reference.title,
+      room: reference.room,
+      style: reference.style,
+      image: reference.image,
+      prompt: reference.prompt,
       savedAt: new Date().toISOString(),
     });
-    setNotice(exists ? "Already saved" : "Inspiration saved");
-    window.setTimeout(() => setNotice(""), 3200);
+    showNotice(exists ? "Already saved" : "Inspiration saved");
   };
   const unsaveReference = async (title: string) => {
     await removeReferenceRecord({ title });
-    setNotice("Inspiration removed");
+    showNotice("Inspiration removed");
   };
   const navigate = (next: WorkspacePage, designId?: string) => {
+    // Scoped feedback: a toast belongs to the screen that raised it and must
+    // not persist across Pricing, Projects or Settings.
+    dismissNotice();
     setActivePage(next);
     setProfileOpen(false);
     const url = new URL(window.location.href);
@@ -733,19 +753,25 @@ export function HousoraApp({
   };
   const startFromReference = (reference: InspirationReference) => {
     const draftId = safeUUID();
+    const room = reference.room.toLowerCase();
+    const inferredMode: DesignMode = room.includes("exterior") || room.includes("villa")
+      ? "Exterior"
+      : room.includes("garden") || room.includes("courtyard") || room.includes("terrace") || room.includes("poolside") || room.includes("patio")
+        ? "Garden"
+        : "Interior";
     const draft: ProjectDraft = {
       id: draftId,
       title: reference.title,
       image: reference.image,
       prompt: reference.prompt,
-      mode: "Interior",
+      mode: inferredMode,
       workflow: "create",
     };
     setProjectDraft(draft);
     navigate("album");
     void saveDesign({ ...draft, id: draftId }).then((context) => {
       setProjectDraft((current) => current?.id === draftId ? { ...current, ...context } : current);
-    }).catch(() => setNotice("The image opened, but the project could not be saved. Save it from the editor before leaving."));
+    }).catch(() => showNotice("The image opened, but the project could not be saved. Use Retry in the editor save status.", 8000));
   };
   const openSavedProject = (design: SavedDesign) => {
     setProjectDraft({
@@ -765,7 +791,9 @@ export function HousoraApp({
     const nextTitle = requestedTitle.trim();
     if (!nextTitle || nextTitle === design.title) return;
     await updateDesignMeta({ designId: design.id, title: nextTitle });
-    setNotice("Project renamed");
+    // Keep the open editor header in sync when the renamed project is open.
+    setProjectDraft((draft) => (draft && (draft.id === design.id || draft.projectId === design.projectId) ? { ...draft, title: nextTitle } : draft));
+    showNotice("Project renamed");
     setRecentMenuOpen(null);
   };
   const beginRecentRename = (design: SavedDesign) => {
@@ -788,8 +816,8 @@ export function HousoraApp({
       const canShare = typeof navigator.share === "function";
       if (canShare) await navigator.share({ title: design.title, url: url.toString() });
       else await navigator.clipboard.writeText(url.toString());
-      setNotice(canShare ? "Share opened" : "Project link copied");
-    } catch { setNotice("Sharing cancelled"); }
+      showNotice(canShare ? "Share opened" : "Project link copied");
+    } catch { showNotice("Sharing cancelled"); }
     setRecentMenuOpen(null);
   };
   useEffect(() => {
@@ -852,7 +880,7 @@ export function HousoraApp({
         {!shellCollapsed ? <section className="rail-recents" aria-labelledby="recent-projects-title">
           <div className="rail-section-title"><span id="recent-projects-title">Recent</span><button onClick={() => navigate("projects")} aria-label="View all projects">View all</button></div>
           {recentProjects.length ? <ul>{recentProjects.map((design) => <li key={design.id}>
-            {renamingRecentId === design.id ? <input className="rail-recent-rename" aria-label={`Rename ${design.title}`} value={recentRename} onChange={(event) => setRecentRename(event.target.value)} onBlur={() => finishRecentRename(design)} onKeyDown={(event) => {
+            {renamingRecentId === design.id ? <input className="rail-recent-rename" aria-label={`Rename ${design.title}`} title="Enter to save · Escape to cancel" value={recentRename} onChange={(event) => setRecentRename(event.target.value)} onBlur={() => finishRecentRename(design)} onKeyDown={(event) => {
               if (event.key === "Enter") event.currentTarget.blur();
               if (event.key === "Escape") { setRenamingRecentId(null); setRecentRename(""); }
             }} autoFocus /> : <button className="rail-recent-project" onClick={(event) => {
@@ -861,14 +889,14 @@ export function HousoraApp({
               recentOpenTimer.current = window.setTimeout(() => openSavedProject(design), 220);
             }} onDoubleClick={() => beginRecentRename(design)} title={`${design.title} · Double-click to rename`}>
               {design.pinned ? <Pin aria-hidden="true" /> : <span aria-hidden="true" />}
-              <span>{design.title}</span>
+              <span className="rail-recent-label"><span>{design.title}</span><small>{(() => { try { const d = new Date(design.savedAt); return Number.isNaN(d.getTime()) ? design.mode : `${design.mode} · ${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`; } catch { return design.mode; } })()}</small></span>
             </button>}
             <button className="rail-recent-more" onClick={() => setRecentMenuOpen(recentMenuOpen === design.id ? null : design.id)} aria-label={`Project actions for ${design.title}`} aria-expanded={recentMenuOpen === design.id}><DotsThree aria-hidden="true" /></button>
             {recentMenuOpen === design.id ? <div className="rail-project-menu" role="menu">
               <button role="menuitem" onClick={() => beginRecentRename(design)}><PencilSimple /> Rename</button>
               <button role="menuitem" onClick={() => void shareProject(design)}><ShareNetwork /> Share</button>
               <button role="menuitem" onClick={() => { void updateDesignMeta({ designId: design.id, pinned: !design.pinned }); setRecentMenuOpen(null); }}><Pin /> {design.pinned ? "Unpin" : "Pin"}</button>
-              <button role="menuitem" onClick={() => { void updateDesignMeta({ designId: design.id, archived: true }); setRecentMenuOpen(null); setNotice("Project archived"); }}><Archive /> Archive</button>
+              <button role="menuitem" onClick={() => { void updateDesignMeta({ designId: design.id, archived: true }); setRecentMenuOpen(null); showNotice("Project archived"); }}><Archive /> Archive</button>
               <button role="menuitem" className="danger" onClick={() => { void unsaveDesign(design.id); setRecentMenuOpen(null); }}><TrashSimple /> Delete</button>
             </div> : null}
           </li>)}</ul> : <p>Your projects will appear here.</p>}
@@ -1056,6 +1084,9 @@ export function HousoraApp({
         <div className="workspace-toast" role="status">
           <span>{notice}</span>
           {removedDesign ? <button onClick={restoreDesign}>Undo</button> : null}
+          <button className="workspace-toast-dismiss" onClick={dismissNotice} aria-label="Dismiss notification">
+            <X aria-hidden="true" />
+          </button>
         </div>
       ) : null}
       {dialog ? (
@@ -1934,7 +1965,7 @@ function ProjectsPage({
           </div>
           <p>
             {hasProjects
-              ? "Projects are your working documents — editable rooms with history, versions, and 3D. Saved holds your bookmarked designs and inspiration."
+              ? "Projects are your working documents — editable rooms with history, versions, and 3D. Library holds your bookmarked designs and inspiration."
               : "Projects are your working documents. Start from a photo — your first design becomes a project you can reopen, version, and refine."}
           </p>
         </div>
@@ -2018,8 +2049,8 @@ function ProjectsPage({
       <div className="projects-empty-hint">
         <p>
           {hasProjects
-            ? "Projects stay as working documents. Bookmark inspiration or finished designs in Saved — nothing is moved or reclassified without your action."
-            : "Start with a photo or an example. Your saved work appears here as a project you can reopen — bookmarks stay in Saved."}
+            ? "Projects stay as working documents. Bookmarked inspiration and finished designs live in Library."
+            : "Start with a photo or an example. Your saved work appears here as a project you can reopen — bookmarks stay in Library."}
         </p>
       </div>
     </section>
@@ -2089,12 +2120,23 @@ function AlbumWorkspace({
   }, [savedVersions, initialDraft?.image]);
   const persistImage = async (image: string, instructionText = prompt) => {
     setSaveError("");
+    setSaving(true);
     historyLoaded.current = true;
-    const workflow = workflowRef.current ?? selectedWorkflow ?? (activeTool !== "select" ? "edit" : "create");
-    const draftTitle = initialDraft?.title && initialDraft.title !== "New project" ? initialDraft.title : `${mode} ${workflow === "edit" ? "edit" : workflow === "3d" ? "3D project" : workflow === "ar" ? "AR project" : "design"}`;
-    const context = await onSaveDesign({ id: designId, title: draftTitle, image, mode, prompt: instructionText, workflow });
-    setVersionContext(context);
-    setSaved(true);
+    try {
+      const workflow = workflowRef.current ?? selectedWorkflow ?? (activeTool !== "select" ? "edit" : "create");
+      const autoTitleDate = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const autoTitleTime = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      const draftTitle = initialDraft?.title && initialDraft.title !== "New project" ? initialDraft.title : `${mode} ${workflow === "edit" ? "edit" : workflow === "3d" ? "3D project" : workflow === "ar" ? "AR project" : "design"} · ${autoTitleDate}, ${autoTitleTime}`;
+      const context = await onSaveDesign({ id: designId, title: draftTitle, image, mode, prompt: instructionText, workflow });
+      setVersionContext(context);
+      setSaved(true);
+    } finally {
+      setSaving(false);
+    }
+  };
+  const retrySave = () => {
+    if (!preview || saving) return;
+    void persistImage(preview, prompt).catch(() => setSaveError("Still could not save this project. Your image and settings are preserved — try Retry again or download the image before leaving."));
   };
   const pushHistory = (img: string) => {
     setHistory((h) => {
@@ -2260,7 +2302,7 @@ function AlbumWorkspace({
       setEditError(null);
       setSaveError("");
       setZoom(1); setFit(true);
-      void persistImage(img, prompt).catch(() => setSaveError("The image opened, but the project could not be saved. Use Save this design to retry."));
+      void persistImage(img, prompt).catch(() => setSaveError("The image opened, but the project could not be saved. Your work is preserved — use Retry in the save status to try again."));
     };
     reader.onerror = () => setUploadError("This image could not be opened. Try another photo.");
     reader.readAsDataURL(file);
@@ -2274,7 +2316,7 @@ function AlbumWorkspace({
     originalPreview.current = img;
     setSaved(false);
     setZoom(1); setFit(true);
-    void persistImage(img, prompt).catch(() => setSaveError("The example opened, but the project could not be saved. Use Save this design to retry."));
+    void persistImage(img, prompt).catch(() => setSaveError("The example opened, but the project could not be saved. Your work is preserved — use Retry in the save status to try again."));
   };
   const buildGenerationPrompt = () => {
     const isAutoSpace = !space || space === "Auto-detect";
@@ -2337,7 +2379,7 @@ function AlbumWorkspace({
         await persistImage(result.image, finalPrompt);
         setExportStatus(result.cached ? "Saved cached result — no credits used." : "Generated and saved to project history.");
       } catch {
-        setSaveError("Your image is ready, but saving failed. Use Save this design to retry, or download it before leaving.");
+        setSaveError("Your image is ready, but saving failed. Your work is preserved — use Retry in the save status, or download the image before leaving.");
       }
       setTimeout(() => setExportStatus(""), 4000);
     } catch (reason) {
@@ -2591,6 +2633,29 @@ function AlbumWorkspace({
         </div>
         <div className="album-bar-right">
           {preview ? (
+            <div className="album-save-status" role="status" aria-live="polite">
+              {saveError ? (
+                <>
+                  <span className="album-save-error">Couldn’t save — your work is preserved</span>
+                  <button className="album-save-retry" onClick={retrySave} disabled={saving}>
+                    {saving ? "Retrying…" : "Retry"}
+                  </button>
+                </>
+              ) : saving ? (
+                <span className="album-save-state">Saving…</span>
+              ) : saved ? (
+                <span className="album-save-state is-saved">Saved</span>
+              ) : (
+                <>
+                  <span className="album-save-state">Unsaved</span>
+                  <button className="album-save-retry" onClick={retrySave} disabled={saving}>
+                    Save now
+                  </button>
+                </>
+              )}
+            </div>
+          ) : null}
+          {preview ? (
             <div className="album-bar-actions" aria-label="Project image actions">
               <button className="icon-secondary" aria-label="Download image" title="Download image" onClick={() => void exportImage(false)}>
                 <DownloadSimple />
@@ -2676,6 +2741,7 @@ function AlbumWorkspace({
             modelPoster={threeDModelPoster}
             error={threeDError}
             busy={threeDBusy}
+            returnIntent={arReturnPending ? "When the model is ready, you'll return to AR to place it in your room." : null}
             onUpload={(file) => {
               // Single blob/data URL: read as data URL, set source, and persist as real project for Recent
               const reader = new FileReader();
@@ -2736,7 +2802,7 @@ function AlbumWorkspace({
               <button aria-pressed="false" onClick={() => { workflowRef.current = "create"; setSelectedWorkflow("create"); }}>
                 <span><Sparkle aria-hidden="true" /></span>
                 <b>Create</b>
-                <small>Redesign a room from your photo</small>
+                <small>Redesign an interior, exterior or garden from your photo</small>
               </button>
               <button aria-pressed="false" onClick={() => { workflowRef.current = "edit"; setSelectedWorkflow("edit"); }}>
                 <span><Selection aria-hidden="true" /></span>
@@ -2761,10 +2827,10 @@ function AlbumWorkspace({
         )}
         {exportStatus ? <div role="status" aria-live="polite" style={{ position: "absolute", bottom: 64, left: "50%", transform: "translateX(-50%)", background: "rgba(24,24,22,0.96)", color: "#f4f0e8", border: "1px solid #34362f", borderRadius: 10, padding: "8px 12px", fontSize: 12, zIndex: 5 }}>{exportStatus}</div> : null}
       </div>
-      <CreditConfirmation open={generationConfirmOpen} cost={AI_COSTS.imageEdit} title="Generate your design?" description="Create a new version of this photo. Your original stays available for comparison. Room-type inference is free; this generation costs credits." action="Generate" onCancel={() => setGenerationConfirmOpen(false)} onConfirm={() => void generateDesign()} />
+      <CreditConfirmation open={generationConfirmOpen} cost={AI_COSTS.imageEdit} title="Generate your design?" description="Create a new version of this photo. Your original stays available for comparison. Detecting the room type is free; this generation costs credits." action="Generate" onCancel={() => setGenerationConfirmOpen(false)} onConfirm={() => void generateDesign()} />
       <CreditConfirmation open={scanConfirmOpen} cost={AI_COSTS.detection} title="Detect objects in this photo?" description="Scan this photo to find furniture and surfaces. Failed or empty scans return the detection credit." action="Detect objects" onCancel={() => setScanConfirmOpen(false)} onConfirm={() => void doScan()} />
-      <CreditConfirmation open={editConfirmOpen} cost={AI_COSTS.imageEdit} title={pendingEdit?.object.label ? `Edit ${pendingEdit.object.label}?` : "Apply edit?"} description="Only the masked object will be edited. Outside-mask pixels are preserved." action="Edit object" onCancel={() => { setEditConfirmOpen(false); setPendingEdit(null); }} onConfirm={() => void doEditObject()} />
-      <CreditConfirmation open={regionConfirmOpen && Boolean(pendingRegion)} cost={AI_COSTS.imageEdit} title="Apply this local edit?" description="Only the spotlighted or drawn region is sent as the edit mask. The rest of your photo is preserved, and your original remains in version history." action="Apply edit" onCancel={() => { setRegionConfirmOpen(false); setPendingRegion(null); }} onConfirm={() => void doRegionEdit()} />
+      <CreditConfirmation open={editConfirmOpen} cost={AI_COSTS.imageEdit} title={pendingEdit?.object.label ? `Edit ${pendingEdit.object.label}?` : "Apply edit?"} description="Only the selected object will be edited. Everything else is preserved." action="Edit object" onCancel={() => { setEditConfirmOpen(false); setPendingEdit(null); }} onConfirm={() => void doEditObject()} />
+      <CreditConfirmation open={regionConfirmOpen && Boolean(pendingRegion)} cost={AI_COSTS.imageEdit} title="Apply this local edit?" description="Only the spotlighted or drawn region is edited. The rest of your photo is preserved, and your original remains in version history." action="Apply edit" onCancel={() => { setRegionConfirmOpen(false); setPendingRegion(null); }} onConfirm={() => void doRegionEdit()} />
       <CreditConfirmation open={regionConfirmOpen && Boolean(pendingReframe)} cost={AI_COSTS.imageEdit} title="Apply this reframe?" description="Generate a naturally extended or cropped version in the selected format. Your original remains in version history." action="Apply reframe" onCancel={() => { setRegionConfirmOpen(false); setPendingReframe(null); }} onConfirm={() => void doReframe()} />
       <CreditConfirmation open={threeDConfirmOpen} cost={AI_COSTS.model3d} title="Create this 3D model?" description="Use this image to create a textured 3D model. Failed generations return your Housora credits. AI models are approximations, not measured replicas." action="Create 3D" onCancel={() => { setThreeDConfirmOpen(false); setPendingThreeD(null); }} onConfirm={() => void doThreeDGenerate()} />
       <WorkspaceDialog open={leaveConfirmOpen} onClose={() => setLeaveConfirmOpen(false)} title="Leave without saving?">
@@ -2860,9 +2926,18 @@ type InspirationReference = {
   prompt: string;
 };
 
-const inspirationReferences: InspirationReference[] = [
+type InspirationEntry = InspirationReference & {
+  /** Stable record key — unique per record, never reused. Used for list keys and dialog identity. */
+  id: string;
+  /** One-line, image-specific description shown in the detail dialog. */
+  summary: string;
+};
+
+const inspirationReferences: InspirationEntry[] = [
   {
     title: "Warm minimal living room",
+    id: "warm-minimal-living-room",
+    summary: "Curved bouclé sofa, oak slat wall and travertine coffee table in warm afternoon light.",
     room: "Living room",
     style: "Warm minimal",
     image: "/inspiration/discover/01-warm-minimal-living-room.png",
@@ -2871,6 +2946,8 @@ const inspirationReferences: InspirationReference[] = [
   },
   {
     title: "Limestone kitchen",
+    id: "limestone-kitchen",
+    summary: "Pale oak cabinetry, limestone island and ceramic pendants under garden windows.",
     room: "Kitchen",
     style: "Japandi",
     image: "/inspiration/discover/02-japandi-kitchen.png",
@@ -2879,6 +2956,8 @@ const inspirationReferences: InspirationReference[] = [
   },
   {
     title: "Olive courtyard",
+    id: "olive-courtyard",
+    summary: "Limewashed courtyard with an olive tree, curved seating and a quiet water bowl.",
     room: "Courtyard",
     style: "Mediterranean",
     image: "/inspiration/discover/03-mediterranean-courtyard.png",
@@ -2887,6 +2966,8 @@ const inspirationReferences: InspirationReference[] = [
   },
   {
     title: "Hillside villa",
+    id: "hillside-villa",
+    summary: "Stone-and-timber villa with an infinity pool over the hills at golden hour.",
     room: "Villa exterior",
     style: "Contemporary",
     image: "/inspiration/discover/04-contemporary-villa.png",
@@ -2895,6 +2976,8 @@ const inspirationReferences: InspirationReference[] = [
   },
   {
     title: "Quiet boutique bedroom",
+    id: "quiet-boutique-bedroom",
+    summary: "Textured plaster bedroom with an upholstered bed, travertine tables and amber pendant.",
     room: "Bedroom",
     style: "Soft luxury",
     image: "/inspiration/discover/05-quiet-bedroom.png",
@@ -2903,6 +2986,8 @@ const inspirationReferences: InspirationReference[] = [
   },
   {
     title: "Stone spa bath",
+    id: "stone-spa-bath",
+    summary: "Freestanding stone tub, fluted oak vanity and skylight with an olive branch.",
     room: "Bathroom",
     style: "Spa modern",
     image: "/inspiration/discover/06-sculptural-bathroom.png",
@@ -2911,6 +2996,8 @@ const inspirationReferences: InspirationReference[] = [
   },
   {
     title: "Gaming media room",
+    id: "gaming-media-room",
+    summary: "Charcoal media room with warm LED shelving, a modular sofa and a restrained blue glow.",
     room: "Gaming room",
     style: "Moody modern",
     image: "/inspiration/discover/07-gaming-studio.png",
@@ -2919,6 +3006,8 @@ const inspirationReferences: InspirationReference[] = [
   },
   {
     title: "Collected family room",
+    id: "collected-family-room",
+    summary: "Curved cream sofa, colorful art and custom bookshelves in a sunny afternoon.",
     room: "Living room",
     style: "Contemporary",
     image: "/inspiration/discover/08-family-living-room.png",
@@ -2927,6 +3016,8 @@ const inspirationReferences: InspirationReference[] = [
   },
   {
     title: "Urban roof garden",
+    id: "urban-roof-garden",
+    summary: "Rooftop garden with olive planters, a stone dining table, a shade sail and skyline.",
     room: "Roof terrace",
     style: "Natural",
     image: "/inspiration/discover/09-rooftop-garden.png",
@@ -2935,6 +3026,8 @@ const inspirationReferences: InspirationReference[] = [
   },
   {
     title: "Creative kids room",
+    id: "creative-kids-room",
+    summary: "Sage-and-sand kids room with arched storage, a wood desk, a canopy and a tactile rug.",
     room: "Kids room",
     style: "Soft contemporary",
     image: "/inspiration/discover/10-kids-room.png",
@@ -2943,6 +3036,8 @@ const inspirationReferences: InspirationReference[] = [
   },
   {
     title: "Oak gathering table",
+    id: "oak-gathering-table",
+    summary: "Long oak dining table, woven pendants and pottery shelves in a sunset glow.",
     room: "Dining room",
     style: "Natural modern",
     image: "/inspiration/discover/11-oak-dining-room.png",
@@ -2951,6 +3046,8 @@ const inspirationReferences: InspirationReference[] = [
   },
   {
     title: "Desert pool villa",
+    id: "desert-pool-villa",
+    summary: "Rammed-earth pool patio with a cactus garden and concrete loungers in midday sun.",
     room: "Poolside",
     style: "Desert",
     image: "/inspiration/discover/12-desert-pool.png",
@@ -2959,6 +3056,8 @@ const inspirationReferences: InspirationReference[] = [
   },
   {
     title: "Walnut home office",
+    id: "walnut-home-office",
+    summary: "Walnut library office with a sculptural desk, a lounge chair and moody daylight.",
     room: "Home office",
     style: "Refined modern",
     image: "/inspiration/discover/13-home-office.png",
@@ -2967,6 +3066,8 @@ const inspirationReferences: InspirationReference[] = [
   },
   {
     title: "Quiet gathering",
+    id: "quiet-gathering",
+    summary: "Low modular seating, ivory upholstery and sculptural lighting in afternoon sun.",
     room: "Living room",
     style: "Warm minimal",
     image: "/inspiration/cozy_modern_living_room.webp",
@@ -2975,6 +3076,8 @@ const inspirationReferences: InspirationReference[] = [
   },
   {
     title: "Soft geometry",
+    id: "soft-geometry",
+    summary: "Sculptural oatmeal forms, pale timber and handmade ceramics in diffused light.",
     room: "Living room",
     style: "Japandi",
     image: "/inspiration/japandi_minimalist_living_room.webp",
@@ -2983,6 +3086,8 @@ const inspirationReferences: InspirationReference[] = [
   },
   {
     title: "Collected comfort",
+    id: "collected-comfort",
+    summary: "Layered neutrals, a generous sofa, warm wood and art-led styling in daylight.",
     room: "Living room",
     style: "Contemporary",
     image: "/inspiration/modern_living_room.webp",
@@ -2991,6 +3096,8 @@ const inspirationReferences: InspirationReference[] = [
   },
   {
     title: "Oak and cane",
+    id: "oak-and-cane",
+    summary: "Solid oak table, cane-backed chairs, black accents and a large line drawing.",
     room: "Dining room",
     style: "Scandinavian",
     image: "/inspiration/scandinavian_japandi_dining_room.webp",
@@ -2999,6 +3106,8 @@ const inspirationReferences: InspirationReference[] = [
   },
   {
     title: "Northern calm",
+    id: "northern-calm",
+    summary: "Clean-lined furniture, tactile wool, warm oak and a practical family layout.",
     room: "Living room",
     style: "Scandinavian",
     image: "/inspiration/scandinavian_living_room.webp",
@@ -3007,6 +3116,8 @@ const inspirationReferences: InspirationReference[] = [
   },
   {
     title: "Restful retreat",
+    id: "restful-retreat",
+    summary: "Low upholstered bed, linen bedding, plaster walls and gentle bedside light.",
     room: "Bedroom",
     style: "Warm minimal",
     image: "/inspiration/warm_minimalist_bedroom.webp",
@@ -3014,31 +3125,39 @@ const inspirationReferences: InspirationReference[] = [
       "Create a restful warm-minimal bedroom with a low upholstered bed, linen bedding, creamy plaster walls, timber accents and gentle bedside lighting.",
   },
   {
-    title: "Gallery wall",
+    title: "Steel windows, blank canvas",
+    id: "steel-windows-blank-canvas",
+    summary: "An empty white room with black steel windows and oak floors, ready for direction.",
     room: "Living room",
-    style: "Editorial",
+    style: "Blank canvas",
     image: "/inspiration/inspo-1.webp",
     prompt:
-      "Create an editorial living room with a gallery-like composition, tactile upholstery, considered art, sculptural accents and balanced negative space.",
+      "Use this empty white room with black steel windows and oak floors as a blank canvas. Design a calm living room with a low sofa, natural wood, soft textiles and daylight; no people.",
   },
   {
-    title: "Stone and shadow",
-    room: "Bathroom",
-    style: "Spa modern",
+    title: "Sunlit empty room",
+    id: "sunlit-empty-room",
+    summary: "An unfurnished sunlit room with glazed walls and wood floors, ready for direction.",
+    room: "Living room",
+    style: "Blank canvas",
     image: "/inspiration/inspo-2.webp",
     prompt:
-      "Design a spa-like modern bathroom with honed stone, sculptural fixtures, soft indirect lighting and an atmosphere of quiet luxury.",
+      "Use this unfurnished sunlit room with floor-to-ceiling glazing and wood floors as a starting point. Design a calm living room with low seating, natural materials and soft daylight; no people.",
   },
   {
-    title: "Sculptural entry",
-    room: "Hallway",
-    style: "Contemporary",
+    title: "Rattan dining room",
+    id: "rattan-dining-room",
+    summary: "Round wooden table with rattan chairs, open shelving and a woven pendant.",
+    room: "Dining room",
+    style: "Natural modern",
     image: "/inspiration/inspo-3.webp",
     prompt:
-      "Create a contemporary entrance with sculptural lighting, a restrained material palette, a strong focal point and warm welcoming light.",
+      "Create a natural-modern dining room with a round wooden table, rattan chairs, open timber shelving styled with books and ceramics, and a large woven pendant. Soft daylight; no people.",
   },
   {
     title: "Lived-in modern",
+    id: "lived-in-modern",
+    summary: "White sofa, oak coffee table and layered neutrals in a calm modern living room.",
     room: "Living room",
     style: "Modern",
     image: "/inspiration/inspo-4.webp",
@@ -3046,71 +3165,89 @@ const inspirationReferences: InspirationReference[] = [
       "Create a lived-in modern living room with grounded proportions, natural materials, soft neutral textiles and a sophisticated layered mood.",
   },
   {
-    title: "Tactile kitchen",
-    room: "Kitchen",
-    style: "Natural modern",
+    title: "Scandinavian shopping moodboard",
+    id: "scandi-shopping-moodboard",
+    summary: "An annotated living-room shopping board with Scandinavian pieces and example prices.",
+    room: "Living room",
+    style: "Moodboard",
     image: "/inspiration/inspo-5.webp",
     prompt:
-      "Design a natural-modern kitchen with timber cabinetry, honed stone, integrated storage, warm metal details and a calm material rhythm.",
+      "Design a Scandinavian living room with a grey three-seat sofa, pale birch coffee table, white bookcases, jute rug and warm wood accents. Practical small-space layout; no people. (Reference is an annotated shopping board; prices shown are examples only.)",
   },
   {
-    title: "Earthy dining",
-    room: "Dining room",
-    style: "Organic",
+    title: "Quiet sitting nook",
+    id: "quiet-sitting-nook",
+    summary: "A light corner with a wooden bench, linen cushions, coffee table and olive tree.",
+    room: "Living room",
+    style: "Warm minimal",
     image: "/inspiration/inspo-6.webp",
     prompt:
-      "Create an organic dining space using earth-toned plaster, natural wood, woven texture, soft pendant lighting and generous proportions.",
+      "Create a quiet warm-minimal sitting nook with a wooden bench, linen cushions and chunky knit throw, a small oak coffee table, woven rug and an olive tree in soft daylight; no people.",
   },
   {
-    title: "Layered neutrals",
-    room: "Bedroom",
-    style: "Soft luxury",
+    title: "Travertine spa bath",
+    id: "travertine-spa-bath",
+    summary: "Oval stone tub, floating oak vanity and travertine walls in warm evening light.",
+    room: "Bathroom",
+    style: "Spa modern",
     image: "/inspiration/inspo-7.webp",
     prompt:
-      "Create a soft-luxury bedroom with layered neutral linens, an upholstered headboard, warm timber, tailored lighting and an unhurried hotel feel.",
+      "Create a spa-modern bathroom with an oval stone tub, floating oak vanity, travertine walls, brass pendants, folded towels and eucalyptus. Warm evening light; no people.",
   },
   {
-    title: "Material study",
-    room: "Detail",
-    style: "Material-led",
+    title: "Grey marble kitchen",
+    id: "grey-marble-kitchen",
+    summary: "Grey cabinetry, a waterfall marble island, brass pendants and open shelving.",
+    room: "Kitchen",
+    style: "Contemporary",
     image: "/inspiration/inspo-8.webp",
     prompt:
-      "Build an interior direction around tactile natural materials, warm neutrals, visible craftsmanship and restrained sculptural forms.",
+      "Create a contemporary kitchen with grey flat-front cabinetry, a waterfall marble island with black leather stools, ribbed brass pendants, marble splashback and styled open shelves. Bright daylight; no people.",
   },
   {
-    title: "Daylight studio",
-    room: "Home office",
-    style: "Minimal",
+    title: "Slat-wall living room",
+    id: "slat-wall-living-room",
+    summary: "Light sofa, travertine coffee table and oak slat wall with line art in daylight.",
+    room: "Living room",
+    style: "Warm minimal",
     image: "/inspiration/inspo-9.webp",
     prompt:
-      "Create a minimal home office with daylight-focused planning, built-in storage, warm wood, a clean desk and a quiet professional backdrop.",
+      "Create a warm-minimal living room with a light sofa, travertine coffee table, oak slat feature wall with framed line art, an olive tree and linen curtains in bright daylight; no people.",
   },
   {
-    title: "Candlelit table",
+    title: "Oak table at sunset",
+    id: "oak-table-at-sunset",
+    summary: "The same oak dining room as Oak gathering table, seen in low sunset light.",
     room: "Dining room",
-    style: "Mediterranean",
+    style: "Natural modern",
     image: "/inspiration/discover/11-oak-dining-room.png",
     prompt:
-      "Design a Mediterranean-influenced dining room with mineral walls, warm wood, crafted ceramics, linen and intimate evening lighting.",
+      "Create a warm natural-modern dining room with a long solid-oak table, rush-seat chairs, woven pendants and open shelves of handmade pottery. Low sunset light through tall windows; no people.",
   },
   {
-    title: "Monochrome corner",
-    room: "Living room",
-    style: "Monochrome",
+    title: "Oak door detail",
+    id: "oak-door-detail",
+    summary: "A flush oak door with a black lever, plaster walls and pampas grass nearby.",
+    room: "Detail",
+    style: "Material-led",
     image: "/inspiration/inspo-11.webp",
     prompt:
-      "Create a refined monochrome living room with tonal layering, sculptural furniture, charcoal accents and sophisticated contrast.",
+      "Study a flush oak door with visible grain and a matte black lever set in smooth plaster walls, pale oak floors and soft daylight. A detail reference for doors and wall finishes.",
   },
   {
-    title: "Soft contrast",
-    room: "Bedroom",
-    style: "Contemporary",
+    title: "Soft daylight sitting room",
+    id: "soft-daylight-sitting-room",
+    summary: "Oatmeal sofa, oak coffee table and knit throw in sheer-curtained daylight.",
+    room: "Living room",
+    style: "Scandinavian",
     image: "/inspiration/inspo-12.webp",
     prompt:
-      "Create a contemporary bedroom with soft contrast, tailored joinery, indirect lighting, natural fabric and a calm boutique-hotel quality.",
+      "Create a soft Scandinavian sitting room with an oatmeal linen sofa, chunky knit throw, light oak coffee table, ceramics and sheer curtains in gentle daylight; no people.",
   },
   {
     title: "Architectural lounge",
+    id: "architectural-lounge",
+    summary: "Bouclé sofa, slatted wood wall, gallery frames and pools of lamplight at night.",
     room: "Living room",
     style: "Modernist",
     image: "/inspiration/inspo-13.webp",
@@ -3118,76 +3255,94 @@ const inspirationReferences: InspirationReference[] = [
       "Design an architectural lounge with strong spatial proportions, a low sculptural sofa, stone, wood and warm pools of light.",
   },
   {
-    title: "Crafted corner",
-    room: "Detail",
-    style: "Wabi-sabi",
+    title: "Pergola garden retreat",
+    id: "pergola-garden-retreat",
+    summary: "A planted garden with a pergola terrace, stone paving, dining set and lounge sofa.",
+    room: "Garden",
+    style: "Natural",
     image: "/inspiration/inspo-14.webp",
     prompt:
-      "Create a wabi-sabi interior moment with handmade textures, imperfect ceramics, natural wood, soft shadow and earthy calm.",
+      "Create a lush natural garden with a dark timber pergola terrace, stone paving, a wooden dining set, an outdoor lounge sofa, layered borders, lavender and hydrangeas. Late afternoon; no people.",
   },
   {
-    title: "Sunlit kitchen",
-    room: "Kitchen",
-    style: "Scandinavian",
+    title: "Glass-walled living room",
+    id: "glass-walled-living-room",
+    summary: "Sunlit seating with black steel glazing, oak sideboard and sculptural coffee table.",
+    room: "Living room",
+    style: "Modern",
     image: "/inspiration/inspo-15.webp",
     prompt:
-      "Create a sunlit Scandinavian kitchen with quiet cabinetry, pale timber, practical open shelving and a clean, welcoming layout.",
+      "Create a sunlit modern living room with black steel floor-to-ceiling glazing, an oak sideboard, sculptural oak coffee table, bouclé armchair and an olive tree. Bright daylight; no people.",
   },
   {
-    title: "Deep comfort",
+    title: "Bright gallery living room",
+    id: "bright-gallery-living-room",
+    summary: "Grey sofa, oak coffee table and a large monochrome artwork in bright daylight.",
     room: "Living room",
-    style: "Moody modern",
+    style: "Minimal",
     image: "/inspiration/inspo-16.webp",
     prompt:
-      "Design a moody modern living room with deep tonal walls, tactile seating, warm lamps, refined art and intimate evening atmosphere.",
+      "Create a bright minimal living room with a grey sofa, light oak coffee table, boucle armchair with a black side table, and one large monochrome artwork. Natural daylight; no people.",
   },
   {
-    title: "Textural bath",
-    room: "Bathroom",
-    style: "Natural spa",
+    title: "Rattan-lit bedroom",
+    id: "rattan-lit-bedroom",
+    summary: "Linen bedding, oak nightstands and woven pendants in a warm plaster bedroom.",
+    room: "Bedroom",
+    style: "Natural modern",
     image: "/inspiration/inspo-17.webp",
     prompt:
-      "Create a natural spa bathroom with textural plaster, timber, stone, a simple vanity and soft, restorative lighting.",
+      "Create a natural-modern bedroom with linen bedding in clay tones, an oak frame bed and nightstands, woven rattan pendant and table lamp, limewash walls and soft evening light; no people.",
   },
   {
-    title: "Gentle color",
-    room: "Bedroom",
-    style: "Soft contemporary",
+    title: "Exposed brick detail",
+    id: "exposed-brick-detail",
+    summary: "Close-up of aged red brick with a sconce, oak shelf, vase and dried grasses.",
+    room: "Detail",
+    style: "Material-led",
     image: "/inspiration/inspo-18.webp",
     prompt:
-      "Create a soft contemporary bedroom with gentle color, tactile fabrics, custom joinery and a sophisticated relaxed feeling.",
+      "Study an aged red-brick wall close-up with a black metal sconce, a floating oak shelf styled with a clay vase and dried grasses. A detail reference for brick texture and warm accent lighting.",
   },
   {
-    title: "Sculptural table",
-    room: "Dining room",
-    style: "Modern",
+    title: "Quiet white sitting room",
+    id: "quiet-white-sitting-room",
+    summary: "White slipcovered sofa, oak coffee table and rattan chair in a bright white room.",
+    room: "Living room",
+    style: "Minimal",
     image: "/inspiration/inspo-19.webp",
     prompt:
-      "Design a modern dining room centered on a sculptural table, expressive chairs, natural finishes and gallery-like lighting.",
+      "Create a quiet minimal sitting room with a white slipcovered sofa, light oak coffee table, rattan armchair, olive tree and one framed line drawing. Bright natural light; no people.",
   },
   {
-    title: "The reading room",
-    room: "Living room",
-    style: "Collected",
+    title: "Cane-chair dining room",
+    id: "cane-chair-dining-room",
+    summary: "Oak dining table with black cane chairs, pottery shelves and a sculptural pendant.",
+    room: "Dining room",
+    style: "Scandinavian",
     image: "/inspiration/inspo-20.webp",
     prompt:
-      "Create a collected reading room with generous shelves, comfortable seating, warm oak, art, books and a timeless residential feel.",
+      "Create a Scandinavian dining room with an oak table, black cane chairs, open shelves of handmade pottery, a black sculptural pendant and tall garden windows. Daylight; no people.",
   },
   {
-    title: "Balanced palette",
-    room: "Living room",
-    style: "Earth tones",
+    title: "Marble-island kitchen",
+    id: "marble-island-kitchen",
+    summary: "Handleless cream kitchen with a waterfall marble island and brass globe pendants.",
+    room: "Kitchen",
+    style: "Warm minimal",
     image: "/inspiration/inspo-21.webp",
     prompt:
-      "Create a balanced earth-tone living room with warm clay, sand, oak, linen and soft sculptural forms in natural daylight.",
+      "Create a warm-minimal kitchen with handleless cream cabinetry, a waterfall marble island with oak stools, brass globe pendants and a marble splashback. Bright daylight; no people.",
   },
   {
-    title: "Light and line",
-    room: "Hallway",
-    style: "Minimal",
+    title: "Chevron oak living room",
+    id: "chevron-oak-living-room",
+    summary: "Linen sofa, oak coffee table and chevron parquet in a calm window-lit room.",
+    room: "Living room",
+    style: "Scandinavian",
     image: "/inspiration/inspo-22.webp",
     prompt:
-      "Design a minimal hallway with a strong play of light and line, carefully chosen material transitions and a calm gallery-like atmosphere.",
+      "Create a calm Scandinavian living room with a linen sofa, oak coffee table, window bench with cushions and chevron parquet floors in soft natural light; no people.",
   },
 ];
 
@@ -3202,12 +3357,13 @@ function DiscoverPage({
 }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
-  const [selected, setSelected] = useState<InspirationReference | null>(null);
+  const [selected, setSelected] = useState<InspirationEntry | null>(null);
   const [copied, setCopied] = useState(false);
   const [promptOpen, setPromptOpen] = useState(false);
   const [modalImageError, setModalImageError] = useState(false);
   const [modalImageLoaded, setModalImageLoaded] = useState(false);
   const [cardErrors, setCardErrors] = useState<Record<string, boolean>>({});
+  const [cardLoaded, setCardLoaded] = useState<Record<string, boolean>>({});
   const searchRef = useRef<HTMLInputElement>(null);
   const closeReference = () => {
     setSelected(null);
@@ -3221,7 +3377,7 @@ function DiscoverPage({
     setModalImageError(false);
     setModalImageLoaded(false);
     setPromptOpen(false);
-  }, [selected?.title]);
+  }, [selected?.id]);
   const normalizedQuery = query.toLowerCase();
   const filters = [
     "All",
@@ -3239,7 +3395,9 @@ function DiscoverPage({
         (filter === "Exterior" &&
           entry.room.toLowerCase().includes("exterior")) ||
         (filter === "Garden" &&
-          ["Courtyard", "Roof terrace", "Poolside"].includes(entry.room))) &&
+          (entry.room === "Garden" ||
+            entry.room.toLowerCase().includes("garden") ||
+            ["Courtyard", "Roof terrace", "Poolside"].includes(entry.room)))) &&
       `${entry.title} ${entry.room} ${entry.style} ${entry.prompt}`
         .toLowerCase()
         .includes(normalizedQuery),
@@ -3247,12 +3405,12 @@ function DiscoverPage({
   const primaryResults = results.filter((r) => r.room !== "Detail");
   const detailResults = results.filter((r) => r.room === "Detail");
   const hasDetailResults = detailResults.length > 0;
-  const renderCard = (entry: InspirationReference, index: number, visualLen: number) => {
-    const hasErr = cardErrors[entry.title];
+  const renderCard = (entry: InspirationEntry, index: number, visualLen: number) => {
+    const hasErr = cardErrors[entry.id];
     return (
       <button
-        key={entry.title}
-        className={`inspiration-card card-${index % 7}`}
+        key={entry.id}
+        className={`inspiration-card card-${index % 7}${cardLoaded[entry.id] ? " is-loaded" : ""}`}
         onClick={() => {
           setSelected(entry);
           setCopied(false);
@@ -3267,21 +3425,31 @@ function DiscoverPage({
             sizes="(max-width: 700px) 50vw, (max-width: 1100px) 33vw, 25vw"
             priority={visualLen > 0 && index % visualLen < 2}
             unoptimized
-            onError={() => setCardErrors((m) => ({ ...m, [entry.title]: true }))}
+            onLoad={() => setCardLoaded((m) => ({ ...m, [entry.id]: true }))}
+            onError={() => setCardErrors((m) => ({ ...m, [entry.id]: true }))}
           />
         ) : (
           <span className="card-image-error" role="img" aria-label="Image failed to load">
             <ImagesSquare />
             <small>Image unavailable</small>
-            <button
+            <span
               className="card-retry"
+              role="button"
+              tabIndex={0}
               onClick={(e) => {
                 e.stopPropagation();
-                setCardErrors((m) => ({ ...m, [entry.title]: false }));
+                setCardErrors((m) => ({ ...m, [entry.id]: false }));
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCardErrors((m) => ({ ...m, [entry.id]: false }));
+                }
               }}
             >
               Retry
-            </button>
+            </span>
           </span>
         )}
         <span className="inspiration-overlay">
@@ -3378,7 +3546,7 @@ function DiscoverPage({
           <div className="inspiration-grid secondary-grid" aria-label="Detail studies">
             {detailResults.map((entry, index) => renderCard(entry, index, 0))}
           </div>
-          <p style={{ color: "#8f9187", fontSize: 12, marginTop: 8 }}>These are texture and detail boards, kept separate from room directions without deleting assets.</p>
+          <p style={{ color: "#8f9187", fontSize: 12, marginTop: 8 }}>Texture and material close-ups, shown separately from room photography.</p>
         </section>
       ) : null}
       {!results.length ? (
@@ -3449,7 +3617,7 @@ function DiscoverPage({
               </span>
               <h2 id="reference-title">{selected.title}</h2>
               <p>
-                Use this atmosphere as a starting point, then make it work for your own space. Verified mapping: image, title, room and style are from the canonical Discover library — including “Sunlit kitchen.”
+                {selected.summary}
               </p>
               <button
                 className="reference-save primary-action"
@@ -3484,7 +3652,7 @@ function DiscoverPage({
                   <Heart fill={savedTitles.includes(selected.title) ? "currentColor" : "none"} />{" "}
                   <span>{savedTitles.includes(selected.title) ? "Saved" : "Save inspiration"}</span>
                 </button>
-                <small style={{ color: "#8f9187", fontSize: 11 }}>{savedTitles.includes(selected.title) ? "Saved to Saved → Inspiration" : "Saves to your bookmarks"}</small>
+                <small style={{ color: "#8f9187", fontSize: 11 }}>{savedTitles.includes(selected.title) ? "Saved in Library → Saved" : "Saves to Library → Saved"}</small>
               </div>
             </div>
           </article>
@@ -3502,17 +3670,16 @@ function LibraryPage({ designs, references, onCreate, onOpenDesign, onOpenRefere
   onOpenReference: (reference: InspirationReference) => void;
   onBrowse: () => void;
 }) {
-  const [filter, setFilter] = useState<"all" | "generated" | "saved">("all");
+  const [filter, setFilter] = useState<"all" | "generated" | "uploaded" | "saved">("all");
   const [query, setQuery] = useState("");
   const normalized = query.trim().toLowerCase();
   const matchingDesigns = designs.filter((item) => !normalized || `${item.title} ${item.mode} ${item.prompt || ""}`.toLowerCase().includes(normalized));
   const generated = matchingDesigns.filter((item) => Boolean(item.prompt?.trim()));
   const uploaded = matchingDesigns.filter((item) => !item.prompt?.trim());
   const saved = references.filter((item) => !normalized || `${item.title} ${item.room} ${item.style}`.toLowerCase().includes(normalized));
-  const savedAndUploadedCount = uploaded.length + saved.length;
   const total = matchingDesigns.length + saved.length;
-  const visibleDesigns = filter === "generated" ? generated : filter === "saved" ? uploaded : matchingDesigns;
-  const visibleCount = visibleDesigns.length + (filter === "generated" ? 0 : saved.length);
+  const visibleDesigns = filter === "generated" ? generated : filter === "uploaded" ? uploaded : filter === "saved" ? [] : matchingDesigns;
+  const visibleCount = visibleDesigns.length + (filter === "all" || filter === "saved" ? saved.length : 0);
   return <section className="asset-library" aria-labelledby="library-title">
     <header className="asset-library-header">
       <div><span className="eyebrow">Your visual workspace</span><h1 id="library-title">Library</h1><p>Find every design you created or saved, ready to reuse in a project.</p></div>
@@ -3523,7 +3690,8 @@ function LibraryPage({ designs, references, onCreate, onOpenDesign, onOpenRefere
       <div role="tablist" aria-label="Filter library">
         <button role="tab" aria-selected={filter === "all"} onClick={() => setFilter("all")}>All <span>{total}</span></button>
         <button role="tab" aria-selected={filter === "generated"} onClick={() => setFilter("generated")}>Generated <span>{generated.length}</span></button>
-        <button role="tab" aria-selected={filter === "saved"} onClick={() => setFilter("saved")}>Uploaded & saved <span>{savedAndUploadedCount}</span></button>
+        <button role="tab" aria-selected={filter === "uploaded"} onClick={() => setFilter("uploaded")}>Uploaded <span>{uploaded.length}</span></button>
+        <button role="tab" aria-selected={filter === "saved"} onClick={() => setFilter("saved")}>Saved <span>{saved.length}</span></button>
       </div>
     </div>
     {visibleCount ? <div className="asset-library-grid">
@@ -3531,11 +3699,11 @@ function LibraryPage({ designs, references, onCreate, onOpenDesign, onOpenRefere
         <span><Image src={design.image} alt="" fill sizes="(max-width:700px) 50vw, 260px" unoptimized={design.image.startsWith("http") || design.image.startsWith("data:")} /><i>{design.prompt?.trim() ? "Generated" : "Uploaded"}</i></span>
         <b>{design.title}</b><small>{design.mode} · {new Intl.DateTimeFormat("en", { month:"short", day:"numeric" }).format(new Date(design.savedAt))}</small>
       </button>)}
-      {filter !== "generated" ? saved.map((reference) => <button key={reference.title} className="asset-card" onClick={() => onOpenReference(reference)}>
+      {filter === "all" || filter === "saved" ? saved.map((reference) => <button key={reference.title} className="asset-card" onClick={() => onOpenReference(reference)}>
         <span><Image src={reference.image} alt="" fill sizes="(max-width:700px) 50vw, 260px" unoptimized /><i>Saved</i></span>
         <b>{reference.title}</b><small>{reference.style} · {reference.room}</small>
       </button>) : null}
-    </div> : <div className="asset-library-empty"><ImagesSquare /><h2>{query ? "No matching images" : "Your library is ready"}</h2><p>{query ? "Try another search or filter." : "Create a design or save an image to see it here."}</p><button onClick={onBrowse}>Browse images</button></div>}
+    </div> : <div className="asset-library-empty"><ImagesSquare /><h2>{query ? "No matching images" : filter === "saved" ? "No saved inspiration yet" : filter === "uploaded" ? "No uploads yet" : filter === "generated" ? "No generations yet" : "Your library is ready"}</h2><p>{query ? "Try another search or filter." : "Create a design or save an image to see it here."}</p><button onClick={onBrowse}>Browse images</button></div>}
   </section>;
 }
 

@@ -24,7 +24,7 @@
 .studio-options { position:absolute; left:0; bottom:calc(100% + 10px); width:min(430px,100%); max-height:min(420px,calc(100dvh - 270px)); overflow:auto; overscroll-behavior:contain; padding:12px; border:1px solid #3b3d36; border-radius:18px; background:#1b1c19; box-shadow:0 14px 40px #0006; }
 .studio-options.is-visual { width:min(780px,100%); }
 .studio-options>header { display:flex; align-items:center; justify-content:space-between; padding:0 4px 8px; }
-.studio-options>header b { text-transform:uppercase; letter-spacing:.06em; font-size:11px; color:var(--night-muted); }
+.studio-options>header b { text-transform:uppercase; letter-spacing:.06em; font-size: 12px; color:var(--night-muted); }
 .studio-options>header button { width:32px; height:32px; padding:7px; border:0; background:transparent; color:var(--night-muted); border-radius:50%; }
 .studio-options>header svg { width:16px; height:16px; }
 .studio-mode-images { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
@@ -74,16 +74,28 @@
 .workflow-3d .tripo-steps { gap:14px; margin:24px 0; }
 .workflow-ar .ar-workspace-heading .eyebrow { justify-content:center; }
 .workflow-ar .ar-workspace-layout { grid-template-columns:240px minmax(0,1fr); }
+/* Album editor save status: visible saving/saved/error state with a real retry */
+.album-save-status{ display:flex; align-items:center; gap:8px; margin-right:4px; padding:6px 6px 6px 12px; border:1px solid #34362f; border-radius:999px; background:#1a1b17; font-size:12px; }
+.album-save-state{ color:#aaa99f; font-weight:600; white-space:nowrap; }
+.album-save-state.is-saved{ color:#a9ba9d; }
+.album-save-error{ color:#e8a090; font-weight:700; white-space:nowrap; }
+.album-save-retry{ min-height:32px; padding:0 12px; border:0; border-radius:999px; background:#f4f0e8; color:#11120f; font-size:12px; font-weight:800; cursor:pointer; white-space:nowrap; }
+.album-save-retry:disabled{ opacity:0.55; cursor:wait; }
+.album-save-retry:focus-visible{ outline:2px solid #eab083; outline-offset:2px; }
+@media(max-width:760px){
+  .album-save-status{ padding:4px 4px 4px 10px; font-size: 12px; }
+  .album-save-error{ max-width:38vw; overflow:hidden; text-overflow:ellipsis; }
+}
 @media(max-width:900px) {
  .album-workspace .album-workspace-body.workflow-create { height:calc(100dvh - 152px); }
  .studio-composer-anchor { width:calc(100% - 24px); margin-bottom:12px; }
- .studio-composer-row>button { min-height:40px; font-size:11px; }
+ .studio-composer-row>button { min-height:40px; font-size: 12px; }
  .album-workspace .workflow-create .album-canvas { padding:14px!important; }
  .workflow-3d .tripo-grid { grid-template-columns:1fr; }
  .workflow-3d .tripo-stage,.workflow-3d .tripo-empty { min-height:280px; }
  .workflow-ar .ar-workspace-layout { grid-template-columns:1fr; }
  .studio-mode-images { gap:6px; }.studio-mode-images img { height:105px; }
- .studio-mode-images button { font-size:11px; }
+ .studio-mode-images button { font-size: 12px; }
  .studio-style-images { grid-template-columns:repeat(3,minmax(0,1fr)); }
  .studio-composer { padding:10px; border-radius:18px; }.studio-composer textarea { min-height:44px; font-size:14px; }
  .studio-options { max-height:calc(100dvh - 350px); }

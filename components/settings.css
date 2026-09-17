@@ -107,7 +107,7 @@
   display: grid;
   gap: 6px;
   color: #a9aca2;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -143,8 +143,8 @@
   background: #1b1c18;
 }
 .settings-readonly--compact small {
-  color: #8f9187;
-  font-size: 11px;
+  color: #a8a9a0;
+  font-size: 12px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   font-weight: 700;
@@ -177,8 +177,8 @@
   padding: 2px 2px 0;
 }
 .settings-hint--muted {
-  color: #7e8077;
-  font-size: 11px;
+  color: #a8a9a0;
+  font-size: 12px;
   border-left: 2px solid #2f312b;
   padding-left: 10px;
   margin-top: 4px;
@@ -207,9 +207,13 @@
   justify-content: space-between;
   gap: 12px;
   padding: 12px 14px;
-  margin: 0;
-  border-top: 1px solid #2a2b27;
+  margin: 12px 0 0;
+  border: 1px solid #2a2b27;
+  border-radius: 12px;
   background: #1e1f1b;
+  position: sticky;
+  bottom: 12px;
+  z-index: 5;
 }
 .settings-save--compact span {
   display: inline-flex;
@@ -260,8 +264,8 @@
   background: #1b1c18;
 }
 .billing-summary--compact small {
-  color: #8f9187;
-  font-size: 11px;
+  color: #a8a9a0;
+  font-size: 12px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   font-weight: 700;

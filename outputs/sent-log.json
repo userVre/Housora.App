@@ -1,0 +1,473 @@
+[
+  {
+    "brand": "Thuma",
+    "email": "partnerships@thuma.co",
+    "category": "Furniture",
+    "website": "https://thuma.co",
+    "time": "2026-09-17T12:37:38.829702",
+    "status": "sent",
+    "error": "TimeoutError: [WinError 10060] A connection attempt failed because the connected party did not properly respond after a period of time, or established connection fa",
+    "id": "1a0af2c0fff1b9e9"
+  },
+  {
+    "brand": "Lulu and Georgia",
+    "email": "press@luluandgeorgia.com",
+    "category": "Furniture",
+    "website": "https://www.luluandgeorgia.com",
+    "time": "2026-09-17T12:42:05.704733",
+    "status": "sent",
+    "id": "1a0af2c8913cc51c"
+  },
+  {
+    "brand": "Schoolhouse",
+    "email": "marketing@schoolhouse.com",
+    "category": "Furniture",
+    "website": "https://schoolhouse.com",
+    "time": "2026-09-17T12:42:36.429255",
+    "status": "sent",
+    "id": "1a0af2d003bd6041"
+  },
+  {
+    "brand": "Pottery Barn",
+    "email": "pr@potterybarn.com",
+    "category": "Furniture",
+    "website": "https://www.potterybarn.com",
+    "time": "2026-09-17T12:43:07.103136",
+    "status": "sent",
+    "id": "1a0af2d78363e40e"
+  },
+  {
+    "brand": "Barker and Stonehouse",
+    "email": "social@barkerandstonehouse.co.uk",
+    "category": "Furniture",
+    "website": "https://www.barkerandstonehouse.co.uk",
+    "time": "2026-09-17T12:43:37.808970",
+    "status": "sent",
+    "id": "1a0af2deeeeeaf5b"
+  },
+  {
+    "brand": "Oak Furnitureland",
+    "email": "press@oakfurnitureland.co.uk",
+    "category": "Furniture",
+    "website": "https://www.oakfurnitureland.co.uk",
+    "time": "2026-09-17T12:44:08.590091",
+    "status": "sent",
+    "id": "1a0af2e68c0429ec"
+  },
+  {
+    "brand": "Feather & Black",
+    "email": "press@featherandblack.com",
+    "category": "Furniture",
+    "website": "https://www.featherandblack.com",
+    "time": "2026-09-17T12:44:39.412277",
+    "status": "sent",
+    "id": "1a0af2ee1a0b2a4b"
+  },
+  {
+    "brand": "Walker Edison",
+    "email": "socialmedia@walkeredison.com",
+    "category": "Furniture",
+    "website": "https://walkeredison.com",
+    "time": "2026-09-17T12:45:10.047987",
+    "status": "sent",
+    "id": "1a0af2f59cd29106"
+  },
+  {
+    "brand": "Furniture Choice",
+    "email": "press@furniturechoice.co.uk",
+    "category": "Furniture",
+    "website": "https://www.furniturechoice.co.uk",
+    "time": "2026-09-17T12:45:40.846884",
+    "status": "sent",
+    "id": "1a0af2fd00cf729c"
+  },
+  {
+    "brand": "Furniture Village",
+    "email": "furniturevillage@coolblue.co.uk",
+    "category": "Furniture",
+    "website": "https://www.furniturevillage.co.uk",
+    "time": "2026-09-17T12:46:11.563395",
+    "status": "sent",
+    "id": "1a0af30499218726"
+  },
+  {
+    "brand": "Dunelm",
+    "email": "press@dunelm.com",
+    "category": "Furniture",
+    "website": "https://www.dunelm.com",
+    "time": "2026-09-17T12:46:42.244688",
+    "status": "sent",
+    "id": "1a0af30c064e299e"
+  },
+  {
+    "brand": "Darlings of Chelsea",
+    "email": "press@darlingsofchelsea.co.uk",
+    "category": "Furniture",
+    "website": "https://www.darlingsofchelsea.co.uk",
+    "time": "2026-09-17T12:47:12.881083",
+    "status": "sent",
+    "id": "1a0af313865b9dbd"
+  },
+  {
+    "brand": "Hinkley Lighting",
+    "email": "marketing@hinkley.com",
+    "category": "Lighting",
+    "website": "https://www.hinkley.com",
+    "time": "2026-09-17T12:47:43.601552",
+    "status": "sent",
+    "id": "1a0af31b0f9ee87d"
+  },
+  {
+    "brand": "Heathfield & Co",
+    "email": "marketing@heathfield.co.uk",
+    "category": "Lighting",
+    "website": "https://heathfield.co.uk",
+    "time": "2026-09-17T12:48:14.258790",
+    "status": "sent",
+    "id": "1a0af32289fb3634"
+  },
+  {
+    "brand": "Vaughan Designs",
+    "email": "press@vaughandesigns.com",
+    "category": "Lighting",
+    "website": "https://www.vaughandesigns.com",
+    "time": "2026-09-17T12:48:45.044385",
+    "status": "sent",
+    "id": "1a0af32a06c3a581"
+  },
+  {
+    "brand": "Laura Ashley Lighting",
+    "email": "az@azpr.co.uk",
+    "category": "Lighting",
+    "website": "https://www.lauraashley.com",
+    "time": "2026-09-17T12:49:15.796852",
+    "status": "sent",
+    "id": "1a0af33189320954"
+  },
+  {
+    "brand": "Bella Figura",
+    "email": "charlie@bella-figura.com",
+    "category": "Lighting",
+    "website": "https://www.bella-figura.com",
+    "time": "2026-09-17T13:29:00.546319",
+    "status": "sent",
+    "error": "gaierror: [Errno 11001] getaddrinfo failed",
+    "id": "1a0af586a978656d"
+  },
+  {
+    "brand": "Benuta",
+    "email": "presse@benuta.com",
+    "category": "Rugs",
+    "website": "https://www.benuta.co.uk",
+    "time": "2026-09-17T13:30:32.933296",
+    "status": "sent",
+    "id": "1a0af58e24c5c155"
+  },
+  {
+    "brand": "Kukoon Rugs",
+    "email": "marketing@kukoon.com",
+    "category": "Rugs",
+    "website": "https://www.kukoonrugs.com",
+    "time": "2026-09-17T13:31:03.609259",
+    "status": "sent",
+    "id": "1a0af595b1fda1e3"
+  },
+  {
+    "brand": "Asiatic Carpets",
+    "email": "marketing@asiatic.co.uk",
+    "category": "Rugs",
+    "website": "https://www.asiatic.co.uk",
+    "time": "2026-09-17T13:31:34.334666",
+    "status": "sent",
+    "id": "1a0af59d245422c0"
+  },
+  {
+    "brand": "King & McGaw",
+    "email": "marketing@kingandmcgaw.com",
+    "category": "Wall Art & Mirrors",
+    "website": "https://www.kingandmcgaw.com",
+    "time": "2026-09-17T13:32:05.071286",
+    "status": "sent",
+    "id": "1a0af5a4b7c770f9"
+  },
+  {
+    "brand": "JUNIQE",
+    "email": "press@juniqe.com",
+    "category": "Wall Art & Mirrors",
+    "website": "https://www.juniqe.com",
+    "time": "2026-09-17T13:32:35.725745",
+    "status": "sent",
+    "id": "1a0af5ac2d9bdc16"
+  },
+  {
+    "brand": "Fy!",
+    "email": "press@iamfy.co",
+    "category": "Wall Art & Mirrors",
+    "website": "https://www.iamfy.co",
+    "time": "2026-09-17T13:33:06.529184",
+    "status": "sent",
+    "id": "1a0af5b3a3bdca9a"
+  },
+  {
+    "brand": "William Wood Mirrors",
+    "email": "marketing@williamwoodmirrors.co.uk",
+    "category": "Wall Art & Mirrors",
+    "website": "https://www.williamwoodmirrors.co.uk",
+    "time": "2026-09-17T13:33:37.181471",
+    "status": "sent",
+    "id": "1a0af5bb214807e0"
+  },
+  {
+    "brand": "Emma Bridgewater",
+    "email": "pressoffice@emmabridgewater.co.uk",
+    "category": "Home Accessories",
+    "website": "https://www.emmabridgewater.co.uk",
+    "time": "2026-09-17T13:34:07.968856",
+    "status": "sent",
+    "id": "1a0af5c2b8c294f6"
+  },
+  {
+    "brand": "Neptune",
+    "email": "pr@neptune.com",
+    "category": "Home Accessories",
+    "website": "https://neptune.com",
+    "time": "2026-09-17T13:34:38.599609",
+    "status": "sent",
+    "id": "1a0af5ca287bd18b"
+  },
+  {
+    "brand": "Burleigh Pottery",
+    "email": "marketing@burgessandleigh.co.uk",
+    "category": "Home Accessories",
+    "website": "https://www.burleigh.co.uk",
+    "time": "2026-09-17T13:35:09.270213",
+    "status": "sent",
+    "id": "1a0af5d1a0a2b8b2"
+  },
+  {
+    "brand": "Hawkins New York",
+    "email": "press@hawkinsnewyork.com",
+    "category": "Home Accessories",
+    "website": "https://hawkinsnewyork.com",
+    "time": "2026-09-17T13:35:39.942272",
+    "status": "sent",
+    "id": "1a0af5d93648eeae"
+  },
+  {
+    "brand": "Heath Ceramics",
+    "email": "press@heathceramics.com",
+    "category": "Home Accessories",
+    "website": "https://www.heathceramics.com",
+    "time": "2026-09-17T13:36:10.747472",
+    "status": "sent",
+    "id": "1a0af5e0bfc59b11"
+  },
+  {
+    "brand": "NEST New York",
+    "email": "mediarequests@nestnewyork.com",
+    "category": "Home Accessories",
+    "website": "https://www.nestnewyork.com",
+    "time": "2026-09-17T13:36:41.431427",
+    "status": "sent",
+    "id": "1a0af5e82ae2f290"
+  },
+  {
+    "brand": "Quince",
+    "email": "community@onequince.com",
+    "category": "Home Accessories",
+    "website": "https://www.quince.com",
+    "time": "2026-09-17T13:37:12.106468",
+    "status": "sent",
+    "id": "1a0af5ef9bddf7d5"
+  },
+  {
+    "brand": "Pendleton Woolen Mills",
+    "email": "caitlin.taylor@penwool.com",
+    "category": "Home Accessories",
+    "website": "https://www.pendleton-usa.com",
+    "time": "2026-09-17T13:37:42.735446",
+    "status": "sent",
+    "id": "1a0af5f71cf2db24"
+  },
+  {
+    "brand": "The Sill",
+    "email": "press@thesill.com",
+    "category": "Home Accessories",
+    "website": "https://www.thesill.com",
+    "time": "2026-09-17T13:38:13.471924",
+    "status": "sent",
+    "error": "SSLEOFError: EOF occurred in violation of protocol (_ssl.c:2427)",
+    "id": "1a0af60d5aae3e6b"
+  },
+  {
+    "brand": "ChappyWrap",
+    "email": "partners@chappywrap.com",
+    "category": "Home Accessories",
+    "website": "https://chappywrap.com",
+    "time": "2026-09-17T13:39:44.360553",
+    "status": "sent",
+    "id": "1a0af614db06a761"
+  },
+  {
+    "brand": "Room AI",
+    "email": "press@roomai.com",
+    "category": "Design Software",
+    "website": "https://roomai.com",
+    "time": "2026-09-17T13:40:14.995257",
+    "status": "sent",
+    "id": "1a0af61c58a0bbfe"
+  },
+  {
+    "brand": "Decorilla",
+    "email": "press@decorilla.com",
+    "category": "Design Software",
+    "website": "https://www.decorilla.com",
+    "time": "2026-09-17T13:40:45.659805",
+    "status": "sent",
+    "id": "1a0af623d75eb247"
+  },
+  {
+    "brand": "Annie Sloan",
+    "email": "katherine.r@anniesloan.com",
+    "category": "Home Improvement",
+    "website": "https://www.anniesloan.com",
+    "time": "2026-09-17T13:41:16.341262",
+    "status": "sent",
+    "id": "1a0af62b30addf4e"
+  },
+  {
+    "brand": "ecobee",
+    "email": "press@ecobee.com",
+    "category": "Home Improvement",
+    "website": "https://www.ecobee.com",
+    "time": "2026-09-17T13:41:46.974027",
+    "status": "sent",
+    "id": "1a0af632a4e38814"
+  },
+  {
+    "brand": "Hygge & West",
+    "email": "support@hyggeandwest.com",
+    "category": "Home Improvement",
+    "website": "https://www.hyggeandwest.com",
+    "time": "2026-09-17T13:42:17.606817",
+    "status": "sent",
+    "id": "1a0af63a2dd18484"
+  },
+  {
+    "brand": "A-Street Prints",
+    "email": "customercare@astreetprints.com",
+    "category": "Home Improvement",
+    "website": "https://www.astreetprints.com",
+    "time": "2026-09-17T13:42:48.251728",
+    "status": "sent",
+    "id": "1a0af641b8413571"
+  },
+  {
+    "brand": "Arthouse",
+    "email": "customerservices@esselleretail.com",
+    "category": "Home Improvement",
+    "website": "https://www.arthouse.com",
+    "time": "2026-09-17T13:43:18.971210",
+    "status": "sent",
+    "id": "1a0af649213cfa8b"
+  },
+  {
+    "brand": "Mylands",
+    "email": "info@mylands.com",
+    "category": "Home Improvement",
+    "website": "https://www.mylands.com",
+    "time": "2026-09-17T13:43:49.674939",
+    "status": "sent",
+    "id": "1a0af650bed4da08"
+  },
+  {
+    "brand": "Renwil",
+    "email": "info@renwil.com",
+    "category": "Wall Art & Mirrors",
+    "website": "https://renwil.com",
+    "time": "2026-09-17T13:44:20.402598",
+    "status": "sent",
+    "id": "1a0af6582d0ac6e1"
+  },
+  {
+    "brand": "Matouk",
+    "email": "customercare@matouk.com",
+    "category": "Home Accessories",
+    "website": "https://www.matouk.com",
+    "time": "2026-09-17T13:44:50.910110",
+    "status": "sent",
+    "id": "1a0af65fa5d87c27"
+  },
+  {
+    "brand": "Peacock Alley",
+    "email": "knicholson@peacockalley.com",
+    "category": "Home Accessories",
+    "website": "https://www.peacockalley.com",
+    "time": "2026-09-17T13:45:21.576079",
+    "status": "sent",
+    "id": "1a0af66734bc9326"
+  },
+  {
+    "brand": "Christy",
+    "email": "info@christyhome.com",
+    "category": "Home Accessories",
+    "website": "https://christyhome.com",
+    "time": "2026-09-17T13:45:52.258491",
+    "status": "sent",
+    "id": "1a0af66e9c1ea141"
+  },
+  {
+    "brand": "Lenox",
+    "email": "info@lenox.com",
+    "category": "Home Accessories",
+    "website": "https://www.lenox.com",
+    "time": "2026-09-17T13:46:22.923767",
+    "status": "sent",
+    "id": "1a0af67603fafcf9"
+  },
+  {
+    "brand": "Juliska",
+    "email": "hello@juliska.com",
+    "category": "Home Accessories",
+    "website": "https://www.juliska.com",
+    "time": "2026-09-17T13:46:53.618305",
+    "status": "sent",
+    "id": "1a0af67d8ea8209e"
+  },
+  {
+    "brand": "Simon Pearce",
+    "email": "press@simonpearce.com",
+    "category": "Home Accessories",
+    "website": "https://www.simonpearce.com",
+    "time": "2026-09-17T13:47:24.333376",
+    "status": "sent",
+    "id": "1a0af6852f28cefa"
+  },
+  {
+    "brand": "La-Z-Boy",
+    "email": "marketingpartnershipinquiries@la-z-boy.com",
+    "category": "Furniture",
+    "website": "https://la-z-boy.com",
+    "time": "2026-09-17T13:47:55.407158",
+    "status": "sent",
+    "id": "1a0af68cbe6e21c0"
+  },
+  {
+    "brand": "St Eval Candle Company",
+    "email": "marketing@st-eval.com",
+    "category": "Home Accessories",
+    "website": "https://www.st-eval.com",
+    "time": "2026-09-17T13:48:26.066860",
+    "status": "sent",
+    "id": "1a0af6942b383a30"
+  },
+  {
+    "brand": "Price's Candles",
+    "email": "sales@prices-candles.co.uk",
+    "category": "Home Accessories",
+    "website": "https://www.prices-candles.co.uk",
+    "time": "2026-09-17T13:48:56.693508",
+    "status": "sent",
+    "id": "1a0af69bb883e3d2"
+  }
+]

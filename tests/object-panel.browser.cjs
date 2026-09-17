@@ -58,7 +58,10 @@ function css(file) {
     await page.getByRole('button',{name:'Cancel',exact:true}).click(); assert.equal(requests,0);
     await page.getByRole('button',{name:'Auto-detect · 1 credit',exact:true}).click();
     await page.getByRole('button',{name:'Detect objects · 1 credit',exact:true}).click();
-    await page.getByRole('button',{name:/sofa.*96% confidence/}).click();
+    await page.getByRole('button',{name:/sofa.*Object 1/}).click();
+    const panelText = await page.locator('.real-objects-panel').innerText();
+    assert.ok(!/%/.test(panelText), `no confidence percentage in panel: ${panelText.slice(0,120)}`);
+    assert.ok(!/confidence/i.test(panelText), 'no confidence copy in panel');
     assert.equal(requests,1);
     await page.getByRole('button',{name:/Create 3D from this object/}).click();
     assert.equal(await page.evaluate(()=>window.selected3d),true);

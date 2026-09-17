@@ -255,6 +255,45 @@ function styleImageFor(mode: CreateWorkflowMode, value: string): string {
   return `/pictures/${mode.toLowerCase()}-design-style-${slug}.png`;
 }
 
+function slugify(value: string): string {
+  return value.toLowerCase().replaceAll(" ", "-");
+}
+
+/** Accurate thumbnail for Interior room types and Exterior building types. Null when no photo asset exists (e.g. Garden areas). */
+function spaceImageFor(mode: CreateWorkflowMode, value: string): string | null {
+  if (value === "Auto-detect") return null;
+  const slug = slugify(value);
+  if (mode === "Interior") return `/pictures/interior-design-room-${slug}.png`;
+  if (mode === "Exterior") return `/pictures/exterior-design-building-${slug}.png`;
+  return null;
+}
+
+/** Accurate thumbnail for palette and detail values where a product asset exists. Null otherwise (text-only row). */
+function detailImageFor(mode: CreateWorkflowMode, label: string, value: string): string | null {
+  if (value === "Auto" || value === "Auto-detect" || value === "Keep existing") return null;
+  const slug = slugify(value);
+  if (label === "Color palette" && mode === "Interior") return `/pictures/interior-design-color-${slug}.png`;
+  if (label === "Lighting" && mode === "Exterior") return `/pictures/exterior-design-lighting-${slug}.png`;
+  if (label === "Wall finish") return `/pictures/interior-design-detail-wall-${slug}.png`;
+  if (label === "Floor material") return `/pictures/interior-design-detail-floor-${slug}.png`;
+  if (label === "Window style") return `/pictures/interior-design-detail-window-${slug}.png`;
+  if (label === "Door style") return `/pictures/interior-design-detail-door-${slug}.png`;
+  if (label === "Staircase style") return `/pictures/interior-design-detail-staircase-${slug}.png`;
+  if (label === "Facade material") return `/pictures/exterior-design-detail-facade-${slug}.png`;
+  if (label === "Greenery") return `/pictures/garden-design-greenery-${slug}.png`;
+  if (label === "Paving") return `/pictures/garden-design-paving-${slug}.png`;
+  if (label === "Boundary") return `/pictures/garden-design-detail-boundary-${slug}.png`;
+  return null;
+}
+
+/** Count of detail values that differ from their group default (shown on the Details trigger). */
+export function countDetailExtras(mode: CreateWorkflowMode, details: Record<string, string>): number {
+  return detailOptions[mode].filter((detail) => {
+    const current = details[detail.label] || detail.values[0];
+    return current !== detail.values[0];
+  }).length;
+}
+
 /**
  * Reusable Create workflow — narrow portrait stage + single anchored composer.
  * All generation/upload behavior is delegated via props; no fake APIs.
@@ -285,6 +324,9 @@ export function CreateWorkflow({
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const triggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [panelLeft, setPanelLeft] = useState<number | null>(null);
 
   const spaceLabel = mode === "Interior" ? "Room type" : mode === "Exterior" ? "Building type" : "Garden area";
   const atmosphereLabel = mode === "Interior" ? "Color palette" : "Lighting";
@@ -308,6 +350,27 @@ export function CreateWorkflow({
     };
   }, []);
 
+  // Anchor the options popover near its trigger, clamped to the composer width.
+  // Falls back to the left edge when measurement is unavailable.
+  useEffect(() => {
+    if (!menu) {
+      setPanelLeft(null);
+      return;
+    }
+    const anchor = rootRef.current?.querySelector(".create-workflow-composer-anchor") as HTMLElement | null;
+    const trigger = triggerRefs.current[menu];
+    if (!anchor || !trigger) {
+      setPanelLeft(null);
+      return;
+    }
+    const anchorRect = anchor.getBoundingClientRect();
+    const triggerRect = trigger.getBoundingClientRect();
+    const wide = menu === "mode" || menu === "style";
+    const panelWidth = Math.min(wide ? 780 : 430, anchorRect.width);
+    const triggerCenter = triggerRect.left - anchorRect.left + triggerRect.width / 2;
+    const maxLeft = Math.max(0, anchorRect.width - panelWidth - 8);
+    setPanelLeft(Math.min(Math.max(triggerCenter - panelWidth / 2, 8), maxLeft));
+  }, [menu]);
   const toggle = (key: string) => setMenu((c) => (c === key ? null : key));
   const choose = (action: () => void) => {
     action();
@@ -337,6 +400,7 @@ export function CreateWorkflow({
   const styleOptions = modeData[mode].styles;
   const atmosphereOptions = detailOptions[mode].find((d) => d.label === atmosphereLabel)?.values ?? [];
   const ratioOptions = aspectValues;
+  const detailExtras = countDetailExtras(mode, details);
 
   return (
     <div className="create-workflow" ref={rootRef} data-mode={mode}>
@@ -418,8 +482,9 @@ export function CreateWorkflow({
         {menu ? (
           <section
             id="create-workflow-options"
-            className={`create-workflow-options ${menu === "mode" || menu === "style" ? "is-visual" : ""}`}
+            className={`create-workflow-options ${menu === "mode" || menu === "style" || menu === "space" ? "is-visual" : ""}`}
             aria-label={optionsTitle}
+            style={panelLeft !== null ? { left: panelLeft } : undefined}
           >
             <header>
               <b>{optionsTitle}</b>
@@ -428,6 +493,7 @@ export function CreateWorkflow({
               </button>
             </header>
 
+            <div className="create-workflow-options-body">
             {menu === "mode" ? (
               <div className="create-workflow-mode-images">
                 {(["Interior", "Exterior", "Garden"] as CreateWorkflowMode[]).map((item) => (
@@ -448,22 +514,38 @@ export function CreateWorkflow({
                   <fieldset key={detail.label}>
                     <legend>{detail.label}</legend>
                     <div>
-                      {detail.values.map((value) => (
-                        <button
-                          key={value}
-                          type="button"
-                          aria-pressed={(details[detail.label] || detail.values[0]) === value}
-                          onClick={() => onDetailChange(detail.label, value)}
-                        >
-                          {value}
-                        </button>
-                      ))}
+                      {detail.values.map((value) => {
+                        const thumb = detailImageFor(mode, detail.label, value);
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            className={thumb ? "has-thumb" : undefined}
+                            aria-pressed={(details[detail.label] || detail.values[0]) === value}
+                            onClick={() => onDetailChange(detail.label, value)}
+                          >
+                            {thumb ? (
+                              <Image
+                                src={thumb}
+                                width={72}
+                                height={48}
+                                alt=""
+                                unoptimized
+                                onError={(event) => {
+                                  (event.currentTarget as HTMLImageElement).style.display = "none";
+                                }}
+                              />
+                            ) : null}
+                            {value}
+                          </button>
+                        );
+                      })}
                     </div>
                   </fieldset>
                 ))}
               </div>
             ) : (
-              <div className={menu === "style" ? "create-workflow-style-images" : "create-workflow-option-list"}>
+              <div className={menu === "style" || menu === "space" ? "create-workflow-style-images" : "create-workflow-option-list"}>
                 {(menu === "space" ? spaceOptions : menu === "style" ? styleOptions : menu === "atmosphere" ? atmosphereOptions : ratioOptions).map(
                   (value) => {
                     const selected =
@@ -475,6 +557,14 @@ export function CreateWorkflow({
                             ? details[atmosphereLabel] || atmosphereOptions[0] || "Auto"
                             : aspectRatio;
                     const isSelected = selected === value;
+                    const thumb =
+                      menu === "style"
+                        ? styleImageFor(mode, value)
+                        : menu === "space"
+                          ? spaceImageFor(mode, value)
+                          : menu === "atmosphere"
+                            ? detailImageFor(mode, atmosphereLabel, value)
+                            : null;
                     return (
                       <button
                         key={value}
@@ -489,15 +579,15 @@ export function CreateWorkflow({
                           })
                         }
                       >
-                        {menu === "style" ? (
+                        {thumb ? (
                           <Image
-                            src={styleImageFor(mode, value)}
+                            src={thumb}
                             width={180}
                             height={120}
                             alt=""
                             unoptimized
                             onError={(event) => {
-                              (event.currentTarget as HTMLImageElement).src = modeData[mode].image;
+                              (event.currentTarget as HTMLImageElement).style.display = "none";
                             }}
                           />
                         ) : null}
@@ -509,6 +599,7 @@ export function CreateWorkflow({
                 )}
               </div>
             )}
+            </div>
           </section>
         ) : null}
 
@@ -521,7 +612,7 @@ export function CreateWorkflow({
             rows={2}
             disabled={busy}
           />
-          <div className="create-workflow-row" role="toolbar" aria-label="Create controls">
+          <div className="create-workflow-row" ref={rowRef} role="toolbar" aria-label="Create controls">
             <button
               type="button"
               className="create-workflow-add-photo"
@@ -534,6 +625,7 @@ export function CreateWorkflow({
 
             <button
               type="button"
+              ref={(el) => { triggerRefs.current.mode = el; }}
               aria-expanded={menu === "mode"}
               aria-controls="create-workflow-options"
               onClick={() => toggle("mode")}
@@ -544,6 +636,7 @@ export function CreateWorkflow({
 
             <button
               type="button"
+              ref={(el) => { triggerRefs.current.space = el; }}
               aria-expanded={menu === "space"}
               aria-controls="create-workflow-options"
               onClick={() => toggle("space")}
@@ -554,6 +647,7 @@ export function CreateWorkflow({
 
             <button
               type="button"
+              ref={(el) => { triggerRefs.current.style = el; }}
               aria-expanded={menu === "style"}
               aria-controls="create-workflow-options"
               onClick={() => toggle("style")}
@@ -564,6 +658,7 @@ export function CreateWorkflow({
 
             <button
               type="button"
+              ref={(el) => { triggerRefs.current.atmosphere = el; }}
               aria-expanded={menu === "atmosphere"}
               aria-controls="create-workflow-options"
               onClick={() => toggle("atmosphere")}
@@ -574,16 +669,18 @@ export function CreateWorkflow({
 
             <button
               type="button"
+              ref={(el) => { triggerRefs.current.details = el; }}
               aria-expanded={menu === "details"}
               aria-controls="create-workflow-options"
               onClick={() => toggle("details")}
             >
               <GearSix aria-hidden />
-              Details
+              Details{detailExtras > 0 ? ` · ${detailExtras}` : ""}
             </button>
 
             <button
               type="button"
+              ref={(el) => { triggerRefs.current.ratio = el; }}
               aria-expanded={menu === "ratio"}
               aria-controls="create-workflow-options"
               onClick={() => toggle("ratio")}
@@ -596,6 +693,7 @@ export function CreateWorkflow({
               type="button"
               className="create-workflow-generate is-sticky"
               aria-label={busy ? "Generating redesign" : "Generate redesign"}
+              aria-describedby="create-generate-status"
               title={ready ? "Generate" : "Add a photo first"}
               disabled={!ready || busy}
               onClick={onGenerate}
@@ -603,6 +701,10 @@ export function CreateWorkflow({
               {busy ? <span className="spinner" aria-hidden style={{ width: 16, height: 16, borderWidth: 2 }} /> : <ArrowUp aria-hidden />}
             </button>
           </div>
+
+          <p id="create-generate-status" className="create-workflow-status" aria-live="polite">
+            {preview ? "Photo ready — choose a direction below, then Generate." : "Add a photo to enable Generate."}
+          </p>
 
           {error && preview ? (
             <p className="create-workflow-inline-error" role="alert">

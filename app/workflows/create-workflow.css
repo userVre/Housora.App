@@ -105,7 +105,7 @@
   display: block;
   margin-top: 4px;
   color: #7f8178;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .create-workflow-preview {
@@ -115,7 +115,6 @@
   display: grid;
   place-items: center;
   padding: 0;
-  aspect-ratio: 4 / 5;
   max-height: calc(100dvh - 270px);
 }
 
@@ -137,7 +136,7 @@
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.14);
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1;
 }
@@ -223,7 +222,7 @@
   outline-offset: 3px;
 }
 
-/* One-row desktop controls, horizontally scrollable mobile controls */
+/* One-row desktop controls (scrolls only if the row overflows), horizontally scrollable mobile controls */
 .create-workflow-row {
   display: flex;
   align-items: center;
@@ -231,7 +230,11 @@
   flex-wrap: nowrap;
   min-width: 0;
   padding-top: 10px;
-  overflow: visible;
+  padding-bottom: 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  overscroll-behavior-x: contain;
 }
 
 .create-workflow-row > button {
@@ -298,7 +301,7 @@
 .create-workflow-inline-error {
   margin: 8px 4px 0;
   color: #e8a090;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.4;
 }
 
@@ -307,20 +310,34 @@
   outline-offset: 3px;
 }
 
-/* Options panel (visual selector, style images, palette/lighting, details, aspect ratio) */
+/* Options panel (visual selector, style images, palette/lighting, details, aspect ratio) —
+   anchored near its trigger via inline left, clamped to the composer. One internal
+   scroll region; title and Close stay fixed. */
 .create-workflow-options {
   position: absolute;
   left: 0;
   bottom: calc(100% + 10px);
   width: min(430px, 100%);
   max-height: min(420px, calc(100dvh - 270px));
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   overscroll-behavior: contain;
   padding: 12px;
   border: 1px solid #3b3d36;
   border-radius: 18px;
   background: #1b1c19;
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.38);
+}
+
+.create-workflow-options-body {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  margin: 0 -4px;
+  padding: 0 4px 2px;
 }
 
 .create-workflow-options.is-visual {
@@ -332,13 +349,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex: none;
   padding: 0 4px 10px;
 }
 
 .create-workflow-options > header b {
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--night-muted, #aaa99f);
 }
 
@@ -394,6 +412,7 @@
   object-fit: cover;
   border-radius: 12px;
   display: block;
+  background: linear-gradient(100deg, #24251f 40%, #2e2f29 50%, #24251f 60%);
 }
 
 .create-workflow-mode-images span {
@@ -413,6 +432,7 @@
   object-fit: cover;
   border-radius: 10px;
   display: block;
+  background: linear-gradient(100deg, #24251f 40%, #2e2f29 50%, #24251f 60%);
 }
 
 .create-workflow-style-images span {
@@ -495,6 +515,30 @@
   color: #ffad6d;
 }
 
+.create-workflow-detail-groups button.has-thumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 4px;
+}
+
+.create-workflow-detail-groups button.has-thumb img {
+  width: 56px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 999px;
+  display: block;
+  background: #24251f;
+  flex: none;
+}
+
+.create-workflow-status {
+  margin: 8px 4px 0;
+  color: var(--night-muted, #aaa99f);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 /* Prevent horizontal page overflow */
 .create-workflow,
 .create-workflow-stage,
@@ -529,7 +573,7 @@
   }
 
   .create-workflow-row > button {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .create-workflow-options {
