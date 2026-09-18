@@ -3024,6 +3024,21 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
   const comments = useQuery(api.collab.listComments, { projectId });
   const addComment = useMutation(api.collab.addComment);
   const resolveComment = useMutation(api.collab.resolveComment);
+  const rooms = useQuery(api.projects.listRooms, { projectId });
+  const updateRoom = useMutation(api.projects.updateRoom);
+  const myRoom = ((rooms ?? []) as any[]).find((r) => String(r._id) === roomId) ?? (rooms as any[])?.[0];
+  const [rw, setRw] = useState("");
+  const [rl, setRl] = useState("");
+  const [rc, setRc] = useState("");
+  const [roomDirty, setRoomDirty] = useState(false);
+  const [roomSaving, setRoomSaving] = useState(false);
+  useEffect(() => {
+    if (myRoom && !roomDirty) {
+      setRw(myRoom.dimensions ? String(myRoom.dimensions.w) : "");
+      setRl(myRoom.dimensions ? String(myRoom.dimensions.h) : "");
+      setRc(myRoom.dimensions?.ceiling !== undefined ? String(myRoom.dimensions.ceiling) : "");
+    }
+  }, [myRoom, roomDirty]);
   const [shareUrl, setShareUrl] = useState("");
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -3069,8 +3084,24 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
       y: Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100)),
     });
   };
-  const submitComment = async () => {
+  const saveRoom = async () => {
+    if (!myRoom) { setError("Room is still loading."); return; }
     setError("");
+    setRoomSaving(true);
+    try {
+      const w = Number(rw);
+      const h = Number(rl);
+      if (!(w > 0 && w <= 100 && h > 0 && h <= 100)) throw new Error("Enter room width and length in metres (0–100).");
+      const ceiling = rc.trim() ? Number(rc) : undefined;
+      await updateRoom({ roomId: String(myRoom._id), dimensions: { w, h, ceiling } });
+      setRoomDirty(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save room size.");
+    } finally {
+      setRoomSaving(false);
+    }
+  };
+  const submitComment = async () => {    setError("");
     if (!commentBody.trim()) { setError("Write the comment first."); return; }
     setCommentBusy(true);
     try {
@@ -3187,6 +3218,20 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
           <label>Reason (optional)<input aria-label="Decision reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. sofa fabric still too cool" /></label>
         </div>
       </div>
+      <div className="panel-heading" style={{ marginTop: 8 }}>
+        <div>
+          <span className="eyebrow">Room</span>
+          <h2>Measured size</h2>
+          <p>{myRoom?.dimensions ? `${myRoom.dimensions.w} × ${myRoom.dimensions.h} m${myRoom.dimensions.ceiling ? ` · ceiling ${myRoom.dimensions.ceiling} m` : ""}` : "No measurements yet — concepts are unverified until you add them."}</p>
+        </div>
+      </div>
+      <div className="panel-tools">
+        <label>W (m)<input aria-label="Room width in metres" inputMode="decimal" value={rw} onChange={(e) => { setRw(e.target.value); setRoomDirty(true); }} style={{ maxWidth: 80 }} /></label>
+        <label>L (m)<input aria-label="Room length in metres" inputMode="decimal" value={rl} onChange={(e) => { setRl(e.target.value); setRoomDirty(true); }} style={{ maxWidth: 80 }} /></label>
+        <label>Ceiling (m)<input aria-label="Ceiling height in metres" inputMode="decimal" value={rc} onChange={(e) => { setRc(e.target.value); setRoomDirty(true); }} placeholder="opt" style={{ maxWidth: 80 }} /></label>
+        <button onClick={() => void saveRoom()} disabled={roomSaving || !roomDirty}>{roomSaving ? "Saving…" : "Save size"}</button>
+      </div>
+      <p><small>AI concept — verify measurements and products with a qualified professional before building.</small></p>
       <div className="panel-heading" style={{ marginTop: 8 }}>
         <div>
           <span className="eyebrow">Comments & decisions</span>

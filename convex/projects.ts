@@ -59,6 +59,27 @@ export const listRooms = query({
     return await ctx.db.query("housoraRooms").withIndex("by_project", (q) => q.eq("projectId", projectId)).collect();
   },
 });
+export const updateRoom = mutation({
+  args: { roomId: v.string(), name: v.optional(v.string()), type: v.optional(v.string()), dimensions: v.optional(v.object({ w: v.number(), h: v.number(), ceiling: v.optional(v.number()) })) },
+  handler: async (ctx, a) => {
+    const roomId = ctx.db.normalizeId("housoraRooms", a.roomId);
+    const room = roomId ? await ctx.db.get(roomId) : null;
+    if (!room) throw new Error("Room not found.");
+    await requireProjectAccess(ctx, (room as any).projectId, ["owner", "designer", "collaborator"]);
+    const patch: any = {};
+    if (a.name !== undefined && a.name.trim()) patch.name = a.name.trim().slice(0, 80);
+    if (a.type !== undefined && a.type.trim()) patch.type = a.type.trim().slice(0, 40);
+    if (a.dimensions !== undefined) {
+      const d = a.dimensions;
+      if (!(d.w > 0 && d.w <= 100 && d.h > 0 && d.h <= 100)) throw new Error("Room size must be 0–100 m.");
+      if (d.ceiling !== undefined && !(d.ceiling >= 2 && d.ceiling <= 6)) throw new Error("Ceiling must be 2–6 m.");
+      patch.dimensions = d;
+    }
+    if (!roomId) throw new Error("Room not found.");
+    await ctx.db.patch(roomId, patch);
+    return roomId;
+  },
+});
 
 // Style libraries
 export const upsertStyleLibrary = mutation({
