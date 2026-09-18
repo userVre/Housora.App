@@ -584,7 +584,9 @@ export function HousoraApp({
   const removeReferenceRecord = useMutation(api.savedReferences.remove);
   const creditBalance = useQuery(api.credits.getMyBalance, {});
   const initializeCredits = useMutation(api.credits.initialize);
+  const repairCredits = useMutation(api.credits.repairMyFreeBalance);
   useEffect(() => { void initializeCredits(); }, [initializeCredits]);
+  useEffect(() => { void repairCredits().catch(() => {}); }, [repairCredits]);
   const savedDesigns: SavedDesign[] = (designRows ?? []).map((row) => ({
     id: row.designId,
     projectId: row.projectId,
@@ -748,7 +750,7 @@ export function HousoraApp({
   };
   const startBlankProject = () => {
     const draftId = safeUUID();
-    setProjectDraft({ id: draftId, title: "New project", image: "", prompt: "", mode: "Interior" });
+    setProjectDraft({ id: draftId, title: "Untitled concept", image: "", prompt: "", mode: "Interior" });
     navigate("album");
   };
   const startFromReference = (reference: InspirationReference) => {
@@ -1965,8 +1967,8 @@ function ProjectsPage({
           </div>
           <p>
             {hasProjects
-              ? "Projects are your working documents — editable rooms with history, versions, and 3D. Library holds your bookmarked designs and inspiration."
-              : "Projects are your working documents. Start from a photo — your first design becomes a project you can reopen, version, and refine."}
+              ? "Editable rooms with history, versions, and 3D."
+              : "Start from a photo — your first design becomes a project you can reopen and refine."}
           </p>
         </div>
         <button className="primary-action" onClick={onNew} aria-label="Create new project">
@@ -1978,13 +1980,14 @@ function ProjectsPage({
         <div className="project-tabs">
           <span>{hasProjects ? `Projects · ${designs.length}` : "No projects yet"}</span>
         </div>
-        <small className="project-toolbar-hint" aria-hidden="true">Click a card to open in editor — 3D & Edit are inside the workspace</small>
       </div>
 
       {hasProjects ? (
         <div className="album-grid">
           {designs.map((design) => {
             const hasError = imageErrors[design.id];
+            const isGenericTitle = /^(interior design|new project|untitled concept)$/i.test(design.title.trim());
+            const displayTitle = isGenericTitle ? `${design.mode} concept` : design.title;
             return (
               <button
                 className="album-card"
@@ -2026,7 +2029,7 @@ function ProjectsPage({
                   )}
                   <i className="card-badge">{design.mode}</i>
                 </span>
-                <b>{design.title}</b>
+                <b>{displayTitle}</b>
                 <small>
                   {design.mode} · {formatDate(design.savedAt)}
                 </small>
@@ -2046,13 +2049,6 @@ function ProjectsPage({
         </div>
       )}
 
-      <div className="projects-empty-hint">
-        <p>
-          {hasProjects
-            ? "Projects stay as working documents. Bookmarked inspiration and finished designs live in Library."
-            : "Start with a photo or an example. Your saved work appears here as a project you can reopen — bookmarks stay in Library."}
-        </p>
-      </div>
     </section>
   );
 }
@@ -2799,9 +2795,9 @@ function AlbumWorkspace({
               <p>Choose what you want to make. Your project is created automatically after you add an image.</p>
             </div>
             <div className="project-workflow-grid" aria-label="Choose a project workflow">
-              <button aria-pressed="false" onClick={() => { workflowRef.current = "create"; setSelectedWorkflow("create"); }}>
+              <button className="workflow-primary" aria-pressed="false" onClick={() => { workflowRef.current = "create"; setSelectedWorkflow("create"); }}>
                 <span><Sparkle aria-hidden="true" /></span>
-                <b>Create</b>
+                <b>Create — start here</b>
                 <small>Redesign an interior, exterior or garden from your photo</small>
               </button>
               <button aria-pressed="false" onClick={() => { workflowRef.current = "edit"; setSelectedWorkflow("edit"); }}>
@@ -2820,7 +2816,7 @@ function AlbumWorkspace({
                 <small>Place a finished 3D model in your room</small>
               </button>
             </div>
-            <p className="project-workflow-prompt">Choose one path to see exactly what you need.</p>
+            <p className="project-workflow-prompt">Start with Create. Edit, 3D and AR open inside your project.</p>
             {uploadError ? <p className="album-upload-error" role="alert">{uploadError}</p> : null}
             <p className="album-credit-note">Uploading and choosing a direction are free. We always ask before using credits.</p>
           </div>
@@ -3407,6 +3403,7 @@ function DiscoverPage({
   const hasDetailResults = detailResults.length > 0;
   const renderCard = (entry: InspirationEntry, index: number, visualLen: number) => {
     const hasErr = cardErrors[entry.id];
+    if (hasErr) return null;
     return (
       <button
         key={entry.id}
