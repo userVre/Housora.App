@@ -3195,7 +3195,7 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
         </div>
       </div>
       {pinImage ? (
-        <div className="comment-pin-stage" onClick={placePin} role="button" tabIndex={0} aria-label="Design image — click to place a comment pin"
+        <div className="comment-pin-stage" onClick={placePin} role="button" tabIndex={0} aria-label="Design image — click to place a pin"
           onKeyDown={(e) => { if (e.key === "Enter") setPin({ x: 50, y: 50 }); }}
           style={{ position: "relative", borderRadius: 12, overflow: "hidden", border: "1px solid #2e2f2a", marginBottom: 12 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
