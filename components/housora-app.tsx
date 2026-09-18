@@ -4622,14 +4622,6 @@ function SavedPage({
   );
 }
 
-type StudioTab =
-  | "brief"
-  | "moodboard"
-  | "design"
-  | "layout"
-  | "specify"
-  | "export";
-
 function ThreeDLaunchPage({ onBack }: { onBack: () => void }) {
   return (
     <div className="three-d-launch-page">
@@ -4643,103 +4635,6 @@ function ThreeDLaunchPage({ onBack }: { onBack: () => void }) {
         </div>
       </header>
       <ThreeDWorkspace />
-    </div>
-  );
-}
-
-function ProjectStudio({ onBack }: { onBack: () => void }) {
-  const [tab, setTab] = useState<StudioTab>("brief");
-  const [version, setVersion] = useState<"Original" | "Concept 03">(
-    "Concept 03",
-  );
-  const [selectedObject, setSelectedObject] = useState("Sofa");
-  const [activityOpen, setActivityOpen] = useState(false);
-  const steps: { id: StudioTab; label: string; detail: string }[] = [
-    { id: "brief", label: "Room", detail: "Understand space" },
-    { id: "moodboard", label: "Mood board", detail: "Find direction" },
-    { id: "design", label: "Design", detail: "Generate & edit" },
-    { id: "layout", label: "3D layout", detail: "Plan the room" },
-    { id: "specify", label: "Materials", detail: "Save selections" },
-    { id: "export", label: "Export", detail: "Share package" },
-  ];
-  return (
-    <div className="studio-page">
-      <div className="studio-heading">
-        <div>
-          <button className="back-button" onClick={onBack}>
-            <ArrowLeft /> Projects
-          </button>
-          <span className="eyebrow">Emma Laurent · Living room</span>
-          <h1>Bordeaux residence</h1>
-          <p>Last saved just now · Concept 03</p>
-        </div>
-        <div className="studio-actions">
-          <button onClick={() => setActivityOpen(!activityOpen)}>
-            <Cube /> Room data
-          </button>
-          <button
-            className="share-button"
-            onClick={() => navigator.clipboard?.writeText(window.location.href)}
-          >
-            <ShareNetwork /> Copy design link
-          </button>
-        </div>
-      </div>
-      <nav
-        className="studio-steps simplified-steps"
-        aria-label="Design workflow"
-      >
-        {steps.map((step, index) => (
-          <button
-            key={step.id}
-            className={tab === step.id ? "active" : ""}
-            onClick={() => setTab(step.id)}
-            aria-current={tab === step.id ? "step" : undefined}
-          >
-            <span>{index + 1}</span>
-            <b>{step.label}</b>
-            <small>{step.detail}</small>
-            {step.id === "layout" ? <i>New</i> : null}
-          </button>
-        ))}
-      </nav>
-      {activityOpen ? (
-        <aside className="activity-popover" aria-label="Team activity">
-          <div>
-            <b>Project team</b>
-            <button
-              aria-label="Close team activity"
-              onClick={() => setActivityOpen(false)}
-            >
-              <X />
-            </button>
-          </div>
-          <p>
-            <span>AI</span>
-            <b>Ismail</b> updated the budget <small>2 min ago</small>
-          </p>
-          <p>
-            <span>EL</span>
-            <b>Emma</b> commented on Concept 03 <small>Yesterday</small>
-          </p>
-          <button>
-            <UserPlus /> Invite collaborator
-          </button>
-        </aside>
-      ) : null}
-      {tab === "brief" ? <ProjectBrief /> : null}
-      {tab === "moodboard" ? <MoodBoard /> : null}
-      {tab === "design" ? (
-        <DesignStudio
-          version={version}
-          setVersion={setVersion}
-          selectedObject={selectedObject}
-          setSelectedObject={setSelectedObject}
-        />
-      ) : null}
-      {tab === "layout" ? <ThreeDWorkspace /> : null}
-      {tab === "specify" ? <Specifications /> : null}
-      {tab === "export" ? <ExportWorkspace /> : null}
     </div>
   );
 }
