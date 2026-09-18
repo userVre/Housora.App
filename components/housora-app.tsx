@@ -3021,10 +3021,18 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
   const approval = useQuery(api.collab.getApproval, latest?._id ? { versionId: String(latest._id) } : "skip");
   const setApproval = useMutation(api.collab.setApproval);
   const createLink = useMutation(api.collab.createShareLink);
+  const comments = useQuery(api.collab.listComments, { projectId });
+  const addComment = useMutation(api.collab.addComment);
+  const resolveComment = useMutation(api.collab.resolveComment);
   const [shareUrl, setShareUrl] = useState("");
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [reason, setReason] = useState("");
+  const [commentBody, setCommentBody] = useState("");
+  const [pin, setPin] = useState<{ x: number; y: number } | null>(null);
+  const [commentBusy, setCommentBusy] = useState(false);
+  const pinImage = (latest as any)?.image ?? preview;
   const subtotal = (items ?? []).reduce((s, i) => s + (i.retailPrice ?? 0) * i.quantity, 0);
   const total = subtotal + (subtotal * (budget?.taxRate ?? 0)) / 100 + (budget?.shippingFlat ?? 0);
   const forecast = total + (total * (budget?.contingencyPct ?? 10)) / 100;
@@ -3050,8 +3058,36 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
   const decide = async (status: "approved" | "changes_requested") => {
     if (!latest) return;
     setError("");
-    try { await setApproval({ versionId: String(latest._id), projectId, status }); }
+    try { await setApproval({ versionId: String(latest._id), projectId, status, comment: reason.trim() || undefined }); setReason(""); }
     catch (e) { setError(e instanceof Error ? e.message : "Could not record decision."); }
+  };
+  const placePin = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    setPin({
+      x: Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100)),
+      y: Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100)),
+    });
+  };
+  const submitComment = async () => {
+    setError("");
+    if (!commentBody.trim()) { setError("Write the comment first."); return; }
+    setCommentBusy(true);
+    try {
+      await addComment({
+        projectId,
+        roomId,
+        versionId: latest ? String(latest._id) : undefined,
+        body: commentBody.trim(),
+        xRatio: pin ? pin.x / 100 : undefined,
+        yRatio: pin ? pin.y / 100 : undefined,
+      });
+      setCommentBody(""); setPin(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not add comment.");
+    } finally {
+      setCommentBusy(false);
+    }
   };
   const downloadCsv = () => {
     const rows = (items ?? []).map((i) => ({
@@ -3143,12 +3179,54 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
       <div className="budget-body">
         <div className="budget-list">
           <div><b>Latest version approval</b><span>{approval ? String((approval as any).status).replaceAll("_", " ") : "No decision yet"}</span></div>
+          {(approval as any)?.comment ? <div><b>Reason</b><span>{String((approval as any).comment)}</span></div> : null}
           <div>
             <button onClick={() => void decide("approved")} disabled={!latest}>Approve latest</button>
             <button onClick={() => void decide("changes_requested")} disabled={!latest} style={{ marginLeft: 8 }}>Request changes</button>
           </div>
+          <label>Reason (optional)<input aria-label="Decision reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. sofa fabric still too cool" /></label>
         </div>
       </div>
+      <div className="panel-heading" style={{ marginTop: 8 }}>
+        <div>
+          <span className="eyebrow">Comments & decisions</span>
+          <h2>Pinned feedback</h2>
+          <p>Click the image to drop a pin, write the note, then add it. Pins stay with this project.</p>
+        </div>
+      </div>
+      {pinImage ? (
+        <div className="comment-pin-stage" onClick={placePin} role="button" tabIndex={0} aria-label="Design image — click to place a comment pin"
+          onKeyDown={(e) => { if (e.key === "Enter") setPin({ x: 50, y: 50 }); }}
+          style={{ position: "relative", borderRadius: 12, overflow: "hidden", border: "1px solid #2e2f2a", marginBottom: 12 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={pinImage} alt="Latest design for pinned comments" style={{ width: "100%", height: "auto", display: "block" }} />
+          {pin ? <span aria-hidden="true" style={{ position: "absolute", left: `${pin.x}%`, top: `${pin.y}%`, width: 14, height: 14, borderRadius: 999, background: "#f4f0e8", border: "2px solid #b85e34", transform: "translate(-50%,-50%)" }} /> : null}
+          {(comments ?? []).map((c: any) =>
+            c.xRatio !== undefined && c.yRatio !== undefined ? (
+              <span key={String(c._id)} title={c.body} aria-hidden="true"
+                style={{ position: "absolute", left: `${c.xRatio * 100}%`, top: `${c.yRatio * 100}%`, width: 10, height: 10, borderRadius: 999, background: c.resolved ? "#75806a" : "#b85e34", border: "2px solid #11120f", transform: "translate(-50%,-50%)", opacity: 0.9 }} />
+            ) : null,
+          )}
+        </div>
+      ) : null}
+      <div className="panel-tools">
+        <input aria-label="Comment" value={commentBody} onChange={(e) => setCommentBody(e.target.value)} placeholder={pin ? "Pinned — write the note…" : "Comment on the latest version…"} />
+        {pin ? <button onClick={() => setPin(null)}>Clear pin</button> : null}
+        <button className="primary-action" onClick={() => void submitComment()} disabled={commentBusy}>{commentBusy ? "Adding…" : "Add comment"}</button>
+      </div>
+      {(comments ?? []).length ? (
+        <div className="spec-table rich-spec" aria-label="Decision history">
+          {(comments ?? []).map((c: any) => (
+            <div className="spec-row" key={String(c._id)}>
+              <span><b>{c.body}</b><small>{c.authorName ?? "Designer"} · {new Date(c.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}{c.xRatio !== undefined ? " · pinned" : ""}</small></span>
+              <span>{c.resolved ? "Resolved" : "Open"}</span>
+              <span>{!c.resolved ? <button onClick={() => void resolveComment({ commentId: c._id }).catch((e) => setError(e instanceof Error ? e.message : "Could not resolve."))}>Resolve</button> : null}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p><small>No comments yet — pins and decisions will appear here as history.</small></p>
+      )}
     </section>
   );
 }
