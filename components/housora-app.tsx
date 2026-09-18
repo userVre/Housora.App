@@ -2225,6 +2225,33 @@ function AlbumWorkspace({
   useEffect(() => {
     if (completedModels.length && !selectedArModelId) setSelectedArModelId(completedModels[0].id);
   }, [completedModels, selectedArModelId]);
+  const [uploadingModel, setUploadingModel] = useState(false);
+  const [uploadModelError, setUploadModelError] = useState<string | null>(null);
+  const handleUploadModel = async (file: File) => {
+    setUploadModelError(null);
+    setUploadingModel(true);
+    try {
+      const form = new FormData();
+      form.append("model", file, file.name);
+      const response = await fetch("/api/models/upload", { method: "POST", body: form });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || "Could not save that 3D file.");
+      if (!result?.taskId || !result?.url) throw new Error("The upload did not return a model.");
+      setNewlyGeneratedModel({
+        id: result.taskId,
+        url: result.url,
+        title: file.name.replace(/\.(glb|gltf)$/i, "") || "Uploaded model",
+        createdAt: Date.now(),
+        poster: null,
+        thumbnail: null,
+      });
+      setSelectedArModelId(result.taskId);
+    } catch (error) {
+      setUploadModelError(error instanceof Error ? error.message : "Could not save that 3D file.");
+    } finally {
+      setUploadingModel(false);
+    }
+  };
 
   useEffect(() => { workflowRef.current = selectedWorkflow; }, [selectedWorkflow]);
 
@@ -2804,6 +2831,9 @@ function AlbumWorkspace({
             selectedModel={selectedArModel}
             onSelectModel={(m) => setSelectedArModelId(m.id)}
             onStartImageTo3D={handleArStart3D}
+            onUploadModel={handleUploadModel}
+            uploadBusy={uploadingModel}
+            uploadError={uploadModelError}
             onOpenAr={(m) => {
               return createModelShare({ taskId: m.id }).then((token) => {
                 window.location.assign(`/ar?token=${encodeURIComponent(token)}`);

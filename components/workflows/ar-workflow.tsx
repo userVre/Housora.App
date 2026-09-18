@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { validateModelFileMeta } from "../../lib/model-upload";
 
 // ---------------------------------------------------------------------------
 // Isolated AR workflow — props-driven, no fake data, no fake camera
@@ -28,6 +29,15 @@ export type ArWorkflowProps = {
   onOpenAr: (model: ArModel) => void | Promise<void>;
   /** Copy a phone link for the given model. Parent builds the share URL and writes clipboard. */
   onCopyPhoneLink: (model: ArModel) => void | Promise<void>;
+  /**
+   * Bring your own 3D file (.glb/.gltf, free, no generation step).
+   * When omitted, the upload entry is hidden and AR stays generation-only.
+   */
+  onUploadModel?: (file: File) => void | Promise<void>;
+  /** True while a file upload is in flight. */
+  uploadBusy?: boolean;
+  /** Upload failure message. The chooser and preview stay visible. */
+  uploadError?: string | null;
 };
 
 function formatDate(value?: ArModel["createdAt"]) {
@@ -119,10 +129,15 @@ export function ArWorkflow({
   onStartImageTo3D,
   onOpenAr,
   onCopyPhoneLink,
+  onUploadModel,
+  uploadBusy,
+  uploadError,
 }: ArWorkflowProps) {
   const [copyFeedback, setCopyFeedback] = useState("");
   const [arSupported, setArSupported] = useState<boolean | null>(null);
+  const [localUploadError, setLocalUploadError] = useState("");
   const viewerRef = useRef<HTMLElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const hasModels = completedModels.length > 0;
   const isSelected = Boolean(selectedModel?.url && /^https:\/\//i.test(selectedModel.url));
   const selectedId = selectedModel?.id ?? null;
@@ -176,7 +191,7 @@ export function ArWorkflow({
           Place furniture in your room
         </h2>
         <p className="ar-workflow__subtitle">
-          AR needs a completed 3D model — a flat photo cannot be placed directly. Choose a saved model or create one from a furniture photo first.
+          AR needs a completed 3D model — a flat photo cannot be placed directly. Choose a saved model, upload your own .glb file, or create one from a furniture photo first.
         </p>
       </header>
 
@@ -228,7 +243,7 @@ export function ArWorkflow({
           </ul>
         ) : (
           <div className="ar-workflow__empty-list" role="status">
-            <p>No AR-ready models yet. A furniture photo must be turned into a 3D model before it can be placed.</p>
+            <p>No AR-ready models yet. Turn a furniture photo into 3D, or upload your own .glb file — no generation needed.</p>
           </div>
         )}
 
@@ -236,10 +251,52 @@ export function ArWorkflow({
           <button type="button" className="ar-workflow__button ar-workflow__button--secondary" onClick={onStartImageTo3D}>
             Create one from a photo
           </button>
+          {onUploadModel ? (
+            <button
+              type="button"
+              className="ar-workflow__button ar-workflow__button--secondary"
+              onClick={() => {
+                setLocalUploadError("");
+                fileRef.current?.click();
+              }}
+              disabled={Boolean(uploadBusy)}
+            >
+              {uploadBusy ? "Uploading…" : "Upload your own 3D file"}
+            </button>
+          ) : null}
           {!isSelected && hasModels ? (
             <span className="ar-workflow__hint">Select a model above to preview it.</span>
           ) : null}
         </div>
+        {onUploadModel ? (
+          <>
+            <input
+              ref={fileRef}
+              className="visually-hidden"
+              type="file"
+              accept=".glb,.gltf,model/gltf-binary,model/gltf+json"
+              aria-label="Choose a 3D model file"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.currentTarget.value = "";
+                if (!file || uploadBusy) return;
+                const check = validateModelFileMeta(file.name, file.size);
+                if (!check.valid) {
+                  setLocalUploadError(check.reason);
+                  return;
+                }
+                setLocalUploadError("");
+                void onUploadModel(file);
+              }}
+            />
+            <p className="ar-workflow__hint">Free · .glb or .gltf up to 50 MB · no generation step needed.</p>
+          </>
+        ) : null}
+        {localUploadError || uploadError ? (
+          <p className="ar-workflow__error" role="alert">
+            {localUploadError || uploadError}
+          </p>
+        ) : null}
       </div>
 
       {/* Selected state */}
