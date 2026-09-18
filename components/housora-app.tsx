@@ -2069,6 +2069,16 @@ function AlbumWorkspace({
   const [preview, setPreview] = useState<string | null>(initialDraft?.image ?? null);
   const [selectedWorkflow, setSelectedWorkflow] = useState<ProjectWorkflow | null>(initialDraft?.workflow ?? (initialDraft?.image ? "create" : null));
   const [projectStep, setProjectStep] = useState<"design" | "specify" | "budget" | "present">("design");
+  const [simpleMode, setSimpleMode] = useState(false);
+  useEffect(() => {
+    try { if (window.localStorage.getItem("housora:simpleMode") === "1") setSimpleMode(true); } catch {}
+  }, []);
+  const toggleSimple = () => {
+    setSimpleMode((v) => {
+      try { window.localStorage.setItem("housora:simpleMode", v ? "0" : "1"); } catch {}
+      return !v;
+    });
+  };
   const workflowRef = useRef<ProjectWorkflow | null>(initialDraft?.workflow ?? (initialDraft?.image ? "create" : null));
   const [detailChoices, setDetailChoices] = useState<Record<string, string>>({});
   const [outputRatio, setOutputRatio] = useState("auto");
@@ -2678,9 +2688,10 @@ function AlbumWorkspace({
       {versionContext ? (
         <div className="album-steps" role="tablist" aria-label="Project steps">
           <button role="tab" aria-selected={projectStep === "design"} onClick={() => setProjectStep("design")}>Design</button>
-          <button role="tab" aria-selected={projectStep === "specify"} onClick={() => setProjectStep("specify")}>Specify</button>
-          <button role="tab" aria-selected={projectStep === "budget"} onClick={() => setProjectStep("budget")}>Budget</button>
-          <button role="tab" aria-selected={projectStep === "present"} onClick={() => setProjectStep("present")}>Present</button>
+          <button role="tab" aria-selected={projectStep === "specify"} onClick={() => setProjectStep("specify")}>{simpleMode ? "Shopping list" : "Specify"}</button>
+          <button role="tab" aria-selected={projectStep === "budget"} onClick={() => setProjectStep("budget")}>{simpleMode ? "Costs" : "Budget"}</button>
+          <button role="tab" aria-selected={projectStep === "present"} onClick={() => setProjectStep("present")}>{simpleMode ? "Share" : "Present"}</button>
+          <button role="tab" aria-selected={false} onClick={toggleSimple} title={simpleMode ? "Show professional wording" : "Show plain wording"}>{simpleMode ? "Pro words" : "Simple words"}</button>
         </div>
       ) : null}
       <input ref={fileRef} className="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Upload a space photo" onChange={(event) => { upload(event.target.files?.[0]); event.currentTarget.value = ""; }} />
@@ -2819,21 +2830,25 @@ function AlbumWorkspace({
               </button>
               <button aria-pressed="false" onClick={() => { workflowRef.current = "edit"; setSelectedWorkflow("edit"); }}>
                 <span><Selection aria-hidden="true" /></span>
-                <b>Edit</b>
-                <small>Change furniture, surfaces, or details</small>
+                <b>{simpleMode ? "Change things" : "Edit"}</b>
+                <small>{simpleMode ? "Change furniture, colours, or details" : "Change furniture, surfaces, or details"}</small>
               </button>
+              {!simpleMode ? (
               <button aria-pressed="false" onClick={() => { workflowRef.current = "3d"; setSelectedWorkflow("3d"); }}>
                 <span><Cube aria-hidden="true" /></span>
                 <b>3D</b>
                 <small>Create a model from one furniture image</small>
               </button>
+              ) : null}
+              {!simpleMode ? (
               <button aria-pressed="false" onClick={() => { workflowRef.current = "ar"; setSelectedWorkflow("ar"); }}>
                 <span><Smartphone aria-hidden="true" /></span>
                 <b>AR</b>
                 <small>Place a finished 3D model in your room</small>
               </button>
+              ) : null}
             </div>
-            <p className="project-workflow-prompt">Start with Create. Edit, 3D and AR open inside your project.</p>
+            <p className="project-workflow-prompt">{simpleMode ? "Start with Create. Your shopping list, costs and sharing open inside your project." : "Start with Create. Edit, 3D and AR open inside your project."}</p>
             {uploadError ? <p className="album-upload-error" role="alert">{uploadError}</p> : null}
             <p className="album-credit-note">Uploading and choosing a direction are free. We always ask before using credits.</p>
           </div>
