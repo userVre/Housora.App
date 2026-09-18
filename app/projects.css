@@ -27,6 +27,26 @@
 .album-steps { display: inline-flex; gap: 4px; padding: 4px; margin: 12px 0 0 16px; background: #1b1c18; border: 1px solid #2e2f2a; border-radius: 999px; }
 .album-steps button { min-height: 36px; padding: 0 18px; border: 0; border-radius: 999px; background: transparent; color: #a8a9a0; font-size: 12px; font-weight: 700; }
 .album-steps button[aria-selected="true"] { background: #f4f0e8; color: #171713; }
+/* Live panels: keep tools wrapping and history readable on small screens */
+section[aria-label="Specification"] .panel-tools,
+section[aria-label="Budget"] .panel-tools,
+section[aria-label="Present"] .panel-tools { flex-wrap: wrap; }
+section[aria-label="Specification"] .panel-tools input,
+section[aria-label="Budget"] .panel-tools input,
+section[aria-label="Present"] .panel-tools input { min-width: 0; }
+div[aria-label="Decision history"] .spec-row { grid-template-columns: 1fr auto auto; }
+@media (max-width: 700px) {
+  section[aria-label="Specification"] .panel-tools,
+  section[aria-label="Budget"] .panel-tools,
+  section[aria-label="Present"] .panel-tools { display: flex; flex-wrap: wrap; }
+  section[aria-label="Specification"] .panel-tools > *,
+  section[aria-label="Budget"] .panel-tools > *,
+  section[aria-label="Present"] .panel-tools > * { flex: 1 1 140px; }
+  div[aria-label="Decision history"] .spec-row { grid-template-columns: 1fr; gap: 8px; padding: 12px 14px; }
+  div[aria-label="Decision history"] .spec-row > span { display: block !important; }
+  .album-steps { margin-left: 12px; }
+  .album-steps button { padding: 0 12px; }
+}
 @media (max-width: 760px) {
   .album-grid, .album-grid-empty { grid-template-columns: 1fr !important; gap: 16px; }
   .album-card > span { aspect-ratio: 16/10; }
