@@ -2869,6 +2869,8 @@ function SpecPanel({ projectId, roomId }: { projectId: string; roomId: string })
   const [name, setName] = useState("");
   const [qty, setQty] = useState("1");
   const [price, setPrice] = useState("");
+  const [supplier, setSupplier] = useState("");
+  const [link, setLink] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const total = (items ?? []).reduce((s, i) => s + (i.retailPrice ?? 0) * i.quantity, 0);
@@ -2883,8 +2885,10 @@ function SpecPanel({ projectId, roomId }: { projectId: string; roomId: string })
         name: name.trim(),
         quantity: Math.max(1, parseInt(qty, 10) || 1),
         retailPrice: price.trim() ? Math.max(0, Number(price)) : undefined,
+        supplier: supplier.trim() || undefined,
+        link: link.trim() || undefined,
       });
-      setName(""); setQty("1"); setPrice("");
+      setName(""); setQty("1"); setPrice(""); setSupplier(""); setLink("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not add item.");
     } finally {
@@ -2904,6 +2908,8 @@ function SpecPanel({ projectId, roomId }: { projectId: string; roomId: string })
         <input aria-label="Product name" placeholder="e.g. Luna sofa — sand bouclé" value={name} onChange={(e) => setName(e.target.value)} />
         <input aria-label="Quantity" placeholder="Qty" inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value)} style={{ maxWidth: 72 }} />
         <input aria-label="Retail price" placeholder="$" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} style={{ maxWidth: 110 }} />
+        <input aria-label="Supplier or SKU" placeholder="Supplier / SKU" value={supplier} onChange={(e) => setSupplier(e.target.value)} style={{ maxWidth: 150 }} />
+        <input aria-label="Product link" placeholder="Link https://…" inputMode="url" value={link} onChange={(e) => setLink(e.target.value)} style={{ maxWidth: 170 }} />
         <button className="primary-action" onClick={() => void submit()} disabled={busy}>{busy ? "Adding…" : "Add"}</button>
       </div>
       {error ? <p role="alert" className="album-upload-error">{error}</p> : null}
@@ -2912,7 +2918,7 @@ function SpecPanel({ projectId, roomId }: { projectId: string; roomId: string })
           <div className="spec-row spec-head"><span>Item</span><span>Qty</span><span>Price</span><span>Status</span><span></span></div>
           {items.map((item) => (
             <div className="spec-row" key={item._id}>
-              <span><b>{item.name}</b></span>
+              <span><b>{item.name}</b><small>{[item.supplier, item.link ? "has link" : ""].filter(Boolean).join(" · ") || "Specified by designer"}</small></span>
               <span>× {item.quantity}</span>
               <span>{item.retailPrice !== undefined ? `$${(item.retailPrice * item.quantity).toLocaleString()}` : "—"}</span>
               <span>
@@ -3128,11 +3134,12 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
       retail_price: i.retailPrice ?? "",
       line_total: i.retailPrice !== undefined ? i.retailPrice * i.quantity : "",
       supplier: i.supplier ?? "",
+      link: (i as any).link ?? "",
       status: i.status,
     }));
-    const head = "name,quantity,unit,retail_price,line_total,supplier,status";
+    const head = "name,quantity,unit,retail_price,line_total,supplier,link,status";
     const esc = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
-    const body = rows.map((r) => [r.name, r.quantity, r.unit, r.retail_price, r.line_total, r.supplier, r.status].map(esc).join(",")).join("\n");
+    const body = rows.map((r) => [r.name, r.quantity, r.unit, r.retail_price, r.line_total, r.supplier, r.link, r.status].map(esc).join(",")).join("\n");
     const tail = `\n${esc("SUBTOTAL")},${esc("")},${esc("")},${esc("")},${esc(subtotal)},${esc("")},${esc("")}\n${esc("FORECAST TOTAL")},${esc("")},${esc("")},${esc("")},${esc(Math.round(forecast))},${esc("")},${esc("")}`;
     const blob = new Blob([[head, body, tail].filter(Boolean).join("\n")], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -3160,7 +3167,7 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
     y += 7;
     pdf.setFontSize(9);
     for (const i of items ?? []) {
-      const line = `${i.name}  × ${i.quantity}  —  ${i.retailPrice !== undefined ? "$" + (i.retailPrice * i.quantity).toLocaleString() : "price TBD"}  [${i.status}]`;
+      const line = `${i.name}  × ${i.quantity}  —  ${i.retailPrice !== undefined ? "$" + (i.retailPrice * i.quantity).toLocaleString() : "price TBD"}  [${i.status}]${i.supplier ? `  ·  ${i.supplier}` : ""}`;
       const wrapped = pdf.splitTextToSize(line, 170);
       if (y + wrapped.length * 5 > 270) { pdf.addPage(); y = 20; }
       pdf.text(wrapped, 18, y);
