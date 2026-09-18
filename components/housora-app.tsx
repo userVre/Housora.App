@@ -2068,7 +2068,7 @@ function AlbumWorkspace({
   const [prompt, setPrompt] = useState(initialDraft?.prompt ?? "");
   const [preview, setPreview] = useState<string | null>(initialDraft?.image ?? null);
   const [selectedWorkflow, setSelectedWorkflow] = useState<ProjectWorkflow | null>(initialDraft?.workflow ?? (initialDraft?.image ? "create" : null));
-  const [showSpecify, setShowSpecify] = useState(false);
+  const [projectStep, setProjectStep] = useState<"design" | "specify" | "budget">("design");
   const workflowRef = useRef<ProjectWorkflow | null>(initialDraft?.workflow ?? (initialDraft?.image ? "create" : null));
   const [detailChoices, setDetailChoices] = useState<Record<string, string>>({});
   const [outputRatio, setOutputRatio] = useState("auto");
@@ -2677,15 +2677,20 @@ function AlbumWorkspace({
       </header>
       {versionContext ? (
         <div className="album-steps" role="tablist" aria-label="Project steps">
-          <button role="tab" aria-selected={!showSpecify} onClick={() => setShowSpecify(false)}>Design</button>
-          <button role="tab" aria-selected={showSpecify} onClick={() => setShowSpecify(true)}>Specify</button>
+          <button role="tab" aria-selected={projectStep === "design"} onClick={() => setProjectStep("design")}>Design</button>
+          <button role="tab" aria-selected={projectStep === "specify"} onClick={() => setProjectStep("specify")}>Specify</button>
+          <button role="tab" aria-selected={projectStep === "budget"} onClick={() => setProjectStep("budget")}>Budget</button>
         </div>
       ) : null}
       <input ref={fileRef} className="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Upload a space photo" onChange={(event) => { upload(event.target.files?.[0]); event.currentTarget.value = ""; }} />
       <p className="visually-hidden" role="alert" aria-live="assertive">{uploadError}</p>
       <div className={`album-workspace-body workflow-${selectedWorkflow || "launcher"}${preview ? "" : " is-launcher"}`}>
-        {showSpecify && versionContext ? (
-          <SpecPanel projectId={versionContext.projectId} roomId={versionContext.roomId} />
+        {projectStep !== "design" && versionContext ? (
+          projectStep === "specify" ? (
+            <SpecPanel projectId={versionContext.projectId} roomId={versionContext.roomId} />
+          ) : (
+            <BudgetPanel projectId={versionContext.projectId} />
+          )
         ) : selectedWorkflow === "create" ? (
           <CreateWorkflow
             preview={preview}
@@ -2919,6 +2924,87 @@ function SpecPanel({ projectId, roomId }: { projectId: string; roomId: string })
       ) : (
         <div className="empty-panel"><h3>No products yet</h3><p>Add what this room needs — it stays with the project.</p></div>
       )}
+    </section>
+  );
+}
+
+function BudgetPanel({ projectId }: { projectId: string }) {
+  const items = useQuery(api.specItems.list, { projectId });
+  const budget = useQuery(api.budgets.get, { projectId });
+  const saveBudget = useMutation(api.budgets.save);
+  const [cap, setCap] = useState("");
+  const [tax, setTax] = useState("");
+  const [ship, setShip] = useState("");
+  const [cont, setCont] = useState("");
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    if (budget && !dirty) {
+      setCap(budget.clientBudget !== undefined ? String(budget.clientBudget) : "");
+      setTax(String(budget.taxRate ?? 0));
+      setShip(String(budget.shippingFlat ?? 0));
+      setCont(String(budget.contingencyPct ?? 10));
+    }
+  }, [budget, dirty]);
+  const subtotal = (items ?? []).reduce((s, i) => s + (i.retailPrice ?? 0) * i.quantity, 0);
+  const taxRate = Number(tax) || 0;
+  const shipping = Number(ship) || 0;
+  const contPct = Number(cont) || 0;
+  const taxAmt = (subtotal * taxRate) / 100;
+  const contAmt = ((subtotal + taxAmt + shipping) * contPct) / 100;
+  const total = subtotal + taxAmt + shipping + contAmt;
+  const capNum = cap.trim() ? Number(cap) : undefined;
+  const remaining = capNum !== undefined && !Number.isNaN(capNum) ? capNum - total : undefined;
+  const save = async () => {
+    setError("");
+    setSaving(true);
+    try {
+      await saveBudget({
+        projectId,
+        clientBudget: cap.trim() ? Number(cap) : undefined,
+        taxRate: Number(tax) || 0,
+        shippingFlat: Number(ship) || 0,
+        contingencyPct: Number(cont) || 0,
+      });
+      setDirty(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save budget.");
+    } finally {
+      setSaving(false);
+    }
+  };
+  const mark = (fn: (v: string) => void) => (v: string) => { fn(v); setDirty(true); };
+  return (
+    <section className="project-panel" aria-label="Budget">
+      <div className="panel-heading">
+        <div>
+          <span className="eyebrow">Budget</span>
+          <h2>On budget, from your spec</h2>
+          <p>{items?.length ? `${items.length} specified items roll up here live.` : "Add products in Specify — they roll up here live."}</p>
+        </div>
+      </div>
+      <div className="budget-summary expanded-budget">
+        <article><span>Specified</span><b>${subtotal.toLocaleString()}</b><small>{items?.length ?? 0} items</small></article>
+        <article><span>Forecast total</span><b>${total.toLocaleString()}</b><small>incl. tax, shipping, contingency</small></article>
+        <article><span>Remaining</span><b>{remaining === undefined ? "—" : `$${remaining.toLocaleString()}`}</b><small>{capNum === undefined ? "Set a client budget" : remaining !== undefined && remaining < 0 ? "Over budget" : "Within budget"}</small></article>
+      </div>
+      <div className="panel-tools">
+        <label>Client budget $<input aria-label="Client budget" inputMode="decimal" value={cap} onChange={(e) => mark(setCap)(e.target.value)} placeholder="e.g. 25000" /></label>
+        <label>Tax %<input aria-label="Tax percent" inputMode="decimal" value={tax} onChange={(e) => mark(setTax)(e.target.value)} style={{ maxWidth: 80 }} /></label>
+        <label>Shipping $<input aria-label="Shipping flat" inputMode="decimal" value={ship} onChange={(e) => mark(setShip)(e.target.value)} style={{ maxWidth: 100 }} /></label>
+        <label>Contingency %<input aria-label="Contingency percent" inputMode="decimal" value={cont} onChange={(e) => mark(setCont)(e.target.value)} style={{ maxWidth: 80 }} /></label>
+        <button className="primary-action" onClick={() => void save()} disabled={saving || !dirty}>{saving ? "Saving…" : "Save budget"}</button>
+      </div>
+      {error ? <p role="alert" className="album-upload-error">{error}</p> : null}
+      <div className="budget-body">
+        <div className="budget-list">
+          <div><b>Products</b><span>${subtotal.toLocaleString()}</span></div>
+          <div><b>Tax ({taxRate}%)</b><span>${taxAmt.toLocaleString()}</span></div>
+          <div><b>Shipping</b><span>${shipping.toLocaleString()}</span></div>
+          <div><b>Contingency ({contPct}%)</b><span>${contAmt.toLocaleString()}</span></div>
+        </div>
+      </div>
     </section>
   );
 }

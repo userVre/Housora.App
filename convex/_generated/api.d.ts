@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as budgets from "../budgets.js";
 import type * as cacheCleanup from "../cacheCleanup.js";
 import type * as collab from "../collab.js";
 import type * as credits from "../credits.js";
@@ -34,6 +35,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  budgets: typeof budgets;
   cacheCleanup: typeof cacheCleanup;
   collab: typeof collab;
   credits: typeof credits;

@@ -348,4 +348,14 @@ export default defineSchema({
   })
     .index("by_project", ["projectId"])
     .index("by_owner", ["ownerId"]),
+  // Per-project budget settings (roll-up reads specItems live)
+  budgets: defineTable({
+    ownerId: v.string(),
+    projectId: v.string(),
+    clientBudget: v.optional(v.number()),
+    taxRate: v.number(),
+    shippingFlat: v.number(),
+    contingencyPct: v.number(),
+    updatedAt: v.number(),
+  }).index("by_project", ["projectId"]),
 });
