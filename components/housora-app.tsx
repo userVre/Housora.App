@@ -881,7 +881,9 @@ export function HousoraApp({
         </nav>
         {!shellCollapsed ? <section className="rail-recents" aria-labelledby="recent-projects-title">
           <div className="rail-section-title"><span id="recent-projects-title">Recent</span><button onClick={() => navigate("projects")} aria-label="View all projects">View all</button></div>
-          {recentProjects.length ? <ul>{recentProjects.map((design) => <li key={design.id}>
+          {recentProjects.length ? <ul>{recentProjects.map((design) => {
+            const railTitle = /^(interior design|new project|untitled concept)$/i.test(design.title.trim()) ? `${design.mode} concept` : design.title;
+            return <li key={design.id}>
             {renamingRecentId === design.id ? <input className="rail-recent-rename" aria-label={`Rename ${design.title}`} title="Enter to save · Escape to cancel" value={recentRename} onChange={(event) => setRecentRename(event.target.value)} onBlur={() => finishRecentRename(design)} onKeyDown={(event) => {
               if (event.key === "Enter") event.currentTarget.blur();
               if (event.key === "Escape") { setRenamingRecentId(null); setRecentRename(""); }
@@ -891,7 +893,7 @@ export function HousoraApp({
               recentOpenTimer.current = window.setTimeout(() => openSavedProject(design), 220);
             }} onDoubleClick={() => beginRecentRename(design)} title={`${design.title} · Double-click to rename`}>
               {design.pinned ? <Pin aria-hidden="true" /> : <span aria-hidden="true" />}
-              <span className="rail-recent-label"><span>{design.title}</span><small>{(() => { try { const d = new Date(design.savedAt); return Number.isNaN(d.getTime()) ? design.mode : `${design.mode} · ${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`; } catch { return design.mode; } })()}</small></span>
+              <span className="rail-recent-label"><span>{railTitle}</span><small>{(() => { try { const d = new Date(design.savedAt); return Number.isNaN(d.getTime()) ? design.mode : `${design.mode} · ${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`; } catch { return design.mode; } })()}</small></span>
             </button>}
             <button className="rail-recent-more" onClick={() => setRecentMenuOpen(recentMenuOpen === design.id ? null : design.id)} aria-label={`Project actions for ${design.title}`} aria-expanded={recentMenuOpen === design.id}><DotsThree aria-hidden="true" /></button>
             {recentMenuOpen === design.id ? <div className="rail-project-menu" role="menu">
@@ -901,7 +903,7 @@ export function HousoraApp({
               <button role="menuitem" onClick={() => { void updateDesignMeta({ designId: design.id, archived: true }); setRecentMenuOpen(null); showNotice("Project archived"); }}><Archive /> Archive</button>
               <button role="menuitem" className="danger" onClick={() => { void unsaveDesign(design.id); setRecentMenuOpen(null); }}><TrashSimple /> Delete</button>
             </div> : null}
-          </li>)}</ul> : <p>Your projects will appear here.</p>}
+          </li>; })}</ul> : <p>Your projects will appear here.</p>}
         </section> : null}
         <div className="rail-account">
           {profileOpen ? (
@@ -2686,12 +2688,14 @@ function AlbumWorkspace({
         </div>
       </header>
       {versionContext ? (
-        <div className="album-steps" role="tablist" aria-label="Project steps">
-          <button role="tab" aria-selected={projectStep === "design"} onClick={() => setProjectStep("design")}>Design</button>
-          <button role="tab" aria-selected={projectStep === "specify"} onClick={() => setProjectStep("specify")}>{simpleMode ? "Shopping list" : "Specify"}</button>
-          <button role="tab" aria-selected={projectStep === "budget"} onClick={() => setProjectStep("budget")}>{simpleMode ? "Costs" : "Budget"}</button>
-          <button role="tab" aria-selected={projectStep === "present"} onClick={() => setProjectStep("present")}>{simpleMode ? "Share" : "Present"}</button>
-          <button role="tab" aria-selected={false} onClick={toggleSimple} title={simpleMode ? "Show professional wording" : "Show plain wording"}>{simpleMode ? "Pro words" : "Simple words"}</button>
+        <div className="album-steps-row">
+          <div className="album-steps" role="tablist" aria-label="Project steps">
+            <button role="tab" aria-selected={projectStep === "design"} onClick={() => setProjectStep("design")}>Design</button>
+            <button role="tab" aria-selected={projectStep === "specify"} onClick={() => setProjectStep("specify")}>{simpleMode ? "Shopping list" : "Specify"}</button>
+            <button role="tab" aria-selected={projectStep === "budget"} onClick={() => setProjectStep("budget")}>{simpleMode ? "Costs" : "Budget"}</button>
+            <button role="tab" aria-selected={projectStep === "present"} onClick={() => setProjectStep("present")}>{simpleMode ? "Share" : "Present"}</button>
+          </div>
+          <button className="album-words-toggle" onClick={toggleSimple} aria-pressed={simpleMode} title={simpleMode ? "Show professional wording" : "Show plain wording"}>{simpleMode ? "Pro words" : "Simple words"}</button>
         </div>
       ) : null}
       <input ref={fileRef} className="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Upload a space photo" onChange={(event) => { upload(event.target.files?.[0]); event.currentTarget.value = ""; }} />

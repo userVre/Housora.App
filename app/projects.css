@@ -24,9 +24,12 @@
 .inspiration-card:not(.is-loaded) { min-height: 280px; background: linear-gradient(180deg, #23241f, #1b1c18); }
 .project-workflow-grid .workflow-primary { border-color: #f4f0e8; background: #f4f0e8; color: #171713; }
 .project-workflow-grid .workflow-primary small { color: #5f6059; }
-.album-steps { display: inline-flex; gap: 4px; padding: 4px; margin: 12px 0 0 16px; background: #1b1c18; border: 1px solid #2e2f2a; border-radius: 999px; }
+.album-steps { display: inline-flex; gap: 4px; padding: 4px; margin: 0; background: #1b1c18; border: 1px solid #2e2f2a; border-radius: 999px; }
 .album-steps button { min-height: 36px; padding: 0 18px; border: 0; border-radius: 999px; background: transparent; color: #a8a9a0; font-size: 12px; font-weight: 700; }
 .album-steps button[aria-selected="true"] { background: #f4f0e8; color: #171713; }
+.album-steps-row { display: flex; align-items: center; gap: 12px; margin: 12px 0 0 16px; flex-wrap: wrap; }
+.album-words-toggle { min-height: 36px; padding: 0 14px; border: 1px solid transparent; border-radius: 999px; background: transparent; color: #7f8178; font-size: 12px; font-weight: 600; }
+.album-words-toggle:hover { color: #f4f0e8; border-color: #2e2f2a; }
 /* Live panels: keep tools wrapping and history readable on small screens */
 section[aria-label="Specification"] .panel-tools,
 section[aria-label="Budget"] .panel-tools,
@@ -44,8 +47,9 @@ div[aria-label="Decision history"] .spec-row { grid-template-columns: 1fr auto a
   section[aria-label="Present"] .panel-tools > * { flex: 1 1 140px; }
   div[aria-label="Decision history"] .spec-row { grid-template-columns: 1fr; gap: 8px; padding: 12px 14px; }
   div[aria-label="Decision history"] .spec-row > span { display: block !important; }
-  .album-steps { margin-left: 12px; }
-  .album-steps button { padding: 0 12px; }
+  .album-steps-row { margin-left: 12px; margin-right: 12px; }
+  .album-steps { overflow-x: auto; max-width: 100%; }
+  .album-steps button { padding: 0 12px; flex: none; }
 }
 @media (max-width: 760px) {
   .album-grid, .album-grid-empty { grid-template-columns: 1fr !important; gap: 16px; }
