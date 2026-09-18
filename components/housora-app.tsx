@@ -2068,7 +2068,7 @@ function AlbumWorkspace({
   const [prompt, setPrompt] = useState(initialDraft?.prompt ?? "");
   const [preview, setPreview] = useState<string | null>(initialDraft?.image ?? null);
   const [selectedWorkflow, setSelectedWorkflow] = useState<ProjectWorkflow | null>(initialDraft?.workflow ?? (initialDraft?.image ? "create" : null));
-  const [projectStep, setProjectStep] = useState<"design" | "specify" | "budget">("design");
+  const [projectStep, setProjectStep] = useState<"design" | "specify" | "budget" | "present">("design");
   const workflowRef = useRef<ProjectWorkflow | null>(initialDraft?.workflow ?? (initialDraft?.image ? "create" : null));
   const [detailChoices, setDetailChoices] = useState<Record<string, string>>({});
   const [outputRatio, setOutputRatio] = useState("auto");
@@ -2680,6 +2680,7 @@ function AlbumWorkspace({
           <button role="tab" aria-selected={projectStep === "design"} onClick={() => setProjectStep("design")}>Design</button>
           <button role="tab" aria-selected={projectStep === "specify"} onClick={() => setProjectStep("specify")}>Specify</button>
           <button role="tab" aria-selected={projectStep === "budget"} onClick={() => setProjectStep("budget")}>Budget</button>
+          <button role="tab" aria-selected={projectStep === "present"} onClick={() => setProjectStep("present")}>Present</button>
         </div>
       ) : null}
       <input ref={fileRef} className="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Upload a space photo" onChange={(event) => { upload(event.target.files?.[0]); event.currentTarget.value = ""; }} />
@@ -2688,8 +2689,10 @@ function AlbumWorkspace({
         {projectStep !== "design" && versionContext ? (
           projectStep === "specify" ? (
             <SpecPanel projectId={versionContext.projectId} roomId={versionContext.roomId} />
-          ) : (
+          ) : projectStep === "budget" ? (
             <BudgetPanel projectId={versionContext.projectId} />
+          ) : (
+            <PresentPanel projectId={versionContext.projectId} roomId={versionContext.roomId} preview={preview} />
           )
         ) : selectedWorkflow === "create" ? (
           <CreateWorkflow
@@ -3003,6 +3006,75 @@ function BudgetPanel({ projectId }: { projectId: string }) {
           <div><b>Tax ({taxRate}%)</b><span>${taxAmt.toLocaleString()}</span></div>
           <div><b>Shipping</b><span>${shipping.toLocaleString()}</span></div>
           <div><b>Contingency ({contPct}%)</b><span>${contAmt.toLocaleString()}</span></div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomId: string; preview: string | null }) {
+  const items = useQuery(api.specItems.list, { projectId });
+  const budget = useQuery(api.budgets.get, { projectId });
+  const versions = useQuery(api.roomVersions.list, { projectId, roomId });
+  const latest = versions?.[0] as any;
+  const approval = useQuery(api.collab.getApproval, latest?._id ? { versionId: String(latest._id) } : "skip");
+  const setApproval = useMutation(api.collab.setApproval);
+  const createLink = useMutation(api.collab.createShareLink);
+  const [shareUrl, setShareUrl] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const subtotal = (items ?? []).reduce((s, i) => s + (i.retailPrice ?? 0) * i.quantity, 0);
+  const total = subtotal + (subtotal * (budget?.taxRate ?? 0)) / 100 + (budget?.shippingFlat ?? 0);
+  const forecast = total + (total * (budget?.contingencyPct ?? 10)) / 100;
+  const share = async () => {
+    setError(""); setBusy(true);
+    try {
+      const row = await createLink({ projectId, role: "client_viewer" }) as any;
+      const token = row?.token ?? String(row ?? "");
+      const url = `${window.location.origin}/share/${token}`;
+      setShareUrl(url);
+      setCopied(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not create link.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const copy = async () => {
+    if (!shareUrl) return;
+    try { await navigator.clipboard.writeText(shareUrl); setCopied(true); }
+    catch { setError("Copy failed — select the link manually."); }
+  };
+  const decide = async (status: "approved" | "changes_requested") => {
+    if (!latest) return;
+    setError("");
+    try { await setApproval({ versionId: String(latest._id), projectId, status }); }
+    catch (e) { setError(e instanceof Error ? e.message : "Could not record decision."); }
+  };
+  return (
+    <section className="project-panel" aria-label="Present">
+      <div className="panel-heading">
+        <div>
+          <span className="eyebrow">Present</span>
+          <h2>Share this project</h2>
+          <p>{versions?.length ?? 0} versions · {items?.length ?? 0} specified items · forecast ${forecast.toLocaleString()}</p>
+        </div>
+      </div>
+      {preview ? <p><small>Current view is the latest design. Clients open a read-only link — they can view, never edit.</small></p> : null}
+      <div className="panel-tools">
+        <button className="primary-action" onClick={() => void share()} disabled={busy}>{busy ? "Creating…" : shareUrl ? "New link" : "Create client link"}</button>
+        {shareUrl ? <button onClick={() => void copy()}>{copied ? "Copied" : "Copy link"}</button> : null}
+      </div>
+      {shareUrl ? <p className="album-credit-note" style={{ wordBreak: "break-all" }}>{shareUrl}</p> : null}
+      {error ? <p role="alert" className="album-upload-error">{error}</p> : null}
+      <div className="budget-body">
+        <div className="budget-list">
+          <div><b>Latest version approval</b><span>{approval ? String((approval as any).status).replaceAll("_", " ") : "No decision yet"}</span></div>
+          <div>
+            <button onClick={() => void decide("approved")} disabled={!latest}>Approve latest</button>
+            <button onClick={() => void decide("changes_requested")} disabled={!latest} style={{ marginLeft: 8 }}>Request changes</button>
+          </div>
         </div>
       </div>
     </section>
