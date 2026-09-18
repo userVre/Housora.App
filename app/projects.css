@@ -24,6 +24,9 @@
 .inspiration-card:not(.is-loaded) { min-height: 280px; background: linear-gradient(180deg, #23241f, #1b1c18); }
 .project-workflow-grid .workflow-primary { border-color: #f4f0e8; background: #f4f0e8; color: #171713; }
 .project-workflow-grid .workflow-primary small { color: #5f6059; }
+.album-steps { display: inline-flex; gap: 4px; padding: 4px; margin: 12px 0 0 16px; background: #1b1c18; border: 1px solid #2e2f2a; border-radius: 999px; }
+.album-steps button { min-height: 36px; padding: 0 18px; border: 0; border-radius: 999px; background: transparent; color: #a8a9a0; font-size: 12px; font-weight: 700; }
+.album-steps button[aria-selected="true"] { background: #f4f0e8; color: #171713; }
 @media (max-width: 760px) {
   .album-grid, .album-grid-empty { grid-template-columns: 1fr !important; gap: 16px; }
   .album-card > span { aspect-ratio: 16/10; }

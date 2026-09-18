@@ -2068,6 +2068,7 @@ function AlbumWorkspace({
   const [prompt, setPrompt] = useState(initialDraft?.prompt ?? "");
   const [preview, setPreview] = useState<string | null>(initialDraft?.image ?? null);
   const [selectedWorkflow, setSelectedWorkflow] = useState<ProjectWorkflow | null>(initialDraft?.workflow ?? (initialDraft?.image ? "create" : null));
+  const [showSpecify, setShowSpecify] = useState(false);
   const workflowRef = useRef<ProjectWorkflow | null>(initialDraft?.workflow ?? (initialDraft?.image ? "create" : null));
   const [detailChoices, setDetailChoices] = useState<Record<string, string>>({});
   const [outputRatio, setOutputRatio] = useState("auto");
@@ -2674,10 +2675,18 @@ function AlbumWorkspace({
           ) : null}
         </div>
       </header>
+      {versionContext ? (
+        <div className="album-steps" role="tablist" aria-label="Project steps">
+          <button role="tab" aria-selected={!showSpecify} onClick={() => setShowSpecify(false)}>Design</button>
+          <button role="tab" aria-selected={showSpecify} onClick={() => setShowSpecify(true)}>Specify</button>
+        </div>
+      ) : null}
       <input ref={fileRef} className="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Upload a space photo" onChange={(event) => { upload(event.target.files?.[0]); event.currentTarget.value = ""; }} />
       <p className="visually-hidden" role="alert" aria-live="assertive">{uploadError}</p>
       <div className={`album-workspace-body workflow-${selectedWorkflow || "launcher"}${preview ? "" : " is-launcher"}`}>
-        {selectedWorkflow === "create" ? (
+        {showSpecify && versionContext ? (
+          <SpecPanel projectId={versionContext.projectId} roomId={versionContext.roomId} />
+        ) : selectedWorkflow === "create" ? (
           <CreateWorkflow
             preview={preview}
             mode={mode}
@@ -2843,6 +2852,76 @@ function AlbumWorkspace({
 
 
 
+
+function SpecPanel({ projectId, roomId }: { projectId: string; roomId: string }) {
+  const items = useQuery(api.specItems.list, { projectId });
+  const addItem = useMutation(api.specItems.add);
+  const setStatus = useMutation(api.specItems.setStatus);
+  const removeItem = useMutation(api.specItems.remove);
+  const [name, setName] = useState("");
+  const [qty, setQty] = useState("1");
+  const [price, setPrice] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const total = (items ?? []).reduce((s, i) => s + (i.retailPrice ?? 0) * i.quantity, 0);
+  const submit = async () => {
+    setError("");
+    if (!name.trim()) { setError("Name the product first."); return; }
+    setBusy(true);
+    try {
+      await addItem({
+        projectId,
+        roomId,
+        name: name.trim(),
+        quantity: Math.max(1, parseInt(qty, 10) || 1),
+        retailPrice: price.trim() ? Math.max(0, Number(price)) : undefined,
+      });
+      setName(""); setQty("1"); setPrice("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not add item.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="project-panel" aria-label="Specification">
+      <div className="panel-heading">
+        <div>
+          <span className="eyebrow">Specification</span>
+          <h2>Products for this project</h2>
+          <p>Real list, saved to this project. {items?.length ? `${items.length} items · $${total.toLocaleString()}` : "Add the first product."}</p>
+        </div>
+      </div>
+      <div className="panel-tools">
+        <input aria-label="Product name" placeholder="e.g. Luna sofa — sand bouclé" value={name} onChange={(e) => setName(e.target.value)} />
+        <input aria-label="Quantity" placeholder="Qty" inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value)} style={{ maxWidth: 72 }} />
+        <input aria-label="Retail price" placeholder="$" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} style={{ maxWidth: 110 }} />
+        <button className="primary-action" onClick={() => void submit()} disabled={busy}>{busy ? "Adding…" : "Add"}</button>
+      </div>
+      {error ? <p role="alert" className="album-upload-error">{error}</p> : null}
+      {items === undefined ? <p>Loading…</p> : items.length ? (
+        <div className="spec-table rich-spec">
+          <div className="spec-row spec-head"><span>Item</span><span>Qty</span><span>Price</span><span>Status</span><span></span></div>
+          {items.map((item) => (
+            <div className="spec-row" key={item._id}>
+              <span><b>{item.name}</b></span>
+              <span>× {item.quantity}</span>
+              <span>{item.retailPrice !== undefined ? `$${(item.retailPrice * item.quantity).toLocaleString()}` : "—"}</span>
+              <span>
+                <button onClick={() => void setStatus({ itemId: item._id, status: item.status === "to_source" ? "specified" : item.status === "specified" ? "approved" : "to_source" })}>
+                  {item.status === "to_source" ? "To source" : item.status === "specified" ? "Specified" : "Approved"} →
+                </button>
+              </span>
+              <span><button aria-label={`Remove ${item.name}`} onClick={() => void removeItem({ itemId: item._id })}>Remove</button></span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="empty-panel"><h3>No products yet</h3><p>Add what this room needs — it stays with the project.</p></div>
+      )}
+    </section>
+  );
+}
 
 function ClientsPage({
   onInvite,

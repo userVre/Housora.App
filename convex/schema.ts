@@ -330,4 +330,22 @@ export default defineSchema({
     .index("by_token", ["token"])
     .index("by_owner_task", ["ownerId", "taskId"])
     .index("by_owner", ["ownerId"]),
+  // Real product specification per project (replaces static mock rows)
+  specItems: defineTable({
+    ownerId: v.string(),
+    projectId: v.string(),
+    roomId: v.optional(v.string()),
+    name: v.string(),
+    category: v.optional(v.string()),
+    quantity: v.number(),
+    unit: v.optional(v.string()),
+    retailPrice: v.optional(v.number()),
+    supplier: v.optional(v.string()),
+    link: v.optional(v.string()),
+    status: v.union(v.literal("to_source"), v.literal("specified"), v.literal("approved")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_owner", ["ownerId"]),
 });

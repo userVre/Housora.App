@@ -24,6 +24,7 @@ import type * as projects from "../projects.js";
 import type * as roomVersions from "../roomVersions.js";
 import type * as savedDesigns from "../savedDesigns.js";
 import type * as savedReferences from "../savedReferences.js";
+import type * as specItems from "../specItems.js";
 import type * as tripoRequests from "../tripoRequests.js";
 
 import type {
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   roomVersions: typeof roomVersions;
   savedDesigns: typeof savedDesigns;
   savedReferences: typeof savedReferences;
+  specItems: typeof specItems;
   tripoRequests: typeof tripoRequests;
 }>;
 
