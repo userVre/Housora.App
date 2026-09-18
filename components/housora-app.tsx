@@ -3692,10 +3692,10 @@ function LibraryPage({ designs, references, onCreate, onOpenDesign, onOpenRefere
       </div>
     </div>
     {visibleCount ? <div className="asset-library-grid">
-      {visibleDesigns.map((design) => <button key={design.id} className="asset-card" onClick={() => onOpenDesign(design)}>
+      {visibleDesigns.map((design) => { const isGeneric = /^(interior design|new project|untitled concept)$/i.test(design.title.trim()); const label = isGeneric ? `${design.mode} concept` : design.title; return <button key={design.id} className="asset-card" onClick={() => onOpenDesign(design)}>
         <span><Image src={design.image} alt="" fill sizes="(max-width:700px) 50vw, 260px" unoptimized={design.image.startsWith("http") || design.image.startsWith("data:")} /><i>{design.prompt?.trim() ? "Generated" : "Uploaded"}</i></span>
-        <b>{design.title}</b><small>{design.mode} · {new Intl.DateTimeFormat("en", { month:"short", day:"numeric" }).format(new Date(design.savedAt))}</small>
-      </button>)}
+        <b>{label}</b><small>{design.mode} · {new Intl.DateTimeFormat("en", { month:"short", day:"numeric" }).format(new Date(design.savedAt))}</small>
+      </button>;})}
       {filter === "all" || filter === "saved" ? saved.map((reference) => <button key={reference.title} className="asset-card" onClick={() => onOpenReference(reference)}>
         <span><Image src={reference.image} alt="" fill sizes="(max-width:700px) 50vw, 260px" unoptimized /><i>Saved</i></span>
         <b>{reference.title}</b><small>{reference.style} · {reference.room}</small>
