@@ -3047,6 +3047,7 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
   const resolveComment = useMutation(api.collab.resolveComment);
   const rooms = useQuery(api.projects.listRooms, { projectId });
   const updateRoom = useMutation(api.projects.updateRoom);
+  const members = useQuery(api.projects.listMembers, { projectId });
   const myRoom = ((rooms ?? []) as any[]).find((r) => String(r._id) === roomId) ?? (rooms as any[])?.[0];
   const [rw, setRw] = useState("");
   const [rl, setRl] = useState("");
@@ -3229,6 +3230,15 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
       </div>
       {shareUrl ? <p className="album-credit-note" style={{ wordBreak: "break-all" }}>{shareUrl}</p> : null}
       {error ? <p role="alert" className="album-upload-error">{error}</p> : null}
+      <div className="budget-body">
+        <div className="budget-list">
+          <div><b>Project team</b><span>{members === undefined ? "Loading…" : `${members.length} member${members.length === 1 ? "" : "s"}`}</span></div>
+          {(members ?? []).map((m: any) => (
+            <div key={String(m._id)}><b>{m.email ?? "Designer"}</b><span>{String(m.role).replaceAll("_", " ")}</span></div>
+          ))}
+          <div><b>Client access</b><span>Invite clients with the read-only link above — seats stay on your Studio plan</span></div>
+        </div>
+      </div>
       <div className="budget-body">
         <div className="budget-list">
           <div><b>Latest version approval</b><span>{approval ? String((approval as any).status).replaceAll("_", " ") : "No decision yet"}</span></div>
