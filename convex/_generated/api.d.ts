@@ -17,6 +17,7 @@ import type * as durableAi from "../durableAi.js";
 import type * as floorPlans from "../floorPlans.js";
 import type * as furniture from "../furniture.js";
 import type * as helpers from "../helpers.js";
+import type * as invites from "../invites.js";
 import type * as jobs from "../jobs.js";
 import type * as jobsActions from "../jobsActions.js";
 import type * as models from "../models.js";
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   floorPlans: typeof floorPlans;
   furniture: typeof furniture;
   helpers: typeof helpers;
+  invites: typeof invites;
   jobs: typeof jobs;
   jobsActions: typeof jobsActions;
   models: typeof models;

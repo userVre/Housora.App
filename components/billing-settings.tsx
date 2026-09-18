@@ -239,8 +239,8 @@ export function SettingsPage({ onPricing }: { onPricing: () => void }) {
             </SettingsSection>
           ) : null}
           {!isLoading && tab === "Team" ? (
-            <SettingsSection icon={<Users aria-hidden size={18} />} title="Team & sharing" description="Sharing and invites will be added in a future release.">
-              <p className="settings-hint" role="status">Team invites — coming soon. Housora currently runs as a personal workspace.</p>
+            <SettingsSection icon={<Users aria-hidden size={18} />} title="Team & sharing" description="Invite teammates from a project, not from here.">
+              <p className="settings-hint" role="status">Open any saved project → Present → Team invites. Links are single-use and expire in 14 days; client view links stay read-only.</p>
             </SettingsSection>
           ) : null}
           {!isLoading && tab === "Notifications" ? (
@@ -269,6 +269,7 @@ export function SettingsPage({ onPricing }: { onPricing: () => void }) {
               <Toggle label="Product analytics" hint="Share interaction events that help improve Housora. Prompts, uploaded images, and photo content are excluded." checked={form.analyticsConsent} onChange={(v) => { set("analyticsConsent", v); if (!v) set("replayConsent", false); }} />
               <Toggle label="Session replay" hint="Session replay is currently unavailable. No recordings are created." checked={false} onChange={() => undefined} disabled />
               <p className="settings-hint settings-hint--muted">Analytics are optional. Session replay is currently unavailable.</p>
+              <p className="settings-hint">How your work is processed: design photos are sent to AI providers for generation, object detection, and 3D modeling; projects stay private to your workspace and are never used for advertising. Client links and invites expire and can be revoked anytime from Present.</p>
               <div className="settings-legal">
                 <Link href="/privacy">Privacy Policy</Link>
                 <Link href="/terms">Terms of Service</Link>

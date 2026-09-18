@@ -358,4 +358,18 @@ export default defineSchema({
     contingencyPct: v.number(),
     updatedAt: v.number(),
   }).index("by_project", ["projectId"]),
+  // Token-link team invites (email is a label; anyone with the link can claim one seat)
+  projectInvites: defineTable({
+    projectId: v.string(),
+    email: v.optional(v.string()),
+    role: v.union(v.literal("designer"), v.literal("collaborator"), v.literal("client_viewer")),
+    token: v.string(),
+    createdBy: v.string(),
+    expiresAt: v.optional(v.number()),
+    acceptedAt: v.optional(v.number()),
+    revokedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_token", ["token"])
+    .index("by_project", ["projectId"]),
 });

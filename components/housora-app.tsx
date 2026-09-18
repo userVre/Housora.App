@@ -3048,6 +3048,15 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
   const rooms = useQuery(api.projects.listRooms, { projectId });
   const updateRoom = useMutation(api.projects.updateRoom);
   const members = useQuery(api.projects.listMembers, { projectId });
+  const prefs = useQuery(api.preferences.getMine, {});
+  const brand = (prefs as any)?.studioName?.trim() || "";
+  const invites = useQuery(api.invites.list, { projectId });
+  const createInvite = useMutation(api.invites.create);
+  const revokeInvite = useMutation(api.invites.revoke);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"designer" | "collaborator" | "client_viewer">("collaborator");
+  const [inviteLink, setInviteLink] = useState("");
+  const [inviteBusy, setInviteBusy] = useState(false);
   const myRoom = ((rooms ?? []) as any[]).find((r) => String(r._id) === roomId) ?? (rooms as any[])?.[0];
   const [rw, setRw] = useState("");
   const [rl, setRl] = useState("");
@@ -3174,10 +3183,12 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
     pdf.text(title, 18, 24);
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(10);
-    pdf.text(`Housora design package · ${date}`, 18, 33);
-    pdf.text(`${versions?.length ?? 0} versions · ${(items ?? []).length} specified items · forecast $${Math.round(forecast).toLocaleString()}`, 18, 39);
-    pdf.text(`Latest approval: ${approval ? String((approval as any).status).replaceAll("_", " ") : "no decision yet"}`, 18, 45);
-    let y = 58;
+    if (brand) pdf.text(String(brand), 18, 33);
+    const headY = brand ? 39 : 33;
+    pdf.text(`Housora design package · ${date}`, 18, headY);
+    pdf.text(`${versions?.length ?? 0} versions · ${(items ?? []).length} specified items · forecast $${Math.round(forecast).toLocaleString()}`, 18, headY + 6);
+    pdf.text(`Latest approval: ${approval ? String((approval as any).status).replaceAll("_", " ") : "no decision yet"}`, 18, headY + 12);
+    let y = headY + 25;
     pdf.setFontSize(11);
     pdf.text("Specified products", 18, y);
     y += 7;
@@ -3216,9 +3227,9 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
     <section className="project-panel" aria-label="Present">
       <div className="panel-heading">
         <div>
-          <span className="eyebrow">Present</span>
+          <span className="eyebrow">Present{brand ? ` · ${brand}` : ""}</span>
           <h2>Share this project</h2>
-          <p>{versions?.length ?? 0} versions · {items?.length ?? 0} specified items · forecast ${forecast.toLocaleString()}</p>
+          <p>{versions?.length ?? 0} versions · {items?.length ?? 0} specified items · forecast ${forecast.toLocaleString()}{brand ? ` · Prepared by ${brand}` : ""}</p>
         </div>
       </div>
       {preview ? <p><small>Current view is the latest design. Clients open a read-only link — they can view, never edit.</small></p> : null}
@@ -3237,8 +3248,36 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
             <div key={String(m._id)}><b>{m.email ?? "Designer"}</b><span>{String(m.role).replaceAll("_", " ")}</span></div>
           ))}
           <div><b>Client access</b><span>Invite clients with the read-only link above — seats stay on your Studio plan</span></div>
+          <div><b>Team invites</b><span>By link — the invite is single-use and expires in 14 days</span></div>
         </div>
       </div>
+      <div className="panel-tools">
+        <input aria-label="Invite email (optional)" placeholder="teammate@studio.com (optional)" inputMode="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} style={{ maxWidth: 220 }} />
+        <select aria-label="Invite role" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as typeof inviteRole)} style={{ maxWidth: 150 }}>
+          <option value="collaborator">Collaborator</option>
+          <option value="designer">Designer</option>
+          <option value="client_viewer">Client viewer</option>
+        </select>
+        <button onClick={() => {
+          setError(""); setInviteBusy(true); setInviteLink("");
+          void createInvite({ projectId, email: inviteEmail.trim() || undefined, role: inviteRole })
+            .then((token) => { setInviteLink(`${window.location.origin}/invite/${token}`); setInviteEmail(""); })
+            .catch((e) => setError(e instanceof Error ? e.message : "Could not create invite."))
+            .finally(() => setInviteBusy(false));
+        }} disabled={inviteBusy}>{inviteBusy ? "Creating…" : "Invite teammate"}</button>
+      </div>
+      {inviteLink ? <p className="album-credit-note" style={{ wordBreak: "break-all" }}>{inviteLink}</p> : null}
+      {(invites ?? []).filter((i: any) => !i.revokedAt && !i.acceptedAt).length ? (
+        <div className="spec-table rich-spec" aria-label="Pending invites">
+          {(invites ?? []).filter((i: any) => !i.revokedAt && !i.acceptedAt).map((i: any) => (
+            <div className="spec-row" key={String(i._id)}>
+              <span><b>{i.email ?? "Open invite"}</b><small>{String(i.role).replaceAll("_", " ")}</small></span>
+              <span><button onClick={() => { void navigator.clipboard.writeText(`${window.location.origin}/invite/${i.token}`); }}>Copy</button></span>
+              <span><button onClick={() => { void revokeInvite({ token: i.token }).catch((e) => setError(e instanceof Error ? e.message : "Could not revoke.")); }}>Revoke</button></span>
+            </div>
+          ))}
+        </div>
+      ) : null}
       <div className="budget-body">
         <div className="budget-list">
           <div><b>Latest version approval</b><span>{approval ? String((approval as any).status).replaceAll("_", " ") : "No decision yet"}</span></div>
