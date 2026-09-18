@@ -67,8 +67,8 @@ describe("project editor information architecture", () => {
 
   it("starts new projects from four clear workflows", () => {
     expect(albumWorkspace).toContain('aria-label="Choose a project workflow"');
-    expect(albumWorkspace).toContain("<b>Create</b>");
-    expect(albumWorkspace).toContain("<b>Edit</b>");
+    expect(albumWorkspace).toContain("Create — start here");
+    expect(albumWorkspace).toContain("{simpleMode ? \"Change things\" : \"Edit\"}");
     expect(albumWorkspace).toContain("<b>3D</b>");
     expect(albumWorkspace).toContain("<b>AR</b>");
     expect(albumWorkspace).toContain('workflowRef.current = "edit"');
