@@ -3013,6 +3013,7 @@ function BudgetPanel({ projectId }: { projectId: string }) {
 }
 
 function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomId: string; preview: string | null }) {
+  const project = useQuery(api.projects.getProject, { projectId });
   const items = useQuery(api.specItems.list, { projectId });
   const budget = useQuery(api.budgets.get, { projectId });
   const versions = useQuery(api.roomVersions.list, { projectId, roomId });
@@ -3052,6 +3053,75 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
     try { await setApproval({ versionId: String(latest._id), projectId, status }); }
     catch (e) { setError(e instanceof Error ? e.message : "Could not record decision."); }
   };
+  const downloadCsv = () => {
+    const rows = (items ?? []).map((i) => ({
+      name: i.name,
+      quantity: i.quantity,
+      unit: i.unit ?? "",
+      retail_price: i.retailPrice ?? "",
+      line_total: i.retailPrice !== undefined ? i.retailPrice * i.quantity : "",
+      supplier: i.supplier ?? "",
+      status: i.status,
+    }));
+    const head = "name,quantity,unit,retail_price,line_total,supplier,status";
+    const esc = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
+    const body = rows.map((r) => [r.name, r.quantity, r.unit, r.retail_price, r.line_total, r.supplier, r.status].map(esc).join(",")).join("\n");
+    const tail = `\n${esc("SUBTOTAL")},${esc("")},${esc("")},${esc("")},${esc(subtotal)},${esc("")},${esc("")}\n${esc("FORECAST TOTAL")},${esc("")},${esc("")},${esc("")},${esc(Math.round(forecast))},${esc("")},${esc("")}`;
+    const blob = new Blob([[head, body, tail].filter(Boolean).join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(project as any)?.name ?? "housora-spec"}.csv`.replaceAll(/[^a-z0-9-_. ]/gi, "").slice(0, 60) || "housora-spec.csv";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  };
+  const downloadPdf = () => {
+    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const title = String((project as any)?.name ?? "Design package").slice(0, 80);
+    const date = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    pdf.setFont("times", "normal");
+    pdf.setFontSize(24);
+    pdf.text(title, 18, 24);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    pdf.text(`Housora design package · ${date}`, 18, 33);
+    pdf.text(`${versions?.length ?? 0} versions · ${(items ?? []).length} specified items · forecast $${Math.round(forecast).toLocaleString()}`, 18, 39);
+    pdf.text(`Latest approval: ${approval ? String((approval as any).status).replaceAll("_", " ") : "no decision yet"}`, 18, 45);
+    let y = 58;
+    pdf.setFontSize(11);
+    pdf.text("Specified products", 18, y);
+    y += 7;
+    pdf.setFontSize(9);
+    for (const i of items ?? []) {
+      const line = `${i.name}  × ${i.quantity}  —  ${i.retailPrice !== undefined ? "$" + (i.retailPrice * i.quantity).toLocaleString() : "price TBD"}  [${i.status}]`;
+      const wrapped = pdf.splitTextToSize(line, 170);
+      if (y + wrapped.length * 5 > 270) { pdf.addPage(); y = 20; }
+      pdf.text(wrapped, 18, y);
+      y += wrapped.length * 5 + 2;
+    }
+    if (!(items ?? []).length) { pdf.text("No products specified yet.", 18, y); y += 7; }
+    y += 4;
+    pdf.setFontSize(11);
+    pdf.text("Budget", 18, y);
+    y += 7;
+    pdf.setFontSize(9);
+    const lines = [
+      `Products: $${Math.round(subtotal).toLocaleString()}`,
+      `Tax (${budget?.taxRate ?? 0}%): $${Math.round((subtotal * (budget?.taxRate ?? 0)) / 100).toLocaleString()}`,
+      `Shipping: $${Math.round(budget?.shippingFlat ?? 0).toLocaleString()}`,
+      `Contingency (${budget?.contingencyPct ?? 10}%): $${Math.round(forecast - total).toLocaleString()}`,
+      `Forecast total: $${Math.round(forecast).toLocaleString()}`,
+    ];
+    for (const l of lines) {
+      if (y > 270) { pdf.addPage(); y = 20; }
+      pdf.text(l, 18, y);
+      y += 6;
+    }
+    y += 6;
+    pdf.setFontSize(8);
+    pdf.text("AI concepts are visualizations, not construction documents. Verify measurements and products with a qualified professional.", 18, y, { maxWidth: 170 });
+    pdf.save(`${((project as any)?.name ?? "housora-package").replaceAll(/[^a-z0-9-_ ]/gi, "").slice(0, 60) || "housora-package"}.pdf`);
+  };
   return (
     <section className="project-panel" aria-label="Present">
       <div className="panel-heading">
@@ -3065,6 +3135,8 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
       <div className="panel-tools">
         <button className="primary-action" onClick={() => void share()} disabled={busy}>{busy ? "Creating…" : shareUrl ? "New link" : "Create client link"}</button>
         {shareUrl ? <button onClick={() => void copy()}>{copied ? "Copied" : "Copy link"}</button> : null}
+        <button onClick={downloadPdf}>Download PDF</button>
+        <button onClick={downloadCsv}>Download list (CSV)</button>
       </div>
       {shareUrl ? <p className="album-credit-note" style={{ wordBreak: "break-all" }}>{shareUrl}</p> : null}
       {error ? <p role="alert" className="album-upload-error">{error}</p> : null}
