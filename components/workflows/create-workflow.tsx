@@ -2,6 +2,8 @@
 
 import "../../app/workflows/create-workflow.css";
 import Image from "next/image";
+
+import { AI_COSTS } from "../../lib/ai-costs";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowUp,
@@ -694,7 +696,7 @@ export function CreateWorkflow({
               className="create-workflow-generate is-sticky"
               aria-label={busy ? "Generating redesign" : "Generate redesign"}
               aria-describedby="create-generate-status"
-              title={ready ? "Generate" : "Add a photo first"}
+              title={ready ? `Generate · ${AI_COSTS.imageEdit} credits` : "Add a photo first"}
               disabled={!ready || busy}
               onClick={onGenerate}
             >
@@ -703,7 +705,7 @@ export function CreateWorkflow({
           </div>
 
           <p id="create-generate-status" className="create-workflow-status" aria-live="polite">
-            {preview ? "Photo ready — choose a direction below, then Generate." : "Add a photo to enable Generate."}
+            {preview ? `Photo ready — Generate uses ${AI_COSTS.imageEdit} credits.` : `Add a photo to enable Generate · ${AI_COSTS.imageEdit} credits per design.`}
           </p>
 
           {error && preview ? (
