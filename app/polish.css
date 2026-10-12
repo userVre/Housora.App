@@ -159,6 +159,15 @@
   min-height: 0;
   overflow-y: auto;
 }
+.rail-recent-thumb {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--night-panel);
+  border: 1px solid var(--night-line);
+}
 .profile-button {
   flex: none;
 }

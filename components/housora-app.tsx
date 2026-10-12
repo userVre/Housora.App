@@ -882,7 +882,7 @@ export function HousoraApp({
         </nav>
         {!shellCollapsed ? <section className="rail-recents" aria-labelledby="recent-projects-title">
           <div className="rail-section-title"><span id="recent-projects-title">Recent</span><button onClick={() => navigate("projects")} aria-label="View all projects">View all</button></div>
-          {recentProjects.length ? <ul>{recentProjects.map((design) => {
+          {recentProjects.length ? <ul>{recentProjects.slice(0, 6).map((design) => {
             const railTitle = /^(interior design|new project|untitled concept)$/i.test(design.title.trim()) ? `${design.mode} concept` : design.title;
             return <li key={design.id}>
             {renamingRecentId === design.id ? <input className="rail-recent-rename" aria-label={`Rename ${design.title}`} title="Enter to save · Escape to cancel" value={recentRename} onChange={(event) => setRecentRename(event.target.value)} onBlur={() => finishRecentRename(design)} onKeyDown={(event) => {
@@ -893,8 +893,20 @@ export function HousoraApp({
               if (recentOpenTimer.current) window.clearTimeout(recentOpenTimer.current);
               recentOpenTimer.current = window.setTimeout(() => openSavedProject(design), 220);
             }} onDoubleClick={() => beginRecentRename(design)} title={`${design.title} · Double-click to rename`}>
-              {design.pinned ? <Pin aria-hidden="true" /> : <span aria-hidden="true" />}
-              <span className="rail-recent-label"><span>{railTitle}</span><small>{(() => { try { const d = new Date(design.savedAt); return Number.isNaN(d.getTime()) ? design.mode : `${design.mode} · ${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`; } catch { return design.mode; } })()}</small></span>
+              {design.pinned ? <Pin aria-hidden="true" /> : null}
+              {design.image && !design.image.startsWith("data:") ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  className="rail-recent-thumb"
+                  src={design.image}
+                  alt=""
+                  width={40}
+                  height={40}
+                  loading="lazy"
+                  onError={(e) => { e.currentTarget.style.display = "none"; }}
+                />
+              ) : null}
+              <span className="rail-recent-label"><span>{railTitle}</span><small>{(() => { try { const d = new Date(design.savedAt); return Number.isNaN(d.getTime()) ? design.mode : `${design.mode} · ${new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(d)}`; } catch { return design.mode; } })()}</small></span>
             </button>}
             <button className="rail-recent-more" onClick={() => setRecentMenuOpen(recentMenuOpen === design.id ? null : design.id)} aria-label={`Project actions for ${design.title}`} aria-expanded={recentMenuOpen === design.id}><DotsThree aria-hidden="true" /></button>
             {recentMenuOpen === design.id ? <div className="rail-project-menu" role="menu">
@@ -2675,7 +2687,7 @@ function AlbumWorkspace({
           <button className="album-back" onClick={handleHeaderBack} aria-label={headerBackLabel}>
             <ArrowLeft /> {headerBackLabel}
           </button>
-          <span className="album-project-title" title={preview ? initialDraft?.title && initialDraft.title !== "New project" ? initialDraft.title : `${mode} project` : "New project"}>{preview ? initialDraft?.title && initialDraft.title !== "New project" ? initialDraft.title : `${mode} project` : "New project"}</span>
+          <span className="album-project-title" title={preview ? initialDraft?.title && initialDraft.title !== "New project" ? initialDraft.title : `${mode} project` : "Start a design"}>{preview ? initialDraft?.title && initialDraft.title !== "New project" ? initialDraft.title : `${mode} project` : "Start a design"}</span>
         </div>
         <div className="album-bar-right">
           {preview ? (
@@ -3421,29 +3433,13 @@ function ClientsPage({
   onInvite: () => void;
   onOpen: () => void;
 }) {
-  const clients = [
-    {
-      name: "Emma Laurent",
-      meta: "Last contact today",
-      decision: "Sofa fabric approval",
-      value: "$25,000",
-      portal: "Review open",
-    },
-    {
-      name: "Noah Williams",
-      meta: "Last contact yesterday",
-      decision: "Flooring quote",
-      value: "$45,000",
-      portal: "Portal active",
-    },
-    {
-      name: "Mia Chen",
-      meta: "Last contact Aug 24",
-      decision: "Installation schedule",
-      value: "$15,000",
-      portal: "Approved",
-    },
-  ];
+  const clients: Array<{
+    name: string;
+    meta: string;
+    decision: string;
+    value: string;
+    portal: string;
+  }> = [];
   return (
     <CollectionPage
       eyebrow="Client relationships"
@@ -3452,7 +3448,8 @@ function ClientsPage({
       action="Invite client"
       onAction={onInvite}
     >
-      {clients.map((client, index) => (
+      {clients.length ? (
+      clients.map((client, index) => (
         <article className="client-card rich-client" key={client.name}>
           <span>
             {client.name
@@ -3480,7 +3477,15 @@ function ClientsPage({
             <i style={{ width: `${76 - index * 18}%` }} />
           </div>
         </article>
-      ))}
+      ))
+      ) : (
+        <div className="empty-panel">
+          <Users aria-hidden="true" />
+          <h3>No clients yet</h3>
+          <p>Invite your first client from a project — they get a read-only link, you keep every decision in one place.</p>
+          <button className="primary-action" onClick={onInvite}>Invite client</button>
+        </div>
+      )}
     </CollectionPage>
   );
 }
