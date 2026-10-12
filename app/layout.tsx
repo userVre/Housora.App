@@ -5,6 +5,7 @@ import { ConfigurationRequired } from "../components/configuration-required";
 import { ConvexClientProvider } from "./convex-client-provider";
 import { PostHogProvider } from "../components/posthog-provider";
 import "./globals.css";
+import "./polish.css";
 
 const siteIndexable = process.env.NEXT_PUBLIC_SITE_INDEXABLE === "true";
 

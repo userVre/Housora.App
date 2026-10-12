@@ -1,0 +1,173 @@
+/* Housora calm polish — shadcn-style tokens + readability.
+   Loaded after globals.css. Non-destructive overrides only. */
+
+:root {
+  /* Warmer, calmer darks (was pure black #11120f) */
+  --night: #171713;
+  --night-panel: #201f1b;
+  --night-line: #3a3933;
+  /* Brighter secondary text: >= 4.5:1 on --night-panel */
+  --night-muted: #c9c5b8;
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 20px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+}
+
+.product-shell {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* Readable minimums: buttons + nav were 12px */
+.product-shell .primary-action,
+.product-rail nav button,
+.workspace-dialog button,
+.album-bar-actions button {
+  font-size: 14px;
+}
+
+.product-shell small,
+.album-card small,
+.recent-strip small,
+.rail-recent-label > small,
+.real-object-list small,
+.pack-unit,
+.balance-breakdown,
+.billing-disclosure,
+.plan-annual-note {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* Headings never widowed */
+.product-shell :where(h1, h2, h3) {
+  text-wrap: balance;
+}
+
+/* Tabular numbers for money + counts */
+.budget-summary b,
+.budget-list span,
+.credit-cost-table td:last-child,
+.plan-card strong {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ONE unified search field */
+.search-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  width: min(100%, 620px);
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--night-line);
+  background: #1a1b17;
+  color: var(--night-text);
+}
+.search-input:focus-within {
+  border-color: #6b6a61;
+  box-shadow: 0 0 0 3px rgba(201, 155, 106, 0.16);
+}
+.search-input > svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--night-muted);
+}
+.search-input input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 14px;
+  min-height: 42px;
+  padding: 0;
+}
+.search-input input:focus {
+  outline: none;
+}
+.search-input input::placeholder {
+  color: var(--night-muted);
+}
+.search-input .clear-search {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  min-height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--night-muted);
+  cursor: pointer;
+}
+.search-input .clear-search:hover {
+  background: rgba(244, 240, 232, 0.08);
+  color: var(--night-text);
+}
+
+/* Spec + budget tool rows wrap instead of crushing */
+.panel-tools {
+  flex-wrap: wrap;
+  row-gap: 12px;
+}
+@media (max-width: 720px) {
+  .panel-tools > label {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+  .panel-tools > label input,
+  .panel-tools > label select {
+    max-width: none !important;
+    width: 100%;
+  }
+}
+
+/* Present steps read as 1-2-3 */
+.present-step {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.present-step .step-num {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--night-text);
+  color: var(--night);
+  font-size: 13px;
+  font-weight: 800;
+  transform: translateY(3px);
+}
+
+/* Sidebar recent + profile never overlap */
+.product-rail {
+  display: flex;
+  flex-direction: column;
+}
+.rail-recent {
+  min-height: 0;
+  overflow-y: auto;
+}
+.profile-button {
+  flex: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-shell *,
+  .product-shell *::before,
+  .product-shell *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

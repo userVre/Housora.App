@@ -110,7 +110,7 @@ export function PricingPage() {
           <tr><th scope="row">View in AR</th><td>Open an existing 3D model in your room on a supported device.</td><td>Free</td></tr>
         </tbody>
       </table>
-      <p className="credit-cost-note">Example: scan a photo once and edit two objects = {AI_COSTS.detection + AI_COSTS.imageEdit * 2} credits. Failed or empty detection scans return the scanning credit. AR viewing is free after a model exists. Mixed actions share one balance.</p>
+      <p className="credit-cost-note">Example: scan a photo once and edit two objects = {AI_COSTS.detection + AI_COSTS.imageEdit * 2} credits. Failed or empty detection scans return the scanning credit. AR viewing is free after a model exists. Example: 120 credits = 30 designs or 10 3D models. Mixed actions share one balance. Secure checkout by Whop — cancel future renewals anytime.</p>
     </section>
   <footer className="legal-links"><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/refunds">Refunds</Link><Link href="/cookies">Cookies</Link><span>Payments are securely processed by Whop.</span></footer>
   </div>;

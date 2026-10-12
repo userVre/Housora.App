@@ -74,6 +74,7 @@ import { EditWorkflow } from "./workflows/edit-workflow";
 import { ThreeDWorkflow } from "./workflows/three-d-workflow";
 import { ArWorkflow } from "./workflows/ar-workflow";
 import { smoothMask } from "../lib/mask-postprocess";
+import { SearchInput } from "./search-input";
 
 function getInitials(name: string): string {
   const normalized = name.trim();
@@ -1952,7 +1953,7 @@ function ProjectsPage({
     try {
       const d = new Date(value);
       if (Number.isNaN(d.getTime())) return "Saved recently";
-      return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(d);
     } catch {
       return "Saved recently";
     }
@@ -2003,32 +2004,41 @@ function ProjectsPage({
                   }
                 }}
               >
-                <span>
-                  {!hasError ? (
-                    <Image
-                      src={design.image}
-                      alt=""
-                      fill
-                      sizes="(max-width: 700px) 50vw, 240px"
-                      unoptimized={design.image.startsWith("data:") || design.image.startsWith("http")}
-                      onError={() => setImageErrors((m) => ({ ...m, [design.id]: true }))}
-                    />
-                  ) : (
-                    <span className="card-image-error" role="img" aria-label="Image failed to load">
-                      <ImagesSquare />
-                      <small>Image unavailable</small>
-                      <button
-                        className="card-retry"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setImageErrors((m) => ({ ...m, [design.id]: false }));
-                        }}
-                        aria-label={`Retry loading ${design.title}`}
-                      >
-                        Retry
-                      </button>
-                    </span>
-                  )}
+                  <span>
+                    {!hasError ? (
+                      <Image
+                        src={design.image}
+                        alt={`${displayTitle} — ${design.mode} concept preview`}
+                        fill
+                        sizes="(max-width: 700px) 50vw, 240px"
+                        unoptimized={design.image.startsWith("data:") || design.image.startsWith("http")}
+                        onError={() => setImageErrors((m) => ({ ...m, [design.id]: true }))}
+                      />
+                    ) : (
+                      <span className="card-image-error" role="img" aria-label="Image failed to load">
+                        <ImagesSquare />
+                        <small>Image unavailable</small>
+                        <span
+                          className="card-retry"
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Retry loading ${design.title}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setImageErrors((m) => ({ ...m, [design.id]: false }));
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setImageErrors((m) => ({ ...m, [design.id]: false }));
+                            }
+                          }}
+                        >
+                          Retry
+                        </span>
+                      </span>
+                    )}
                   <i className="card-badge">{design.mode}</i>
                 </span>
                 <b>{displayTitle}</b>
@@ -2882,9 +2892,8 @@ function AlbumWorkspace({
               </button>
               ) : null}
             </div>
-            <p className="project-workflow-prompt">{simpleMode ? "Start with Create. Your shopping list, costs and sharing open inside your project." : "Start with Create. Edit, 3D and AR open inside your project."}</p>
+            <p className="project-workflow-prompt">{simpleMode ? "Start with Create — uploading and choosing a direction are free, and we always ask before using credits." : "Start with Create — uploading and choosing a direction are free. Edit, 3D and AR open inside your project, and we always ask before using credits."}</p>
             {uploadError ? <p className="album-upload-error" role="alert">{uploadError}</p> : null}
-            <p className="album-credit-note">Uploading and choosing a direction are free. We always ask before using credits.</p>
           </div>
         )}
         {exportStatus ? <div role="status" aria-live="polite" style={{ position: "absolute", bottom: 64, left: "50%", transform: "translateX(-50%)", background: "rgba(24,24,22,0.96)", color: "#f4f0e8", border: "1px solid #34362f", borderRadius: 10, padding: "8px 12px", fontSize: 12, zIndex: 5 }}>{exportStatus}</div> : null}
@@ -2989,6 +2998,17 @@ function SpecPanel({ projectId, roomId }: { projectId: string; roomId: string })
 function BudgetPanel({ projectId }: { projectId: string }) {
   const items = useQuery(api.specItems.list, { projectId });
   const budget = useQuery(api.budgets.get, { projectId });
+  const prefs = useQuery(api.preferences.getMine, {});
+  const currency = (prefs as any)?.currency && ["USD", "EUR", "GBP", "MAD"].includes((prefs as any).currency)
+    ? (prefs as any).currency as string
+    : "USD";
+  const money = (n: number) => {
+    try {
+      return new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 0 }).format(n);
+    } catch {
+      return `$${n.toLocaleString()}`;
+    }
+  };
   const saveBudget = useMutation(api.budgets.save);
   const [cap, setCap] = useState("");
   const [tax, setTax] = useState("");
@@ -3043,24 +3063,24 @@ function BudgetPanel({ projectId }: { projectId: string }) {
         </div>
       </div>
       <div className="budget-summary expanded-budget">
-        <article><span>Specified</span><b>${subtotal.toLocaleString()}</b><small>{items?.length ?? 0} items</small></article>
-        <article><span>Forecast total</span><b>${total.toLocaleString()}</b><small>incl. tax, shipping, contingency</small></article>
-        <article><span>Remaining</span><b>{remaining === undefined ? "—" : `$${remaining.toLocaleString()}`}</b><small>{capNum === undefined ? "Set a client budget" : remaining !== undefined && remaining < 0 ? "Over budget" : "Within budget"}</small></article>
+        <article><span>Specified</span><b>{money(subtotal)}</b><small>{items?.length ?? 0} items</small></article>
+        <article><span>Forecast total</span><b>{money(total)}</b><small>incl. tax, shipping, contingency</small></article>
+        <article><span>Remaining</span><b>{remaining === undefined ? "—" : money(remaining)}</b><small>{capNum === undefined ? "Set a client budget" : remaining !== undefined && remaining < 0 ? "Over budget" : "Within budget"}</small></article>
       </div>
       <div className="panel-tools">
-        <label>Client budget $<input aria-label="Client budget" inputMode="decimal" value={cap} onChange={(e) => mark(setCap)(e.target.value)} placeholder="e.g. 25000" /></label>
+        <label>Client budget ({currency})<input aria-label="Client budget" inputMode="decimal" value={cap} onChange={(e) => mark(setCap)(e.target.value)} placeholder="e.g. 25000" /></label>
         <label>Tax %<input aria-label="Tax percent" inputMode="decimal" value={tax} onChange={(e) => mark(setTax)(e.target.value)} style={{ maxWidth: 80 }} /></label>
-        <label>Shipping $<input aria-label="Shipping flat" inputMode="decimal" value={ship} onChange={(e) => mark(setShip)(e.target.value)} style={{ maxWidth: 100 }} /></label>
+        <label>Shipping ({currency})<input aria-label="Shipping flat" inputMode="decimal" value={ship} onChange={(e) => mark(setShip)(e.target.value)} style={{ maxWidth: 100 }} /></label>
         <label>Contingency %<input aria-label="Contingency percent" inputMode="decimal" value={cont} onChange={(e) => mark(setCont)(e.target.value)} style={{ maxWidth: 80 }} /></label>
         <button className="primary-action" onClick={() => void save()} disabled={saving || !dirty}>{saving ? "Saving…" : "Save budget"}</button>
       </div>
       {error ? <p role="alert" className="album-upload-error">{error}</p> : null}
       <div className="budget-body">
         <div className="budget-list">
-          <div><b>Products</b><span>${subtotal.toLocaleString()}</span></div>
-          <div><b>Tax ({taxRate}%)</b><span>${taxAmt.toLocaleString()}</span></div>
-          <div><b>Shipping</b><span>${shipping.toLocaleString()}</span></div>
-          <div><b>Contingency ({contPct}%)</b><span>${contAmt.toLocaleString()}</span></div>
+          <div><b>Products</b><span>{money(subtotal)}</span></div>
+          <div><b>Tax ({taxRate}%)</b><span>{money(taxAmt)}</span></div>
+          <div><b>Shipping</b><span>{money(shipping)}</span></div>
+          <div><b>Contingency ({contPct}%)</b><span>{money(contAmt)}</span></div>
         </div>
       </div>
     </section>
@@ -3262,7 +3282,7 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
       <div className="panel-heading">
         <div>
           <span className="eyebrow">Present{brand ? ` · ${brand}` : ""}</span>
-          <h2>Share this project</h2>
+          <h2 className="present-step"><span className="step-num" aria-hidden="true">1</span> Share a client link</h2>
           <p>{versions?.length ?? 0} versions · {items?.length ?? 0} specified items · forecast ${forecast.toLocaleString()}{brand ? ` · Prepared by ${brand}` : ""}</p>
         </div>
       </div>
@@ -3285,8 +3305,15 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
           <div><b>Team invites</b><span>By link — the invite is single-use and expires in 14 days</span></div>
         </div>
       </div>
+      <div className="panel-heading" style={{ marginTop: 8 }}>
+        <div>
+          <span className="eyebrow">Team</span>
+          <h2 className="present-step"><span className="step-num" aria-hidden="true">2</span> Invite your team</h2>
+          <p>Single-use links that expire in 14 days. Clients stay read-only on your plan.</p>
+        </div>
+      </div>
       <div className="panel-tools">
-        <input aria-label="Invite email (optional)" placeholder="teammate@studio.com (optional)" inputMode="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} style={{ maxWidth: 220 }} />
+        <input type="email" autoComplete="email" spellCheck={false} aria-label="Invite email (optional)" placeholder="teammate@studio.com (optional)" inputMode="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} style={{ maxWidth: 220 }} />
         <select aria-label="Invite role" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as typeof inviteRole)} style={{ maxWidth: 150 }}>
           <option value="collaborator">Collaborator</option>
           <option value="designer">Designer</option>
@@ -3312,6 +3339,12 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
           ))}
         </div>
       ) : null}
+      <div className="panel-heading" style={{ marginTop: 8 }}>
+        <div>
+          <span className="eyebrow">Decision</span>
+          <h2 className="present-step"><span className="step-num" aria-hidden="true">3</span> Approve the latest version</h2>
+        </div>
+      </div>
       <div className="budget-body">
         <div className="budget-list">
           <div><b>Latest version approval</b><span>{approval ? String((approval as any).status).replaceAll("_", " ") : "No decision yet"}</span></div>
@@ -3326,7 +3359,7 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
       <div className="panel-heading" style={{ marginTop: 8 }}>
         <div>
           <span className="eyebrow">Room</span>
-          <h2>Measured size</h2>
+          <h2 className="present-step"><span className="step-num" aria-hidden="true">4</span> Measured size</h2>
           <p>{myRoom?.dimensions ? `${myRoom.dimensions.w} × ${myRoom.dimensions.h} m${myRoom.dimensions.ceiling ? ` · ceiling ${myRoom.dimensions.ceiling} m` : ""}` : "No measurements yet — concepts are unverified until you add them."}</p>
         </div>
       </div>
@@ -3340,7 +3373,7 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
       <div className="panel-heading" style={{ marginTop: 8 }}>
         <div>
           <span className="eyebrow">Comments & decisions</span>
-          <h2>Pinned feedback</h2>
+          <h2 className="present-step"><span className="step-num" aria-hidden="true">5</span> Pinned feedback</h2>
           <p>Click the image to drop a pin, write the note, then add it. Pins stay with this project.</p>
         </div>
       </div>
@@ -3368,7 +3401,7 @@ function PresentPanel({ projectId, roomId, preview }: { projectId: string; roomI
         <div className="spec-table rich-spec" aria-label="Decision history">
           {(comments ?? []).map((c: any) => (
             <div className="spec-row" key={String(c._id)}>
-              <span><b>{c.body}</b><small>{c.authorName ?? "Designer"} · {new Date(c.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}{c.xRatio !== undefined ? " · pinned" : ""}</small></span>
+              <span><b>{c.body}</b><small>{c.authorName ?? "Designer"} · {new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(new Date(c.createdAt))}{c.xRatio !== undefined ? " · pinned" : ""}</small></span>
               <span>{c.resolved ? "Resolved" : "Open"}</span>
               <span>{!c.resolved ? <button onClick={() => void resolveComment({ commentId: c._id }).catch((e) => setError(e instanceof Error ? e.message : "Could not resolve."))}>Resolve</button> : null}</span>
             </div>
@@ -4028,29 +4061,14 @@ function DiscoverPage({
     <div className="discover-page inspiration-page">
       <h1 className="visually-hidden">Discover design directions</h1>
       <div className="inspiration-tools simple-discover-tools">
-        <label className="inspiration-search">
-          <MagnifyingGlass />
-          <input
-            value={query}
-            ref={searchRef}
-            onChange={(event) => setQuery(event.target.value)}
-            name="inspiration-search"
-            aria-label="Search inspiration"
-            autoComplete="off"
-            placeholder="Search rooms, styles, or materials…"
-          />
-          {query ? (
-            <button
-              aria-label="Clear inspiration search"
-              onClick={() => {
-                setQuery("");
-                searchRef.current?.focus();
-              }}
-            >
-              <X />
-            </button>
-          ) : null}
-        </label>
+        <SearchInput
+          value={query}
+          onChange={setQuery}
+          inputRef={searchRef}
+          name="inspiration-search"
+          label="Search inspiration"
+          placeholder="Search rooms, styles, or materials…"
+        />
         <div
           className="discover-filters"
           role="tablist"
@@ -4220,7 +4238,13 @@ function LibraryPage({ designs, references, onCreate, onOpenDesign, onOpenRefere
       <button className="primary-action" onClick={onCreate}><Plus /> New project</button>
     </header>
     <div className="asset-library-tools">
-      <label><MagnifyingGlass aria-hidden="true" /><span className="visually-hidden">Search library</span><input name="library-search" autoComplete="off" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search your library…" /></label>
+      <SearchInput
+        value={query}
+        onChange={setQuery}
+        name="library-search"
+        label="Search library"
+        placeholder="Search your library…"
+      />
       <div role="tablist" aria-label="Filter library">
         <button role="tab" aria-selected={filter === "all"} onClick={() => setFilter("all")}>All <span>{total}</span></button>
         <button role="tab" aria-selected={filter === "generated"} onClick={() => setFilter("generated")}>Generated <span>{generated.length}</span></button>
@@ -4231,7 +4255,7 @@ function LibraryPage({ designs, references, onCreate, onOpenDesign, onOpenRefere
     {visibleCount ? <div className="asset-library-grid">
       {visibleDesigns.map((design) => { const isGeneric = /^(interior design|new project|untitled concept)$/i.test(design.title.trim()); const label = isGeneric ? `${design.mode} concept` : design.title; return <button key={design.id} className="asset-card" onClick={() => onOpenDesign(design)}>
         <span><Image src={design.image} alt="" fill sizes="(max-width:700px) 50vw, 260px" unoptimized={design.image.startsWith("http") || design.image.startsWith("data:")} /><i>{design.prompt?.trim() ? "Generated" : "Uploaded"}</i></span>
-        <b>{label}</b><small>{design.mode} · {new Intl.DateTimeFormat("en", { month:"short", day:"numeric" }).format(new Date(design.savedAt))}</small>
+        <b>{label}</b><small>{design.mode} · {new Intl.DateTimeFormat(undefined, { month:"short", day:"numeric" }).format(new Date(design.savedAt))}</small>
       </button>;})}
       {filter === "all" || filter === "saved" ? saved.map((reference) => <button key={reference.title} className="asset-card" onClick={() => onOpenReference(reference)}>
         <span><Image src={reference.image} alt="" fill sizes="(max-width:700px) 50vw, 260px" unoptimized /><i>Saved</i></span>
@@ -5812,25 +5836,14 @@ function Specifications() {
         </button>
       </div>
       <div className="panel-tools">
-        <div className="search-input">
-          <MagnifyingGlass />
-          <input
-            ref={searchRef}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search products and materials"
-            placeholder="Search specification"
-          />
-          {query ? (
-            <button
-              className="clear-search"
-              aria-label="Clear search"
-              onClick={clearSearch}
-            >
-              <X />
-            </button>
-          ) : null}
-        </div>
+        <SearchInput
+          value={query}
+          onChange={setQuery}
+          inputRef={searchRef}
+          name="specification-search"
+          label="Search products and materials"
+          placeholder="Search specification…"
+        />
         <button>
           <LinkSimple /> Import product link
         </button>
@@ -6279,15 +6292,11 @@ function CollectionPage({
         </button>
       </div>
       <div className="search-row">
-        <label>
-          <MagnifyingGlass />
-          <input
-            name="workspace-search"
-            autoComplete="off"
-            placeholder={`Search ${title.toLowerCase()}`}
-            aria-label={`Search ${title.toLowerCase()}`}
-          />
-        </label>
+        <SearchInput
+          name="workspace-search"
+          label={`Search ${title.toLowerCase()}`}
+          placeholder={`Search ${title.toLowerCase()}…`}
+        />
         <button>
           <List /> All
         </button>
